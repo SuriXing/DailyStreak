@@ -164,7 +164,7 @@ export const STUDY_CONTENT: StudyItem[] = [
     day: 14,
     subject: 'CSP',
     title: '编程基础与创新',
-    body: 'CSP 的编程部分：顺序、选择（if/else）、循环（iteration）是三大基本结构。变量存数据、列表存多个数据。Create Performance Task 要求：程序包含输入、输出、列表、过程/函数、条件逻辑、循环——展示你能用计算思维解决问题。',
+    body: 'CSP 的编程部分：顺序、选择（if/else）、循环（iteration）是三大基本结构。变量存数据、列表存多个数据。Create Performance Task 要求：程序包含输入、输出、列表、过程/函数、条件逻辑、循环，展示你能用计算思维解决问题。',
     question: 'CSP Create Task 中，"把一段重复执行的代码封装成函数"主要体现了？',
     options: [
       '程序的输入',

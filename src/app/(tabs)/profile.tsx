@@ -59,7 +59,7 @@ export default function ProfileScreen() {
           <View style={styles.statRow}>
             <View style={styles.stat}>
               <Text style={[styles.statNumber, { color: colors.text }]}>
-                {total === null ? '—' : total}
+                {total === null ? '…' : total}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>累计打卡</Text>
             </View>
@@ -91,7 +91,7 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text style={[styles.footer, { color: colors.textSecondary }]}>
-          DailyStreak v1.0 · 今天也要加油哦 💪
+          DailyStreak · 每天进步一点点
         </Text>
       </ScrollView>
     </SafeAreaView>

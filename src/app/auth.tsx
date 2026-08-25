@@ -84,7 +84,6 @@ export default function AuthScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <Text style={styles.emoji}>📚</Text>
             <Text style={[styles.title, { color: colors.text }]}>DailyStreak</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               每天学习一点点，坚持就是胜利！
@@ -97,6 +96,7 @@ export default function AuthScreen() {
                 style={inputStyle}
                 placeholder="昵称（可选）"
                 placeholderTextColor={colors.textSecondary}
+                accessibilityLabel="昵称"
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -106,6 +106,7 @@ export default function AuthScreen() {
               style={inputStyle}
               placeholder="邮箱"
               placeholderTextColor={colors.textSecondary}
+              accessibilityLabel="邮箱"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -116,14 +117,23 @@ export default function AuthScreen() {
               style={inputStyle}
               placeholder="密码（至少 6 位）"
               placeholderTextColor={colors.textSecondary}
+              accessibilityLabel="密码"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             />
 
-            {error && <Text style={styles.error}>{error}</Text>}
-            {notice && <Text style={styles.notice}>{notice}</Text>}
+            {error && (
+              <Text accessibilityLiveRegion="polite" style={styles.error}>
+                {error}
+              </Text>
+            )}
+            {notice && (
+              <Text accessibilityLiveRegion="polite" style={styles.notice}>
+                {notice}
+              </Text>
+            )}
 
             <Pressable
               style={({ pressed }) => [

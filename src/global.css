@@ -7,3 +7,22 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* 键盘焦点可见性（WCAG 2.4.7）— 所有交互元素统一焦点环 */
+:focus-visible {
+  outline: 3px solid #58cc02;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 尊重系统减少动态效果偏好（WCAG 2.3.3） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

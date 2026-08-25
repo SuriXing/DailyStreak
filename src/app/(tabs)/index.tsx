@@ -108,7 +108,11 @@ export default function CheckinScreen() {
               <Text style={styles.flame}>🔥</Text>
               <Text style={[styles.streakNumber, { color: colors.text }]}>{streak}</Text>
               <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>天连胜</Text>
-              {justChecked && <Text style={styles.celebrate}>🎉 今日打卡成功！</Text>}
+              {justChecked && (
+                <Text accessibilityLiveRegion="polite" style={styles.celebrate}>
+                  🎉 今日打卡成功！
+                </Text>
+              )}
             </View>
 
             <Pressable
@@ -131,7 +135,11 @@ export default function CheckinScreen() {
               </Pressable>
             )}
 
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && (
+              <Text accessibilityLiveRegion="polite" style={styles.error}>
+                {error}
+              </Text>
+            )}
 
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
               <Text style={[styles.cardTitle, { color: colors.text }]}>打卡日历</Text>

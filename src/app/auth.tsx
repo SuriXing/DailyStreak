@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
-import { Spacing } from '@/constants/theme';
+import { ControlHeight, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type Mode = 'login' | 'signup';
@@ -74,7 +74,7 @@ export default function AuthScreen() {
 
   const inputStyle = [
     styles.input,
-    { backgroundColor: colors.backgroundElement, color: colors.text },
+    { backgroundColor: colors.backgroundElement, color: colors.text, borderColor: colors.border },
   ];
 
   return (
@@ -138,7 +138,7 @@ export default function AuthScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.button,
-                { backgroundColor: '#58CC02' },
+                { backgroundColor: colors.primary },
                 pressed && styles.pressed,
                 busy && styles.disabled,
               ]}
@@ -173,21 +173,24 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14 },
   form: { gap: Spacing.three },
   input: {
-    borderRadius: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: '#d9d9d9',
     paddingHorizontal: Spacing.three,
-    paddingVertical: 14,
+    minHeight: ControlHeight.lg,
     fontSize: 16,
   },
   button: {
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: Radius.md,
+    minHeight: ControlHeight.lg,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: Spacing.one,
   },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   switchText: { textAlign: 'center', fontSize: 14 },
-  error: { color: '#EA2B2B', fontSize: 13 },
-  notice: { color: '#58CC02', fontSize: 13 },
+  error: { color: '#ff4d4f', fontSize: 13 },
+  notice: { color: '#52c41a', fontSize: 13 },
   pressed: { opacity: 0.8 },
   disabled: { opacity: 0.5 },
   card: { padding: Spacing.four, gap: Spacing.three },

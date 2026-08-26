@@ -35,8 +35,8 @@ export function StreakCalendar({ checkedSet, weeks = 12 }: Props) {
               style={[
                 styles.cell,
                 {
-                  backgroundColor: c.checked ? '#58CC02' : colors.backgroundElement,
-                  borderColor: isToday ? '#FF9600' : 'transparent',
+                  backgroundColor: c.checked ? colors.success : colors.fillTertiary,
+                  borderColor: isToday ? colors.warning : 'transparent',
                 },
               ]}
             />
@@ -50,7 +50,7 @@ export function StreakCalendar({ checkedSet, weeks = 12 }: Props) {
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
   weekdayLabels: { gap: GAP, paddingTop: 1 },
-  labelText: { fontSize: 9, color: '#A0A4AB' },
+  labelText: { fontSize: 9, color: '#8c8c8c' },
   grid: {
     flexDirection: 'column',
     flexWrap: 'wrap',

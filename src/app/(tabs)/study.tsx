@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getTodayItem } from '@/data/content';
-import { Spacing } from '@/constants/theme';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /** 内容起始日：从这一天开始按天轮换内容（第 1 天 → 今天） */
@@ -34,7 +34,7 @@ export default function StudyScreen() {
 
         <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
 
-        <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
           <Text style={[styles.body, { color: colors.text }]}>{item.body}</Text>
         </View>
 
@@ -46,14 +46,14 @@ export default function StudyScreen() {
             const isSelected = selected === i;
             const isAnswer = i === item.answerIndex;
             let bg = colors.backgroundElement;
-            let border = 'transparent';
+            let border = colors.border;
             if (answered) {
               if (isAnswer) {
-                bg = '#D7FFB8';
-                border = '#58CC02';
+                bg = colors.successBg;
+                border = colors.success;
               } else if (isSelected) {
-                bg = '#FFD7D7';
-                border = '#EA2B2B';
+                bg = colors.errorBg;
+                border = colors.error;
               }
             }
             return (
@@ -80,12 +80,12 @@ export default function StudyScreen() {
           <View
             style={[
               styles.explanation,
-              { backgroundColor: correct ? '#D7FFB8' : '#FFD7D7' },
+              { backgroundColor: correct ? colors.successBg : colors.errorBg },
             ]}>
-            <Text style={[styles.explanationTitle, { color: '#333' }]}>
+            <Text style={[styles.explanationTitle, { color: correct ? '#237804' : '#a8071a' }]}>
               {correct ? '🎉 答对了！' : '💡 正确答案是 ' + String.fromCharCode(65 + item.answerIndex)}
             </Text>
-            <Text style={styles.explanationText}>{item.explanation}</Text>
+            <Text style={[styles.explanationText, { color: colors.text }]}>{item.explanation}</Text>
           </View>
         )}
       </ScrollView>
@@ -101,24 +101,24 @@ const styles = StyleSheet.create({
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   dayLabel: { fontSize: 13 },
   title: { fontSize: 24, fontWeight: '800' },
-  card: { borderRadius: 16, padding: Spacing.three },
+  card: { borderRadius: Radius.lg, padding: Spacing.three },
   body: { fontSize: 15, lineHeight: 23 },
   questionLabel: { fontSize: 12, fontWeight: '700', marginTop: Spacing.two },
   question: { fontSize: 17, fontWeight: '700', lineHeight: 24 },
   options: { gap: Spacing.two },
   option: {
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   optionText: { fontSize: 15, flex: 1 },
-  mark: { fontSize: 18, color: '#58CC02', fontWeight: '900' },
-  markWrong: { color: '#EA2B2B' },
+  mark: { fontSize: 18, color: '#52c41a', fontWeight: '900' },
+  markWrong: { color: '#ff4d4f' },
   pressed: { opacity: 0.8 },
-  explanation: { borderRadius: 16, padding: Spacing.three, gap: Spacing.one },
+  explanation: { borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.one },
   explanationTitle: { fontSize: 15, fontWeight: '800' },
-  explanationText: { fontSize: 14, lineHeight: 21, color: '#333' },
+  explanationText: { fontSize: 14, lineHeight: 21 },
 });

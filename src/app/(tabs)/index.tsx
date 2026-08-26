@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -21,6 +21,23 @@ import { useSessionUser } from '@/hooks/use-session-user';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+/** 给请求加超时，避免慢网络下无限转圈 */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('网络超时，请检查网络后重试')), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 export default function CheckinScreen() {
   const user = useSessionUser();
   const colors = useTheme();
@@ -38,7 +55,7 @@ export default function CheckinScreen() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    fetchCheckins(user.id)
+    withTimeout(fetchCheckins(user.id), 10000)
       .then((dates) => {
         if (active) setCheckedSet(new Set(dates));
       })
@@ -51,6 +68,16 @@ export default function CheckinScreen() {
     return () => {
       active = false;
     };
+  }, [user]);
+
+  const load = useCallback(() => {
+    if (!user) return;
+    setError(null);
+    setLoading(true);
+    withTimeout(fetchCheckins(user.id), 10000)
+      .then((dates) => setCheckedSet(new Set(dates)))
+      .catch((e) => setError(e instanceof Error ? e.message : '加载失败'))
+      .finally(() => setLoading(false));
   }, [user]);
 
   async function onCheckIn() {
@@ -136,9 +163,16 @@ export default function CheckinScreen() {
             )}
 
             {error && (
-              <Text accessibilityLiveRegion="polite" style={styles.error}>
-                {error}
-              </Text>
+              <View style={styles.errorWrap}>
+                <Text accessibilityLiveRegion="polite" style={styles.error}>
+                  {error}
+                </Text>
+                {!loading && (
+                  <Pressable onPress={load} disabled={busy}>
+                    <Text style={[styles.retryText, { color: colors.primary }]}>重试</Text>
+                  </Pressable>
+                )}
+              </View>
             )}
 
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
@@ -197,7 +231,9 @@ const styles = StyleSheet.create({
   undoText: { fontSize: 13, marginTop: Spacing.one },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.6 },
+  errorWrap: { alignItems: 'center', gap: Spacing.two },
   error: { color: '#ff4d4f', fontSize: 13 },
+  retryText: { fontSize: 14, fontWeight: '700' },
   card: {
     alignSelf: 'stretch',
     borderRadius: Radius.lg,

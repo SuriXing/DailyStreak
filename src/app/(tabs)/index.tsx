@@ -18,7 +18,7 @@ import {
   undoCheckIn,
 } from '@/lib/checkins';
 import { useSessionUser } from '@/hooks/use-session-user';
-import { Spacing } from '@/constants/theme';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function CheckinScreen() {
@@ -100,7 +100,7 @@ export default function CheckinScreen() {
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#58CC02" />
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : (
           <>
@@ -141,7 +141,7 @@ export default function CheckinScreen() {
               </Text>
             )}
 
-            <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
               <Text style={[styles.cardTitle, { color: colors.text }]}>打卡日历</Text>
               <View style={styles.calendarWrap}>
                 <StreakCalendar checkedSet={checkedSet} />
@@ -151,7 +151,7 @@ export default function CheckinScreen() {
               </Text>
             </View>
 
-            <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
               <Text style={[styles.cardTitle, { color: colors.text }]}>统计</Text>
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
@@ -182,24 +182,25 @@ const styles = StyleSheet.create({
   flame: { fontSize: 64 },
   streakNumber: { fontSize: 56, fontWeight: '900' },
   streakLabel: { fontSize: 15 },
-  celebrate: { color: '#58CC02', fontSize: 15, fontWeight: '700', marginTop: Spacing.one },
+  celebrate: { color: '#52c41a', fontSize: 15, fontWeight: '700', marginTop: Spacing.one },
   checkinButton: {
-    backgroundColor: '#58CC02',
-    borderRadius: 16,
-    paddingVertical: 18,
+    backgroundColor: '#1677ff',
+    borderRadius: Radius.lg,
+    minHeight: 48,
     paddingHorizontal: Spacing.six,
     alignItems: 'center',
+    justifyContent: 'center',
     alignSelf: 'stretch',
   },
-  checkinButtonDone: { backgroundColor: '#A8A8A8' },
+  checkinButtonDone: { backgroundColor: '#52c41a' },
   checkinButtonText: { color: '#fff', fontSize: 20, fontWeight: '800' },
   undoText: { fontSize: 13, marginTop: Spacing.one },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.6 },
-  error: { color: '#EA2B2B', fontSize: 13 },
+  error: { color: '#ff4d4f', fontSize: 13 },
   card: {
     alignSelf: 'stretch',
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     padding: Spacing.three,
     gap: Spacing.three,
   },

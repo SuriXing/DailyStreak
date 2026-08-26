@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { computeStreak, fetchCheckins } from '@/lib/checkins';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useSessionUser } from '@/hooks/use-session-user';
-import { Spacing } from '@/constants/theme';
+import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function ProfileScreen() {
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
           <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email}</Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
           <View style={styles.statRow}>
             <View style={styles.stat}>
               <Text style={[styles.statNumber, { color: colors.text }]}>
@@ -66,7 +66,7 @@ export default function ProfileScreen() {
             <View style={styles.statDivider} />
             <View style={styles.stat}>
               {streak === null ? (
-                <ActivityIndicator color="#58CC02" />
+                <ActivityIndicator color={colors.primary} />
               ) : (
                 <Text style={[styles.statNumber, { color: colors.text }]}>{streak}</Text>
               )}
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
           onPress={onSignOut}
           disabled={signingOut}>
           {signingOut ? (
-            <ActivityIndicator color="#EA2B2B" />
+            <ActivityIndicator color="#ff4d4f" />
           ) : (
             <Text style={styles.signOutText}>退出登录</Text>
           )}
@@ -106,14 +106,14 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#58CC02',
+    backgroundColor: '#1677ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: { color: '#fff', fontSize: 36, fontWeight: '900' },
   nickname: { fontSize: 22, fontWeight: '800' },
   email: { fontSize: 13 },
-  card: { borderRadius: 16, padding: Spacing.four },
+  card: { borderRadius: Radius.lg, padding: Spacing.four },
   statRow: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, alignItems: 'center', gap: Spacing.one },
   statDivider: { width: StyleSheet.hairlineWidth, height: 40, backgroundColor: '#A0A4AB' },
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  signOutText: { color: '#EA2B2B', fontSize: 15, fontWeight: '700' },
+  signOutText: { color: '#ff4d4f', fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.8 },
   footer: { textAlign: 'center', fontSize: 12, marginTop: Spacing.two },
 });

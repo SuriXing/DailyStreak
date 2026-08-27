@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getTodayItem } from '@/data/content';
+import { COURSES, getTodayItem } from '@/data/courses';
+import { useCourse } from '@/hooks/use-course';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** 内容起始日：从这一天开始按天轮换内容（第 1 天 → 今天） */
-const CONTENT_START = new Date(2025, 7, 30);
-
 export default function StudyScreen() {
   const colors = useTheme();
-  const item = getTodayItem(CONTENT_START);
+  const [course, setCourseId] = useCourse();
+  const item = getTodayItem(course);
   const [selected, setSelected] = useState<number | null>(null);
   const answered = selected !== null;
   const correct = selected === item.answerIndex;
@@ -19,13 +18,37 @@ export default function StudyScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.courseSwitcher}>
+          {COURSES.map((c) => {
+            const active = c.id === course.id;
+            return (
+              <Pressable
+                key={c.id}
+                style={({ pressed }) => [
+                  styles.courseChip,
+                  {
+                    backgroundColor: active ? c.color : colors.backgroundElement,
+                    borderColor: active ? c.color : colors.border,
+                  },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setCourseId(c.id)}
+                accessibilityLabel={`切换到${c.name}`}
+                accessibilityState={{ selected: active }}>
+                <Text style={[styles.courseChipText, { color: active ? '#fff' : colors.text }]}>
+                  {c.shortName}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={[styles.courseName, { color: colors.textSecondary }]}>
+          {course.name} · {course.description}
+        </Text>
+
         <View style={styles.headerRow}>
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: item.subject === 'CSA' ? '#1CB0F6' : '#CE82FF' },
-            ]}>
-            <Text style={styles.badgeText}>AP {item.subject}</Text>
+          <View style={[styles.badge, { backgroundColor: course.color }]}>
+            <Text style={styles.badgeText}>{course.shortName}</Text>
           </View>
           <Text style={[styles.dayLabel, { color: colors.textSecondary }]}>
             Day {item.day} · 每日一学
@@ -96,7 +119,16 @@ export default function StudyScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: Spacing.four, gap: Spacing.three },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  courseSwitcher: { flexDirection: 'row', gap: Spacing.two },
+  courseChip: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  courseChipText: { fontSize: 13, fontWeight: '700' },
+  courseName: { fontSize: 12, marginTop: -Spacing.two },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
   badge: { borderRadius: 8, paddingHorizontal: Spacing.two, paddingVertical: 3 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   dayLabel: { fontSize: 13 },

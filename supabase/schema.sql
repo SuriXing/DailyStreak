@@ -22,9 +22,23 @@ create table if not exists public.checkins (
 create index if not exists checkins_user_date_idx
   on public.checkins (user_id, checkin_date desc);
 
+-- 2b) 答题记录表（驱动复习调度与技能掌握度）
+create table if not exists public.answers (
+  id bigint generated always as identity primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  course_id text not null,
+  item_id text not null,
+  correct boolean not null,
+  answered_at timestamptz not null default now()
+);
+
+create index if not exists answers_user_item_idx
+  on public.answers (user_id, item_id, answered_at desc);
+
 -- 3) 行级安全：用户只能读写自己的数据
 alter table public.profiles enable row level security;
 alter table public.checkins enable row level security;
+alter table public.answers enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles
@@ -49,6 +63,14 @@ create policy "checkins_insert_own" on public.checkins
 drop policy if exists "checkins_delete_own" on public.checkins;
 create policy "checkins_delete_own" on public.checkins
   for delete using (auth.uid() = user_id);
+
+drop policy if exists "answers_select_own" on public.answers;
+create policy "answers_select_own" on public.answers
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "answers_insert_own" on public.answers;
+create policy "answers_insert_own" on public.answers
+  for insert with check (auth.uid() = user_id);
 
 -- 4) 新用户注册时自动创建 profile
 create or replace function public.handle_new_user()

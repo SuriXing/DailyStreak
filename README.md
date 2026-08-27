@@ -9,7 +9,8 @@ Built with Expo, it runs on **iOS** and the **web** from a single TypeScript cod
 - **Daily check-in** — a one-tap button with instant feedback
 - **Streak tracking** — Duolingo-style: if today is still unchecked, yesterday keeps your streak alive
 - **Contribution calendar** — a GitHub-style heat map of the last 12 weeks, with today highlighted
-- **Daily lesson** — alternating AP CSA / CSP knowledge cards with a short quiz and instant explanations
+- **Daily lesson** — knowledge cards with a short quiz and instant explanations, rotating daily per course
+- **Multi-course framework** — any AP course or subject plugs in via the course registry (AP CSA / CSP / Calculus AB included)
 - **Cloud sync** — email sign-up; history follows you across devices
 - **Stats** — total check-ins and current streak at a glance
 - **Accessibility-minded** — visible focus rings, `prefers-reduced-motion` support, screen-reader labels, polite live regions for feedback
@@ -70,30 +71,48 @@ src/
 │       ├── study.tsx        # Daily lesson + quiz
 │       └── profile.tsx      # Profile, stats, sign out
 ├── components/streak-calendar.tsx   # 12-week heat map
-├── data/content.ts          # Lesson library (CSA / CSP)
+├── data/courses.ts         # Course registry + lesson libraries (the framework core)
 ├── hooks/                   # useSessionUser, useTheme, …
 └── lib/                     # Supabase client, check-in & streak logic
 supabase/schema.sql          # Database schema (run in the SQL Editor)
 ```
 
-## Extending the Lesson Library
+## Adding a Course
 
-Edit `STUDY_CONTENT` in [`src/data/content.ts`](src/data/content.ts). Each entry is:
+DailyStreak is a framework: check-ins, streaks, the calendar, and cloud sync are course-agnostic. To plug in any AP course or subject:
+
+1. Open [`src/data/courses.ts`](src/data/courses.ts).
+2. Write an item array for the course (lessons rotate daily and loop once exhausted):
+
+```ts
+const MY_ITEMS: StudyItem[] = [
+  {
+    day: 1,
+    subject: 'MYSUB',
+    title: 'Knowledge point title',
+    body: 'Knowledge card text',
+    question: 'Quiz question',
+    options: ['A', 'B', 'C', 'D'],
+    answerIndex: 0,            // index of the correct option
+    explanation: 'Answer explanation',
+  },
+];
+```
+
+3. Register it:
 
 ```ts
 {
-  day: 15,
-  subject: 'CSA' | 'CSP',
-  title: 'Knowledge point title',
-  body: 'Knowledge card text',
-  question: 'Quiz question',
-  options: ['A', 'B', 'C', 'D'],
-  answerIndex: 0,            // index of the correct option
-  explanation: 'Answer explanation',
-}
+  id: 'mycourse',
+  name: 'My Course',
+  shortName: 'MY',
+  color: '#1677ff',            // badge / switcher accent
+  description: 'One-line intro',
+  items: MY_ITEMS,
+},
 ```
 
-Lessons rotate daily and loop once the library is exhausted. The content start date lives in `src/app/(tabs)/study.tsx` (`CONTENT_START`).
+That's it: the course appears in the study tab switcher, and the selected course is persisted locally. Lessons start from `CONTENT_START` in the same file.
 
 ## Deployment (Web)
 

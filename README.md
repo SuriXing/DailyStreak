@@ -132,9 +132,12 @@ npx expo lint             # lint
 Browser smoke test (Playwright): verifies the auth gate, sign-up, check-in, and all three tabs against a running dev server.
 
 ```bash
-npm i -D playwright && npx playwright install chromium
-node scripts/smoke-test.js     # while `npm run web` is running
+npx playwright install chromium   # once, after npm install
+npm run web &                     # dev server
+npm run smoke                     # 14 assertions, exits non-zero on failure
 ```
+
+CI (`.github/workflows/ci.yml`) runs type check, lint, web export, and the smoke test on every push (smoke needs the `EXPO_PUBLIC_SUPABASE_*` repo secrets).
 
 The repo also carries a UXE design contract (`.uxe/`) that audits surfaces, tokens, and AI-tell patterns on rendered output.
 

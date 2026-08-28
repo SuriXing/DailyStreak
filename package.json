@@ -35,7 +35,8 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "playwright": "^1.62.1"
   },
   "scripts": {
     "start": "expo start",
@@ -51,7 +52,8 @@
     "uxe:page-capability": "python3 .uxe/scripts/page-capability.py --project-root .",
     "uxe:capture": "python3 .uxe/scripts/capture.py --project-root .",
     "uxe:visual": "python3 .uxe/scripts/visual.py --project-root .",
-    "uxe:audit": "python3 .uxe/scripts/audit.py --project-root ."
+    "uxe:audit": "python3 .uxe/scripts/audit.py --project-root .",
+    "smoke": "node scripts/smoke-test.js"
   },
   "private": true
 }

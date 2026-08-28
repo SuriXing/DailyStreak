@@ -3,8 +3,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { computeStreak, fetchCheckins } from '@/lib/checkins';
+import { COURSES } from '@/data/courses';
+import { computeMastery, fetchAnswers, type AnswerRecord } from '@/lib/answers';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useSessionUser } from '@/hooks/use-session-user';
+import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goal';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -13,7 +16,9 @@ export default function ProfileScreen() {
   const colors = useTheme();
 
   const [checkedSet, setCheckedSet] = useState<Set<string> | null>(null);
+  const [answersByCourse, setAnswersByCourse] = useState<Record<string, AnswerRecord[]>>({});
   const [signingOut, setSigningOut] = useState(false);
+  const [goal, setGoal] = useDailyGoal();
 
   useEffect(() => {
     if (!user) return;
@@ -25,6 +30,17 @@ export default function ProfileScreen() {
       .catch(() => {
         if (active) setCheckedSet(new Set());
       });
+    Promise.all(COURSES.map((c) => fetchAnswers(user.id, c.id)))
+      .then((lists) => {
+        if (active) {
+          const map: Record<string, AnswerRecord[]> = {};
+          COURSES.forEach((c, i) => {
+            map[c.id] = lists[i];
+          });
+          setAnswersByCourse(map);
+        }
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -75,6 +91,62 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>课程掌握度</Text>
+          {COURSES.map((c) => {
+            const mastery = computeMastery(c, answersByCourse[c.id] ?? []);
+            return (
+              <View key={c.id} style={styles.masteryRow}>
+                <View style={[styles.masteryBadge, { backgroundColor: c.color }]}>
+                  <Text style={styles.masteryBadgeText}>{c.shortName}</Text>
+                </View>
+                <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { backgroundColor: c.color, width: `${mastery.percent}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.masteryPercent, { color: colors.textSecondary }]}>
+                  {mastery.percent}%
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>每日目标</Text>
+          <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
+            保底 3 题 · 推荐 5 题 · 冲刺 10 题（业界研究建议 3-10 分钟/天）
+          </Text>
+          <View style={styles.goalRow}>
+            {DAILY_GOALS.map((g) => {
+              const active = goal === g;
+              return (
+                <Pressable
+                  key={g}
+                  style={({ pressed }) => [
+                    styles.goalChip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.backgroundElement,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setGoal(g as DailyGoal)}
+                  accessibilityState={{ selected: active }}>
+                  <Text
+                    style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
+                    {g} 题
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <Pressable
           style={({ pressed }) => [
             styles.signOut,
@@ -118,6 +190,22 @@ const styles = StyleSheet.create({
   stat: { flex: 1, alignItems: 'center', gap: Spacing.one },
   statDivider: { width: StyleSheet.hairlineWidth, height: 40, backgroundColor: '#A0A4AB' },
   statNumber: { fontSize: 30, fontWeight: '900' },
+  cardTitle: { fontSize: 16, fontWeight: '700' },
+  cardHint: { fontSize: 12, lineHeight: 18 },
+  masteryRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  masteryBadge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 2 },
+  masteryBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  progressTrack: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: 8, borderRadius: 4 },
+  masteryPercent: { fontSize: 12, fontWeight: '700', width: 36, textAlign: 'right' },
+  goalRow: { flexDirection: 'row', gap: Spacing.two },
+  goalChip: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two + 2,
+  },
+  goalChipText: { fontSize: 14, fontWeight: '700' },
   statLabel: { fontSize: 12 },
   signOut: {
     borderRadius: 12,

@@ -266,7 +266,14 @@ export default function CheckinScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: Spacing.four, gap: Spacing.three, alignItems: 'center' },
+  scroll: {
+    padding: Spacing.four,
+    gap: Spacing.three,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   greeting: { fontSize: 13, alignSelf: 'flex-start' },
   center: { paddingVertical: Spacing.six, alignItems: 'center' },
   streakHero: { alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.three },

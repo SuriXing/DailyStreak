@@ -387,7 +387,13 @@ function DoneView(props: {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: Spacing.four, gap: Spacing.three },
+  scroll: {
+    padding: Spacing.four,
+    gap: Spacing.three,
+    width: '100%',
+    maxWidth: 800,
+    alignSelf: 'center',
+  },
   center: { paddingVertical: Spacing.six, alignItems: 'center' },
   courseSwitcher: { flexDirection: 'row', gap: Spacing.two },
   courseChip: {

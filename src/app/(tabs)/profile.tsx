@@ -197,7 +197,14 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: Spacing.four, gap: Spacing.four, alignItems: 'stretch' },
+  scroll: {
+    padding: Spacing.four,
+    gap: Spacing.four,
+    alignItems: 'stretch',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   avatarWrap: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.three },
   avatar: {
     width: 84,

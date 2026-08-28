@@ -166,7 +166,15 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.four, gap: Spacing.five },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: Spacing.four,
+    gap: Spacing.five,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+  },
   hero: { alignItems: 'center', gap: Spacing.two },
   emoji: { fontSize: 56 },
   title: { fontSize: 32, fontWeight: '800' },

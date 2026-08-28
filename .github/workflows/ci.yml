@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: 类型 / Lint / 构建
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx expo lint
+      - name: Web export
+        run: npx expo export -p web
+
+  smoke:
+    name: 浏览器冒烟测试（Playwright）
+    runs-on: ubuntu-latest
+    needs: check
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: 安装 Playwright 浏览器
+        if: env.EXPO_PUBLIC_SUPABASE_URL != ''
+        run: npx playwright install --with-deps chromium
+
+      - name: 启动 dev server 并等待就绪
+        if: env.EXPO_PUBLIC_SUPABASE_URL != ''
+        run: |
+          echo "EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL" > .env
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$EXPO_PUBLIC_SUPABASE_ANON_KEY" >> .env
+          npx expo start --web --port 8081 > /tmp/expo.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8081 > /dev/null && break
+            sleep 2
+          done
+          curl -sf http://localhost:8081 > /dev/null || { echo "dev server 未就绪"; tail -20 /tmp/expo.log; exit 1; }
+
+      - name: 冒烟测试（登录门控 / 注册 / 打卡 / 三个 Tab / 零控制台错误）
+        if: env.EXPO_PUBLIC_SUPABASE_URL != ''
+        run: npm run smoke
+
+      - name: Supabase secrets 未配置，跳过冒烟测试
+        if: env.EXPO_PUBLIC_SUPABASE_URL == ''
+        run: echo "::warning::未配置 EXPO_PUBLIC_SUPABASE_URL/ANON_KEY secrets，浏览器冒烟测试已跳过（其余检查已通过）。"

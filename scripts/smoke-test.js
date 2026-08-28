@@ -80,6 +80,22 @@ function assert(cond, msg) {
   const consoleErrors = errors.filter((e) => !e.includes('favicon'));
   assert(consoleErrors.length === 0, `无浏览器控制台错误${consoleErrors.length ? '：' + consoleErrors[0] : ''}`);
 
+  // 7. 桌面端（≥900px）：侧边栏布局 + 导航
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(2000);
+  text = await page.locator('body').innerText();
+  assert(text.includes('每日学习打卡'), '桌面端显示侧边栏品牌');
+  assert(text.includes('退出登录'), '桌面端侧边栏有退出入口');
+  const tabBarVisible = await page.getByText('打卡', { exact: true }).first().isVisible();
+  // 桌面端应隐藏底部 Tab 栏（侧边栏的"打卡"在左边，底部栏的"打卡"不应可见）
+  const flameIcons = await page.locator('[class*="tabBar"]').count();
+  assert(flameIcons === 0 || !tabBarVisible, '桌面端隐藏底部 Tab 栏');
+  // 通过侧边栏导航到学习页
+  await page.getByText('学习', { exact: true }).first().click();
+  await page.waitForTimeout(2000);
+  text = await page.locator('body').innerText();
+  assert(text.includes('开始练习'), '桌面端侧边栏导航到学习页');
+
   console.log(`\n🎉 全部通过（测试账号 ${EMAIL}，密码 ${PASSWORD}）`);
   await browser.close();
 })().catch((e) => {

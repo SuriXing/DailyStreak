@@ -129,6 +129,13 @@ npx tsc --noEmit          # type check
 npx expo lint             # lint
 ```
 
+Browser smoke test (Playwright): verifies the auth gate, sign-up, check-in, and all three tabs against a running dev server.
+
+```bash
+npm i -D playwright && npx playwright install chromium
+node scripts/smoke-test.js     # while `npm run web` is running
+```
+
 The repo also carries a UXE design contract (`.uxe/`) that audits surfaces, tokens, and AI-tell patterns on rendered output.
 
 ## License

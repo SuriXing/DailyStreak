@@ -11,6 +11,23 @@ import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goa
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+/** 给请求加超时，避免慢网络下无限转圈 */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('网络超时')), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 export default function ProfileScreen() {
   const user = useSessionUser();
   const colors = useTheme();
@@ -23,14 +40,14 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    fetchCheckins(user.id)
+    withTimeout(fetchCheckins(user.id), 10000)
       .then((dates) => {
         if (active) setCheckedSet(new Set(dates));
       })
       .catch(() => {
         if (active) setCheckedSet(new Set());
       });
-    Promise.all(COURSES.map((c) => fetchAnswers(user.id, c.id)))
+    withTimeout(Promise.all(COURSES.map((c) => fetchAnswers(user.id, c.id))), 10000)
       .then((lists) => {
         if (active) {
           const map: Record<string, AnswerRecord[]> = {};
@@ -45,6 +62,14 @@ export default function ProfileScreen() {
       active = false;
     };
   }, [user]);
+
+  // 安全网：15 秒后无论请求是否完成，统计区都停止转圈
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCheckedSet((prev) => prev ?? new Set());
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, []);
 
   async function onSignOut() {
     if (!isSupabaseConfigured || signingOut) return;

@@ -19,6 +19,23 @@ import { useTheme } from '@/hooks/use-theme';
 
 type Phase = 'ready' | 'quiz' | 'done';
 
+/** 给请求加超时，避免慢网络下无限转圈 */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('网络超时，请检查网络后重试')), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 export default function StudyScreen() {
   const colors = useTheme();
   const user = useSessionUser();
@@ -40,7 +57,7 @@ export default function StudyScreen() {
 
   const load = useCallback(() => {
     if (!user) return;
-    fetchAnswers(user.id, course.id)
+    withTimeout(fetchAnswers(user.id, course.id), 10000)
       .then((ans) => setAnswers(ans))
       .catch(() => setAnswers([]))
       .finally(() => setLoading(false));
@@ -49,6 +66,12 @@ export default function StudyScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // 安全网：无论任何原因（user 未就绪/请求挂起），loading 最多持续 15 秒
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 15000);
+    return () => clearTimeout(timer);
+  }, []);
 
   function startSession() {
     const plan = buildSessionPlan(course, answers, goal);

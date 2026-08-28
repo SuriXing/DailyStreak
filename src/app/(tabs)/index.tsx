@@ -19,6 +19,7 @@ import {
 } from '@/lib/checkins';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
+import { useIsDesktop } from '@/hooks/use-media';
 import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -51,6 +52,7 @@ export default function CheckinScreen() {
   const [error, setError] = useState<string | null>(null);
   const [justChecked, setJustChecked] = useState(false);
   const [goal] = useDailyGoal();
+  const isDesktop = useIsDesktop();
 
   const todayKey = toDateKey(new Date());
   const todayChecked = checkedSet.has(todayKey);
@@ -227,33 +229,35 @@ export default function CheckinScreen() {
               </View>
             )}
 
-            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>打卡日历</Text>
-              <View style={styles.calendarWrap}>
-                <StreakCalendar checkedSet={checkedSet} completedSet={completedSet} />
-              </View>
-              <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: '#B7EB8F' }]} />
-                <Text style={[styles.legendText, { color: colors.textSecondary }]}>已打卡</Text>
-                <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.legendText, { color: colors.textSecondary }]}>已完成题量</Text>
-                <View style={[styles.legendDot, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.warning }]} />
-                <Text style={[styles.legendText, { color: colors.textSecondary }]}>今天</Text>
-              </View>
-            </View>
-
-            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>统计</Text>
-              <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                  <Text style={[styles.statNumber, { color: colors.text }]}>
-                    {checkedSet.size}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>累计打卡</Text>
+            <View style={[styles.twoCol, isDesktop && styles.twoColRow]}>
+              <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, isDesktop && styles.twoColCard]}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>打卡日历</Text>
+                <View style={styles.calendarWrap}>
+                  <StreakCalendar checkedSet={checkedSet} completedSet={completedSet} />
                 </View>
-                <View style={styles.stat}>
-                  <Text style={[styles.statNumber, { color: colors.text }]}>{streak}</Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>当前连胜</Text>
+                <View style={styles.legendRow}>
+                  <View style={[styles.legendDot, { backgroundColor: '#B7EB8F' }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>已打卡</Text>
+                  <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>已完成题量</Text>
+                  <View style={[styles.legendDot, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.warning }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>今天</Text>
+                </View>
+              </View>
+
+              <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, isDesktop && styles.twoColCard]}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>统计</Text>
+                <View style={styles.statsRow}>
+                  <View style={styles.stat}>
+                    <Text style={[styles.statNumber, { color: colors.text }]}>
+                      {checkedSet.size}
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>累计打卡</Text>
+                  </View>
+                  <View style={styles.stat}>
+                    <Text style={[styles.statNumber, { color: colors.text }]}>{streak}</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>当前连胜</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -305,6 +309,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   cardTitle: { fontSize: 16, fontWeight: '700' },
+  twoCol: { alignSelf: 'stretch', gap: Spacing.three },
+  twoColRow: { flexDirection: 'row' },
+  twoColCard: { flex: 1 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progressCount: { fontSize: 13, fontWeight: '700' },
   progressTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },

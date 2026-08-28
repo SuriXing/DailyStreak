@@ -6,6 +6,7 @@ import { COURSES, getTodayItem, type Course, type StudyItem } from '@/data/cours
 import { useCourse } from '@/hooks/use-course';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useSessionUser } from '@/hooks/use-session-user';
+import { useIsDesktop } from '@/hooks/use-media';
 import {
   buildSessionPlan,
   computeMastery,
@@ -41,6 +42,7 @@ export default function StudyScreen() {
   const user = useSessionUser();
   const [course, setCourseId] = useCourse();
   const [goal] = useDailyGoal();
+  const isDesktop = useIsDesktop();
 
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,6 +160,7 @@ export default function StudyScreen() {
             masteryPercent={mastery.percent}
             plan={buildSessionPlan(course, answers, goal)}
             onStart={startSession}
+            isDesktop={isDesktop}
           />
         ) : phase === 'quiz' && item ? (
           <QuizView
@@ -170,6 +173,7 @@ export default function StudyScreen() {
             onChoose={choose}
             onNext={next}
             isLast={isLast}
+            isDesktop={isDesktop}
           />
         ) : (
           <DoneView
@@ -197,6 +201,7 @@ function ReadyView(props: {
   masteryPercent: number;
   plan: { reviews: StudyItem[]; news: StudyItem[]; total: number };
   onStart: () => void;
+  isDesktop: boolean;
 }) {
   const colors = useTheme();
   const { plan } = props;
@@ -204,36 +209,38 @@ function ReadyView(props: {
     <View style={styles.readyWrap}>
       <Text style={[styles.courseName, { color: colors.textSecondary }]}>{props.courseName}</Text>
 
-      <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-        <View style={[styles.badge, { backgroundColor: props.courseColor }]}>
-          <Text style={styles.badgeText}>今日练习</Text>
-        </View>
-        <Text style={[styles.readyTitle, { color: colors.text }]}>
-          {props.todayAnswered >= props.goal ? '今日已完成 🎉' : `还差 ${props.goal - props.todayAnswered} 题`}
-        </Text>
-        <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
-          计划 {plan.total} 题：复习 {plan.reviews.length} 道 + 新学 {plan.news.length} 道
-          {plan.reviews.length === 0 ? '（暂无到期复习）' : ''}
-        </Text>
-        <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
-          课程掌握度 {props.masteryPercent}% · 每日目标 {props.goal} 题
-        </Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryButton,
-            { backgroundColor: props.courseColor },
-            pressed && styles.pressed,
-          ]}
-          onPress={props.onStart}>
-          <Text style={styles.primaryButtonText}>
-            {props.todayAnswered >= props.goal ? '再练一组' : '开始练习'}
+      <View style={[styles.readyCols, props.isDesktop && styles.readyColsRow]}>
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, props.isDesktop && styles.readyCol]}>
+          <View style={[styles.badge, { backgroundColor: props.courseColor }]}>
+            <Text style={styles.badgeText}>今日练习</Text>
+          </View>
+          <Text style={[styles.readyTitle, { color: colors.text }]}>
+            {props.todayAnswered >= props.goal ? '今日已完成 🎉' : `还差 ${props.goal - props.todayAnswered} 题`}
           </Text>
-        </Pressable>
-      </View>
+          <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
+            计划 {plan.total} 题：复习 {plan.reviews.length} 道 + 新学 {plan.news.length} 道
+            {plan.reviews.length === 0 ? '（暂无到期复习）' : ''}
+          </Text>
+          <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
+            课程掌握度 {props.masteryPercent}% · 每日目标 {props.goal} 题
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryButton,
+              { backgroundColor: props.courseColor },
+              pressed && styles.pressed,
+            ]}
+            onPress={props.onStart}>
+            <Text style={styles.primaryButtonText}>
+              {props.todayAnswered >= props.goal ? '再练一组' : '开始练习'}
+            </Text>
+          </Pressable>
+        </View>
 
-      <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-        <Text style={[styles.cardTitle, { color: colors.text }]}>今日知识点</Text>
-        <Text style={[styles.body, { color: colors.text }]}>{props.todayBody}</Text>
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, props.isDesktop && styles.readyCol]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>今日知识点</Text>
+          <Text style={[styles.body, { color: colors.text }]}>{props.todayBody}</Text>
+        </View>
       </View>
     </View>
   );
@@ -249,35 +256,26 @@ function QuizView(props: {
   onChoose: (i: number) => void;
   onNext: () => void;
   isLast: boolean;
+  isDesktop: boolean;
 }) {
   const colors = useTheme();
   const { item, answered, selected } = props;
-  return (
-    <View style={styles.quizWrap}>
-      <View style={styles.progressRow}>
-        <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-          第 {props.index + 1}/{props.total} 题
-        </Text>
-        <Text style={[styles.skillTag, { color: props.courseColor }]}>{item.skill}</Text>
-      </View>
-      <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
-        <View
-          style={[
-            styles.progressFill,
-            { backgroundColor: props.courseColor, width: `${((props.index + (answered ? 1 : 0)) / props.total) * 100}%` },
-          ]}
-        />
-      </View>
 
+  // 桌面端：左侧知识点栏 + 右侧答题栏
+  const knowledgePane = (
+    <View style={props.isDesktop && styles.quizPane}>
       <View style={[styles.badge, { backgroundColor: props.courseColor }]}>
         <Text style={styles.badgeText}>{item.subject}</Text>
       </View>
       <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-
       <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
         <Text style={[styles.body, { color: colors.text }]}>{item.body}</Text>
       </View>
+    </View>
+  );
 
+  const quizPane = (
+    <View style={props.isDesktop && styles.quizPane}>
       <Text style={[styles.question, { color: colors.text }]}>{item.question}</Text>
 
       <View style={styles.options}>
@@ -340,6 +338,52 @@ function QuizView(props: {
           </Pressable>
         </View>
       )}
+    </View>
+  );
+
+  if (!props.isDesktop) {
+    return (
+      <View style={styles.quizWrap}>
+        <View style={styles.progressRow}>
+          <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+            第 {props.index + 1}/{props.total} 题
+          </Text>
+          <Text style={[styles.skillTag, { color: props.courseColor }]}>{item.skill}</Text>
+        </View>
+        <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
+          <View
+            style={[
+              styles.progressFill,
+              { backgroundColor: props.courseColor, width: `${((props.index + (answered ? 1 : 0)) / props.total) * 100}%` },
+            ]}
+          />
+        </View>
+        {knowledgePane}
+        {quizPane}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.quizWrap}>
+      <View style={styles.progressRow}>
+        <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+          第 {props.index + 1}/{props.total} 题
+        </Text>
+        <Text style={[styles.skillTag, { color: props.courseColor }]}>{item.skill}</Text>
+      </View>
+      <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
+        <View
+          style={[
+            styles.progressFill,
+            { backgroundColor: props.courseColor, width: `${((props.index + (answered ? 1 : 0)) / props.total) * 100}%` },
+          ]}
+        />
+      </View>
+      <View style={styles.quizCols}>
+        {knowledgePane}
+        {quizPane}
+      </View>
     </View>
   );
 }
@@ -405,6 +449,11 @@ const styles = StyleSheet.create({
   courseChipText: { fontSize: 13, fontWeight: '700' },
   courseName: { fontSize: 12, marginTop: -Spacing.two },
   readyWrap: { gap: Spacing.three },
+  readyCols: { gap: Spacing.three },
+  readyColsRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  readyCol: { flex: 1 },
+  quizCols: { flexDirection: 'row', gap: Spacing.four, alignItems: 'flex-start' },
+  quizPane: { flex: 1, gap: Spacing.three },
   badge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 3, alignSelf: 'flex-start' },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   readyTitle: { fontSize: 22, fontWeight: '800' },

@@ -69,17 +69,26 @@ export function computeStreak(checkedSet: Set<string>): number {
 }
 
 /** 最近 N 周的打卡格子（每列一周，从周一开始，今天在最后一列） */
-export function buildWeekGrid(checkedSet: Set<string>, weeks = 12) {
+export function buildWeekGrid(
+  checkedSet: Set<string>,
+  completedSet: Set<string>,
+  weeks = 12,
+) {
   const today = new Date();
   const endOfWeek = new Date(today);
   endOfWeek.setDate(today.getDate() + (6 - today.getDay())); // 本周日
-  const cells: { dateKey: string; day: number; checked: boolean }[] = [];
+  const cells: { dateKey: string; day: number; checked: boolean; completed: boolean }[] = [];
   for (let w = weeks - 1; w >= 0; w--) {
     for (let d = 0; d < 7; d++) {
       const date = new Date(endOfWeek);
       date.setDate(endOfWeek.getDate() - (w * 7 + (6 - d)));
       const dateKey = toDateKey(date);
-      cells.push({ dateKey, day: d, checked: checkedSet.has(dateKey) });
+      cells.push({
+        dateKey,
+        day: d,
+        checked: checkedSet.has(dateKey),
+        completed: completedSet.has(dateKey),
+      });
     }
   }
   return cells;

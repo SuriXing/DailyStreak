@@ -5,6 +5,8 @@ import { useTheme } from '@/hooks/use-theme';
 
 interface Props {
   checkedSet: Set<string>;
+  /** 完成当日题量的日期（比仅打卡更深一档） */
+  completedSet: Set<string>;
   weeks?: number;
 }
 
@@ -12,9 +14,9 @@ const CELL = 13;
 const GAP = 4;
 
 /** GitHub 风格热力图：每列一周（周一在顶），最后一列是本周，今天有橙色描边 */
-export function StreakCalendar({ checkedSet, weeks = 12 }: Props) {
+export function StreakCalendar({ checkedSet, completedSet, weeks = 12 }: Props) {
   const colors = useTheme();
-  const cells = buildWeekGrid(checkedSet, weeks);
+  const cells = buildWeekGrid(checkedSet, completedSet, weeks);
   const todayKey = cells[cells.length - 1].dateKey;
 
   return (
@@ -35,7 +37,11 @@ export function StreakCalendar({ checkedSet, weeks = 12 }: Props) {
               style={[
                 styles.cell,
                 {
-                  backgroundColor: c.checked ? colors.success : colors.fillTertiary,
+                  backgroundColor: c.completed
+                    ? colors.success
+                    : c.checked
+                      ? '#B7EB8F'
+                      : colors.fillTertiary,
                   borderColor: isToday ? colors.warning : 'transparent',
                 },
               ]}

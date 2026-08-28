@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -18,6 +18,8 @@ import {
   undoCheckIn,
 } from '@/lib/checkins';
 import { useSessionUser } from '@/hooks/use-session-user';
+import { useDailyGoal } from '@/hooks/use-daily-goal';
+import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -43,21 +45,40 @@ export default function CheckinScreen() {
   const colors = useTheme();
 
   const [checkedSet, setCheckedSet] = useState<Set<string>>(new Set());
+  const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justChecked, setJustChecked] = useState(false);
+  const [goal] = useDailyGoal();
 
   const todayKey = toDateKey(new Date());
   const todayChecked = checkedSet.has(todayKey);
   const streak = computeStreak(checkedSet);
+  const todayAnswered = todayAnsweredCount(answers);
+  const dayCompleted = todayAnswered >= goal;
+  /** 完成过当日题量的日期集合（双层日历） */
+  const completedSet = useMemo(() => {
+    const byDate = new Map<string, number>();
+    for (const a of answers) {
+      const k = toDateKey(new Date(a.answered_at));
+      byDate.set(k, (byDate.get(k) ?? 0) + 1);
+    }
+    return new Set([...byDate.entries()].filter(([, n]) => n >= goal).map(([k]) => k));
+  }, [answers, goal]);
 
   useEffect(() => {
     if (!user) return;
     let active = true;
-    withTimeout(fetchCheckins(user.id), 10000)
-      .then((dates) => {
-        if (active) setCheckedSet(new Set(dates));
+    withTimeout(
+      Promise.all([fetchCheckins(user.id), fetchAnswers(user.id, 'csa')]),
+      10000,
+    )
+      .then(([dates, ans]) => {
+        if (active) {
+          setCheckedSet(new Set(dates));
+          setAnswers(ans);
+        }
       })
       .catch((e) => {
         if (active) setError(e instanceof Error ? e.message : '加载失败');
@@ -74,8 +95,14 @@ export default function CheckinScreen() {
     if (!user) return;
     setError(null);
     setLoading(true);
-    withTimeout(fetchCheckins(user.id), 10000)
-      .then((dates) => setCheckedSet(new Set(dates)))
+    withTimeout(
+      Promise.all([fetchCheckins(user.id), fetchAnswers(user.id, 'csa')]),
+      10000,
+    )
+      .then(([dates, ans]) => {
+        setCheckedSet(new Set(dates));
+        setAnswers(ans);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : '加载失败'))
       .finally(() => setLoading(false));
   }, [user]);
@@ -162,6 +189,31 @@ export default function CheckinScreen() {
               </Pressable>
             )}
 
+            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+              <View style={styles.progressHeader}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>今日练习</Text>
+                <Text style={[styles.progressCount, { color: colors.textSecondary }]}>
+                  {dayCompleted ? '✅ 已完成' : `${todayAnswered}/${goal} 题`}
+                </Text>
+              </View>
+              <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: dayCompleted ? colors.success : colors.primary,
+                      width: `${Math.min((todayAnswered / goal) * 100, 100)}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
+                {dayCompleted
+                  ? '今日目标已完成，去学习页看明天的内容吧'
+                  : `完成今日 ${goal} 题后，当天会从"已打卡"升级为"已完成"`}
+              </Text>
+            </View>
+
             {error && (
               <View style={styles.errorWrap}>
                 <Text accessibilityLiveRegion="polite" style={styles.error}>
@@ -178,11 +230,16 @@ export default function CheckinScreen() {
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
               <Text style={[styles.cardTitle, { color: colors.text }]}>打卡日历</Text>
               <View style={styles.calendarWrap}>
-                <StreakCalendar checkedSet={checkedSet} />
+                <StreakCalendar checkedSet={checkedSet} completedSet={completedSet} />
               </View>
-              <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
-                最近 12 周 · 橙色边框 = 今天
-              </Text>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendDot, { backgroundColor: '#B7EB8F' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>已打卡</Text>
+                <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>已完成题量</Text>
+                <View style={[styles.legendDot, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.warning }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>今天</Text>
+              </View>
             </View>
 
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
@@ -241,6 +298,13 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   cardTitle: { fontSize: 16, fontWeight: '700' },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  progressCount: { fontSize: 13, fontWeight: '700' },
+  progressTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: 8, borderRadius: 4 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendText: { fontSize: 10 },
   cardHint: { fontSize: 11 },
   calendarWrap: { alignItems: 'flex-start' },
   statsRow: { flexDirection: 'row', gap: Spacing.five },

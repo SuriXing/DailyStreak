@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import type { Session } from '@supabase/supabase-js';
 
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { I18nProvider } from '@/i18n';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -31,18 +32,20 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Protected 才是真正的路由守卫：guard 为 false 时屏幕会被移除并重定向，
-            条件渲染 Stack.Screen 在 Web 上不拦截 URL 路由（此前导致未登录也能进 Tabs） */}
-        <Stack.Protected guard={!!session}>
-          <Stack.Screen name="(tabs)" />
-        </Stack.Protected>
-        <Stack.Protected guard={!session}>
-          <Stack.Screen name="auth" />
-        </Stack.Protected>
-      </Stack>
-    </ThemeProvider>
+    <I18nProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }}>
+          {/* Protected 才是真正的路由守卫：guard 为 false 时屏幕会被移除并重定向，
+              条件渲染 Stack.Screen 在 Web 上不拦截 URL 路由（此前导致未登录也能进 Tabs） */}
+          <Stack.Protected guard={!!session}>
+            <Stack.Screen name="(tabs)" />
+          </Stack.Protected>
+          <Stack.Protected guard={!session}>
+            <Stack.Screen name="auth" />
+          </Stack.Protected>
+        </Stack>
+      </ThemeProvider>
+    </I18nProvider>
   );
 }
 

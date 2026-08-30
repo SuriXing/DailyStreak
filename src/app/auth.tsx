@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { errorMessage } from '@/lib/errors';
+import { useI18n } from '@/i18n';
 import { ControlHeight, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -20,6 +22,7 @@ type Mode = 'login' | 'signup';
 
 export default function AuthScreen() {
   const colors = useTheme();
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,9 +36,9 @@ export default function AuthScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.card}>
           <Text style={[styles.emoji, { textAlign: 'center' }]}>⚙️</Text>
-          <Text style={[styles.title, { color: colors.text }]}>还差一步配置</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('auth.configTitle')}</Text>
           <Text style={[styles.body, { color: colors.textSecondary }]}>
-            请在项目根目录创建 .env 文件（参考 .env.example），填入你的 Supabase URL 和 anon key。
+            {t('auth.configBody')}
           </Text>
         </View>
       </SafeAreaView>
@@ -55,7 +58,7 @@ export default function AuthScreen() {
           options: { data: { username: username.trim() || undefined } },
         });
         if (error) throw new Error(error.message);
-        setNotice('注册成功！请到邮箱查收确认邮件，确认后即可登录。');
+        setNotice(t('auth.signupSuccess'));
         setMode('login');
       } else {
         const { error } = await getSupabase().auth.signInWithPassword({
@@ -66,7 +69,7 @@ export default function AuthScreen() {
         // 登录成功后根布局自动切换到主界面
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '出错了，请重试');
+      setError(errorMessage(e, t));
     } finally {
       setBusy(false);
     }
@@ -86,7 +89,7 @@ export default function AuthScreen() {
           <View style={styles.hero}>
             <Text style={[styles.title, { color: colors.text }]}>DailyStreak</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              每天学习一点点，坚持就是胜利！
+              {t('auth.tagline')}
             </Text>
           </View>
 
@@ -94,9 +97,9 @@ export default function AuthScreen() {
             {mode === 'signup' && (
               <TextInput
                 style={inputStyle}
-                placeholder="昵称（可选）"
+                placeholder={t('auth.usernamePlaceholder')}
                 placeholderTextColor={colors.textSecondary}
-                accessibilityLabel="昵称"
+                accessibilityLabel={t('auth.usernameLabel')}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -104,9 +107,9 @@ export default function AuthScreen() {
             )}
             <TextInput
               style={inputStyle}
-              placeholder="邮箱"
+              placeholder={t('auth.email')}
               placeholderTextColor={colors.textSecondary}
-              accessibilityLabel="邮箱"
+              accessibilityLabel={t('auth.email')}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -115,9 +118,9 @@ export default function AuthScreen() {
             />
             <TextInput
               style={inputStyle}
-              placeholder="密码（至少 6 位）"
+              placeholder={t('auth.passwordPlaceholder')}
               placeholderTextColor={colors.textSecondary}
-              accessibilityLabel="密码"
+              accessibilityLabel={t('auth.passwordPlaceholder')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -147,13 +150,13 @@ export default function AuthScreen() {
               {busy ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>{mode === 'login' ? '登 录' : '注 册'}</Text>
+                <Text style={styles.buttonText}>{mode === 'login' ? t('auth.login') : t('auth.signup')}</Text>
               )}
             </Pressable>
 
             <Pressable onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
               <Text style={[styles.switchText, { color: colors.textSecondary }]}>
-                {mode === 'login' ? '没有账号？去注册' : '已有账号？去登录'}
+                {mode === 'login' ? t('auth.toSignup') : t('auth.toLogin')}
               </Text>
             </Pressable>
           </View>

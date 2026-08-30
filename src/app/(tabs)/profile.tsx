@@ -6,31 +6,17 @@ import { computeStreak, fetchCheckins } from '@/lib/checkins';
 import { COURSES } from '@/data/courses';
 import { computeMastery, fetchAnswers, type AnswerRecord } from '@/lib/answers';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { withTimeout } from '@/lib/timeout';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goal';
+import { LOCALES, LOCALE_META, useI18n, type Locale } from '@/i18n';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-
-/** 给请求加超时，避免慢网络下无限转圈 */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('网络超时')), ms);
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
-}
 
 export default function ProfileScreen() {
   const user = useSessionUser();
   const colors = useTheme();
+  const { t, locale, setLocale } = useI18n();
 
   const [checkedSet, setCheckedSet] = useState<Set<string> | null>(null);
   const [answersByCourse, setAnswersByCourse] = useState<Record<string, AnswerRecord[]>>({});
@@ -102,7 +88,7 @@ export default function ProfileScreen() {
               <Text style={[styles.statNumber, { color: colors.text }]}>
                 {total === null ? '…' : total}
               </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>累计打卡</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('home.totalCheckins')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
@@ -111,13 +97,13 @@ export default function ProfileScreen() {
               ) : (
                 <Text style={[styles.statNumber, { color: colors.text }]}>{streak}</Text>
               )}
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>当前连胜</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('home.currentStreak')}</Text>
             </View>
           </View>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>课程掌握度</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('profile.mastery')}</Text>
           {COURSES.map((c) => {
             const mastery = computeMastery(c, answersByCourse[c.id] ?? []);
             return (
@@ -142,9 +128,9 @@ export default function ProfileScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>每日目标</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('profile.dailyGoal')}</Text>
           <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
-            保底 3 题 · 推荐 5 题 · 冲刺 10 题（业界研究建议 3-10 分钟/天）
+            {t('profile.goalHint')}
           </Text>
           <View style={styles.goalRow}>
             {DAILY_GOALS.map((g) => {
@@ -164,7 +150,36 @@ export default function ProfileScreen() {
                   accessibilityState={{ selected: active }}>
                   <Text
                     style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
-                    {g} 题
+                    {t('profile.goalQuestions', { count: g })}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('profile.language')}</Text>
+          <View style={styles.goalRow}>
+            {LOCALES.map((l: Locale) => {
+              const active = locale === l;
+              return (
+                <Pressable
+                  key={l}
+                  style={({ pressed }) => [
+                    styles.langChip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.backgroundElement,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setLocale(l)}
+                  accessibilityLabel={LOCALE_META[l].nativeName}
+                  accessibilityState={{ selected: active }}>
+                  <Text
+                    style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
+                    {LOCALE_META[l].nativeName}
                   </Text>
                 </Pressable>
               );
@@ -183,12 +198,12 @@ export default function ProfileScreen() {
           {signingOut ? (
             <ActivityIndicator color="#ff4d4f" />
           ) : (
-            <Text style={styles.signOutText}>退出登录</Text>
+            <Text style={styles.signOutText}>{t('profile.signOut')}</Text>
           )}
         </Pressable>
 
         <Text style={[styles.footer, { color: colors.textSecondary }]}>
-          DailyStreak · 每天进步一点点
+          {t('profile.footer')}
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -238,6 +253,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two + 2,
   },
   goalChipText: { fontSize: 14, fontWeight: '700' },
+  langChip: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingVertical: Spacing.two + 2,
+  },
   statLabel: { fontSize: 12 },
   signOut: {
     borderRadius: 12,

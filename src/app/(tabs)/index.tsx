@@ -17,6 +17,9 @@ import {
   toDateKey,
   undoCheckIn,
 } from '@/lib/checkins';
+import { errorMessage } from '@/lib/errors';
+import { withTimeout } from '@/lib/timeout';
+import { useI18n } from '@/i18n';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
@@ -24,26 +27,10 @@ import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answe
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-/** 给请求加超时，避免慢网络下无限转圈 */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('网络超时，请检查网络后重试')), ms);
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
-}
-
 export default function CheckinScreen() {
   const user = useSessionUser();
   const colors = useTheme();
+  const { t, formatDate } = useI18n();
 
   const [checkedSet, setCheckedSet] = useState<Set<string>>(new Set());
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
@@ -83,7 +70,7 @@ export default function CheckinScreen() {
         }
       })
       .catch((e) => {
-        if (active) setError(e instanceof Error ? e.message : '加载失败');
+        if (active) setError(errorMessage(e, t));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -91,7 +78,7 @@ export default function CheckinScreen() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, t]);
 
   const load = useCallback(() => {
     if (!user) return;
@@ -105,9 +92,9 @@ export default function CheckinScreen() {
         setCheckedSet(new Set(dates));
         setAnswers(ans);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : '加载失败'))
+      .catch((e) => setError(errorMessage(e, t)))
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, t]);
 
   async function onCheckIn() {
     if (!user || busy) return;
@@ -123,7 +110,7 @@ export default function CheckinScreen() {
       setJustChecked(true);
       setTimeout(() => setJustChecked(false), 2500);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '打卡失败，请检查网络');
+      setError(errorMessage(e, t));
     } finally {
       setBusy(false);
     }
@@ -141,7 +128,7 @@ export default function CheckinScreen() {
         return next;
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : '撤销失败');
+      setError(errorMessage(e, t));
     } finally {
       setBusy(false);
     }
@@ -151,7 +138,7 @@ export default function CheckinScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-          {new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}
+          {formatDate(new Date())}
         </Text>
 
         {loading ? (
@@ -163,10 +150,10 @@ export default function CheckinScreen() {
             <View style={styles.streakHero}>
               <Text style={styles.flame}>🔥</Text>
               <Text style={[styles.streakNumber, { color: colors.text }]}>{streak}</Text>
-              <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>天连胜</Text>
+              <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{t('home.streakDays')}</Text>
               {justChecked && (
                 <Text accessibilityLiveRegion="polite" style={styles.celebrate}>
-                  🎉 今日打卡成功！
+                  {t('home.celebrate')}
                 </Text>
               )}
             </View>
@@ -181,21 +168,21 @@ export default function CheckinScreen() {
               onPress={onCheckIn}
               disabled={busy || todayChecked}>
               <Text style={styles.checkinButtonText}>
-                {todayChecked ? '✅ 今日已打卡' : '📌 今日打卡'}
+                {todayChecked ? t('home.checkedIn') : t('home.checkIn')}
               </Text>
             </Pressable>
 
             {todayChecked && (
               <Pressable onPress={onUndo} disabled={busy}>
-                <Text style={[styles.undoText, { color: colors.textSecondary }]}>撤销今日打卡</Text>
+                <Text style={[styles.undoText, { color: colors.textSecondary }]}>{t('home.undoCheckIn')}</Text>
               </Pressable>
             )}
 
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
               <View style={styles.progressHeader}>
-                <Text style={[styles.cardTitle, { color: colors.text }]}>今日练习</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.todayPractice')}</Text>
                 <Text style={[styles.progressCount, { color: colors.textSecondary }]}>
-                  {dayCompleted ? '✅ 已完成' : `${todayAnswered}/${goal} 题`}
+                  {dayCompleted ? t('home.progressDone') : t('home.progressCount', { done: todayAnswered, goal })}
                 </Text>
               </View>
               <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
@@ -211,8 +198,8 @@ export default function CheckinScreen() {
               </View>
               <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
                 {dayCompleted
-                  ? '今日目标已完成，去学习页看明天的内容吧'
-                  : `完成今日 ${goal} 题后，当天会从"已打卡"升级为"已完成"`}
+                  ? t('home.goalDoneHint')
+                  : t('home.goalHint', { goal })}
               </Text>
             </View>
 
@@ -223,7 +210,7 @@ export default function CheckinScreen() {
                 </Text>
                 {!loading && (
                   <Pressable onPress={load} disabled={busy}>
-                    <Text style={[styles.retryText, { color: colors.primary }]}>重试</Text>
+                    <Text style={[styles.retryText, { color: colors.primary }]}>{t('common.retry')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -231,32 +218,32 @@ export default function CheckinScreen() {
 
             <View style={[styles.twoCol, isDesktop && styles.twoColRow]}>
               <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, isDesktop && styles.twoColCard]}>
-                <Text style={[styles.cardTitle, { color: colors.text }]}>打卡日历</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.calendar')}</Text>
                 <View style={styles.calendarWrap}>
                   <StreakCalendar checkedSet={checkedSet} completedSet={completedSet} />
                 </View>
                 <View style={styles.legendRow}>
                   <View style={[styles.legendDot, { backgroundColor: '#B7EB8F' }]} />
-                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>已打卡</Text>
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('home.legendChecked')}</Text>
                   <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>已完成题量</Text>
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('home.legendCompleted')}</Text>
                   <View style={[styles.legendDot, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.warning }]} />
-                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>今天</Text>
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('home.legendToday')}</Text>
                 </View>
               </View>
 
               <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, isDesktop && styles.twoColCard]}>
-                <Text style={[styles.cardTitle, { color: colors.text }]}>统计</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.stats')}</Text>
                 <View style={styles.statsRow}>
                   <View style={styles.stat}>
                     <Text style={[styles.statNumber, { color: colors.text }]}>
                       {checkedSet.size}
                     </Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>累计打卡</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('home.totalCheckins')}</Text>
                   </View>
                   <View style={styles.stat}>
                     <Text style={[styles.statNumber, { color: colors.text }]}>{streak}</Text>
-                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>当前连胜</Text>
+                    <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('home.currentStreak')}</Text>
                   </View>
                 </View>
               </View>

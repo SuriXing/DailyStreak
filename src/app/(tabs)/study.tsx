@@ -7,6 +7,7 @@ import { useCourse } from '@/hooks/use-course';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { useIsDesktop } from '@/hooks/use-media';
+import { localizeStudyItem, useI18n } from '@/i18n';
 import {
   buildSessionPlan,
   computeMastery,
@@ -15,31 +16,16 @@ import {
   todayAnsweredCount,
   type AnswerRecord,
 } from '@/lib/answers';
+import { withTimeout } from '@/lib/timeout';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type Phase = 'ready' | 'quiz' | 'done';
 
-/** 给请求加超时，避免慢网络下无限转圈 */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('网络超时，请检查网络后重试')), ms);
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
-}
-
 export default function StudyScreen() {
   const colors = useTheme();
   const user = useSessionUser();
+  const { t, locale } = useI18n();
   const [course, setCourseId] = useCourse();
   const [goal] = useDailyGoal();
   const isDesktop = useIsDesktop();
@@ -53,7 +39,9 @@ export default function StudyScreen() {
   const [correctCount, setCorrectCount] = useState(0);
 
   const item = queue[index];
-  const todayItem = getTodayItem(course);
+  /** 展示用：按当前语言本地化的题目（逻辑仍用结构化 course） */
+  const localizedItem = item ? localizeStudyItem(item, locale) : null;
+  const localizedToday = localizeStudyItem(getTodayItem(course), locale);
   const mastery = useMemo(() => computeMastery(course, answers), [course, answers]);
   const todayAnswered = todayAnsweredCount(answers);
 
@@ -135,7 +123,7 @@ export default function StudyScreen() {
                   pressed && styles.pressed,
                 ]}
                 onPress={() => setCourseId(c.id)}
-                accessibilityLabel={`切换到${c.name}`}
+                accessibilityLabel={t('a11y.switchCourse', { name: c.name })}
                 accessibilityState={{ selected: active }}>
                 <Text style={[styles.courseChipText, { color: active ? '#fff' : colors.text }]}>
                   {c.shortName}
@@ -155,16 +143,16 @@ export default function StudyScreen() {
             courseColor={course.color}
             goal={goal}
             todayAnswered={todayAnswered}
-            todayBody={todayItem.body}
-            todayTitle={todayItem.title}
+            todayBody={localizedToday.body}
+            todayTitle={localizedToday.title}
             masteryPercent={mastery.percent}
             plan={buildSessionPlan(course, answers, goal)}
             onStart={startSession}
             isDesktop={isDesktop}
           />
-        ) : phase === 'quiz' && item ? (
+        ) : phase === 'quiz' && localizedItem ? (
           <QuizView
-            item={item}
+            item={localizedItem}
             courseColor={course.color}
             index={index}
             total={queue.length}
@@ -204,6 +192,7 @@ function ReadyView(props: {
   isDesktop: boolean;
 }) {
   const colors = useTheme();
+  const { t } = useI18n();
   const { plan } = props;
   return (
     <View style={styles.readyWrap}>
@@ -212,17 +201,23 @@ function ReadyView(props: {
       <View style={[styles.readyCols, props.isDesktop && styles.readyColsRow]}>
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, props.isDesktop && styles.readyCol]}>
           <View style={[styles.badge, { backgroundColor: props.courseColor }]}>
-            <Text style={styles.badgeText}>今日练习</Text>
+            <Text style={styles.badgeText}>{t('study.todayPractice')}</Text>
           </View>
           <Text style={[styles.readyTitle, { color: colors.text }]}>
-            {props.todayAnswered >= props.goal ? '今日已完成 🎉' : `还差 ${props.goal - props.todayAnswered} 题`}
+            {props.todayAnswered >= props.goal
+              ? t('study.doneToday')
+              : t('study.remaining', { count: props.goal - props.todayAnswered })}
           </Text>
           <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
-            计划 {plan.total} 题：复习 {plan.reviews.length} 道 + 新学 {plan.news.length} 道
-            {plan.reviews.length === 0 ? '（暂无到期复习）' : ''}
+            {t('study.plan', {
+              total: plan.total,
+              reviews: plan.reviews.length,
+              news: plan.news.length,
+            })}
+            {plan.reviews.length === 0 ? t('study.noReviews') : ''}
           </Text>
           <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
-            课程掌握度 {props.masteryPercent}% · 每日目标 {props.goal} 题
+            {t('study.masteryLine', { percent: props.masteryPercent, goal: props.goal })}
           </Text>
           <Pressable
             style={({ pressed }) => [
@@ -232,13 +227,13 @@ function ReadyView(props: {
             ]}
             onPress={props.onStart}>
             <Text style={styles.primaryButtonText}>
-              {props.todayAnswered >= props.goal ? '再练一组' : '开始练习'}
+              {props.todayAnswered >= props.goal ? t('study.practiceAgain') : t('study.start')}
             </Text>
           </Pressable>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, props.isDesktop && styles.readyCol]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>今日知识点</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('study.todayTopic')}</Text>
           <Text style={[styles.body, { color: colors.text }]}>{props.todayBody}</Text>
         </View>
       </View>
@@ -259,6 +254,7 @@ function QuizView(props: {
   isDesktop: boolean;
 }) {
   const colors = useTheme();
+  const { t } = useI18n();
   const { item, answered, selected } = props;
 
   // 桌面端：左侧知识点栏 + 右侧答题栏
@@ -324,7 +320,7 @@ function QuizView(props: {
               styles.explanationTitle,
               { color: selected === item.answerIndex ? '#237804' : '#a8071a' },
             ]}>
-            {selected === item.answerIndex ? '🎉 答对了！' : `💡 正确答案是 ${String.fromCharCode(65 + item.answerIndex)}`}
+            {selected === item.answerIndex ? t('quiz.correct') : t('quiz.answerIs', { letter: String.fromCharCode(65 + item.answerIndex) })}
           </Text>
           <Text style={[styles.explanationText, { color: colors.text }]}>{item.explanation}</Text>
           <Pressable
@@ -334,7 +330,7 @@ function QuizView(props: {
               pressed && styles.pressed,
             ]}
             onPress={props.onNext}>
-            <Text style={styles.primaryButtonText}>{props.isLast ? '查看小结' : '下一题'}</Text>
+            <Text style={styles.primaryButtonText}>{props.isLast ? t('quiz.summary') : t('quiz.next')}</Text>
           </Pressable>
         </View>
       )}
@@ -346,7 +342,7 @@ function QuizView(props: {
       <View style={styles.quizWrap}>
         <View style={styles.progressRow}>
           <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-            第 {props.index + 1}/{props.total} 题
+            {t('quiz.progress', { current: props.index + 1, total: props.total })}
           </Text>
           <Text style={[styles.skillTag, { color: props.courseColor }]}>{item.skill}</Text>
         </View>
@@ -368,7 +364,7 @@ function QuizView(props: {
     <View style={styles.quizWrap}>
       <View style={styles.progressRow}>
         <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-          第 {props.index + 1}/{props.total} 题
+          {t('quiz.progress', { current: props.index + 1, total: props.total })}
         </Text>
         <Text style={[styles.skillTag, { color: props.courseColor }]}>{item.skill}</Text>
       </View>
@@ -398,6 +394,7 @@ function DoneView(props: {
   onFinish: () => void;
 }) {
   const colors = useTheme();
+  const { t } = useI18n();
   const after = computeMastery(props.course, props.answersAfter);
   const rate = props.total > 0 ? Math.round((props.correctCount / props.total) * 100) : 0;
   return (
@@ -407,13 +404,13 @@ function DoneView(props: {
           {rate >= 80 ? '🏆' : rate >= 50 ? '👍' : '💪'}
         </Text>
         <Text style={[styles.readyTitle, { color: colors.text, textAlign: 'center' }]}>
-          完成！答对 {props.correctCount}/{props.total} 题
+          {t('done.title', { correct: props.correctCount, total: props.total })}
         </Text>
         <Text style={[styles.readyBody, { color: colors.textSecondary, textAlign: 'center' }]}>
-          正确率 {rate}% · 掌握度 {props.masteryBefore.percent}% → {after.percent}%
+          {t('done.accuracy', { rate, before: props.masteryBefore.percent, after: after.percent })}
         </Text>
         <Text style={[styles.readyBody, { color: colors.textSecondary, textAlign: 'center' }]}>
-          完成 {props.total} 题 · 明天会优先安排复习错题
+          {t('done.reviewTomorrow', { total: props.total })}
         </Text>
         <Pressable
           style={({ pressed }) => [
@@ -422,7 +419,7 @@ function DoneView(props: {
             pressed && styles.pressed,
           ]}
           onPress={props.onFinish}>
-          <Text style={styles.primaryButtonText}>完成</Text>
+          <Text style={styles.primaryButtonText}>{t('done.finish')}</Text>
         </Pressable>
       </View>
     </View>

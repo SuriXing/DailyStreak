@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { buildWeekGrid } from '@/lib/checkins';
+import { useI18n } from '@/i18n';
 import { useTheme } from '@/hooks/use-theme';
 
 interface Props {
@@ -16,13 +17,14 @@ const GAP = 4;
 /** GitHub 风格热力图：每列一周（周一在顶），最后一列是本周，今天有橙色描边 */
 export function StreakCalendar({ checkedSet, completedSet, weeks = 12 }: Props) {
   const colors = useTheme();
+  const { t } = useI18n();
   const cells = buildWeekGrid(checkedSet, completedSet, weeks);
   const todayKey = cells[cells.length - 1].dateKey;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.weekdayLabels}>
-        {['一', '三', '五', '日'].map((d) => (
+        {t('calendar.weekdays').split(',').map((d) => (
           <View key={d} style={{ height: CELL, justifyContent: 'center' }}>
             <Text style={styles.labelText}>{d}</Text>
           </View>

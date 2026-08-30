@@ -6,13 +6,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useSessionUser } from '@/hooks/use-session-user';
+import { useI18n, type TKey } from '@/i18n';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const NAV = [
-  { path: '/', label: '打卡', icon: 'flame' as const },
-  { path: '/study', label: '学习', icon: 'book' as const },
-  { path: '/profile', label: '我的', icon: 'person' as const },
+  { path: '/', labelKey: 'tabs.checkin' as TKey, icon: 'flame' as const },
+  { path: '/study', labelKey: 'tabs.study' as TKey, icon: 'book' as const },
+  { path: '/profile', labelKey: 'tabs.profile' as TKey, icon: 'person' as const },
 ] as const;
 
 const COLLAPSE_KEY = 'dailystreak.sidebar.collapsed';
@@ -25,6 +26,7 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const user = useSessionUser();
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -73,13 +75,13 @@ export function Sidebar() {
         {!collapsed && (
           <View style={styles.brandText}>
             <Text style={[styles.brandName, { color: colors.text }]}>DailyStreak</Text>
-            <Text style={[styles.brandSub, { color: colors.textSecondary }]}>每日学习打卡</Text>
+            <Text style={[styles.brandSub, { color: colors.textSecondary }]}>{t('sidebar.tagline')}</Text>
           </View>
         )}
         <Pressable
           style={({ pressed }) => [styles.collapseBtn, pressed && styles.pressed]}
           onPress={toggle}
-          accessibilityLabel={collapsed ? '展开侧边栏' : '折叠侧边栏'}>
+          accessibilityLabel={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}>
           <Ionicons
             name={collapsed ? 'chevron-forward' : 'chevron-back'}
             size={16}
@@ -103,7 +105,7 @@ export function Sidebar() {
                 pressed && styles.pressed,
               ]}
               onPress={() => router.push(item.path)}
-              accessibilityLabel={item.label}
+              accessibilityLabel={t(item.labelKey)}
               accessibilityState={{ selected: active }}>
               <Ionicons
                 name={item.icon}
@@ -116,7 +118,7 @@ export function Sidebar() {
                     styles.navLabel,
                     { color: active ? colors.primary : colors.textSecondary },
                   ]}>
-                  {item.label}
+                  {t(item.labelKey)}
                 </Text>
               )}
             </Pressable>
@@ -142,10 +144,10 @@ export function Sidebar() {
             pressed && styles.pressed,
           ]}
           onPress={onSignOut}
-          accessibilityLabel="退出登录">
+          accessibilityLabel={t('profile.signOut')}>
           <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
           {!collapsed && (
-            <Text style={[styles.signOutText, { color: colors.textSecondary }]}>退出登录</Text>
+            <Text style={[styles.signOutText, { color: colors.textSecondary }]}>{t('profile.signOut')}</Text>
           )}
         </Pressable>
       </View>

@@ -1,3 +1,4 @@
+import { AppError } from '@/lib/errors';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 
 /** 本地日期 → 'YYYY-MM-DD'（避免时区偏差） */
@@ -33,7 +34,7 @@ export async function fetchCheckins(userId: string): Promise<string[]> {
 }
 
 export async function checkInToday(userId: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('Supabase 未配置');
+  if (!isSupabaseConfigured) throw new AppError('errors.supabaseNotConfigured');
   const { error } = await getSupabase().from('checkins').insert({
     user_id: userId,
     checkin_date: toDateKey(new Date()),
@@ -42,7 +43,7 @@ export async function checkInToday(userId: string): Promise<void> {
 }
 
 export async function undoCheckIn(userId: string): Promise<void> {
-  if (!isSupabaseConfigured) throw new Error('Supabase 未配置');
+  if (!isSupabaseConfigured) throw new AppError('errors.supabaseNotConfigured');
   const { error } = await getSupabase()
     .from('checkins')
     .delete()

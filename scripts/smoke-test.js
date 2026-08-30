@@ -3,6 +3,7 @@
  * DailyStreak 浏览器冒烟测试（Playwright，无头 Chromium）
  *
  * 覆盖：登录门控 → 注册 → 打卡 → 三个 Tab 渲染 → 开始练习。
+ * i18n：断言同时兼容中文与英文（默认语言跟随系统，CI 常为英文）。
  * 用法：
  *   npm i -D playwright && npx playwright install chromium
  *   node scripts/smoke-test.js
@@ -20,6 +21,15 @@ function assert(cond, msg) {
   console.log(`✅ ${msg}`);
 }
 
+/** 断言页面文本命中中/英任意一种 */
+function assertI18n(text, zh, en, msg) {
+  assert(text.includes(zh) || text.includes(en), `${msg}（${zh} / ${en}）`);
+}
+
+function clickI18n(page, zh, en) {
+  return page.getByText(new RegExp(`${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).first().click();
+}
+
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -33,49 +43,53 @@ function assert(cond, msg) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(4000);
   let text = await page.locator('body').innerText();
-  assert(text.includes('登 录'), '未登录时显示登录页（路由守卫生效）');
-  assert(text.includes('没有账号？去注册'), '登录页有注册入口');
+  assertI18n(text, '登 录', 'Log in', '未登录时显示登录页（路由守卫生效）');
+  assertI18n(text, '没有账号？去注册', 'No account? Sign up', '登录页有注册入口');
 
   // 2. 注册并进入主界面
-  await page.getByText('没有账号？去注册').click();
+  await clickI18n(page, '没有账号？去注册', 'No account? Sign up');
   const inputs = page.locator('input');
   assert((await inputs.count()) >= 3, '注册表单有三个输入框');
   await inputs.nth(0).fill('smoke');
   await inputs.nth(1).fill(EMAIL);
   await inputs.nth(2).fill(PASSWORD);
-  await page.getByText('注 册').click();
+  await clickI18n(page, '注 册', 'Sign up');
   await page.waitForTimeout(7000);
   text = await page.locator('body').innerText();
-  assert(text.includes('今日打卡'), '注册后进入打卡页');
-  assert(!text.includes('登 录'), '注册后不再显示登录页');
+  assertI18n(text, '今日打卡', 'Check in today', '注册后进入打卡页');
+  assert(
+    !(text.includes('没有账号？去注册') || text.includes('No account? Sign up')),
+    '注册后不再显示登录页',
+  );
 
   // 3. 打卡
-  await page.getByText('今日打卡').click();
+  await clickI18n(page, '今日打卡', 'Check in today');
   await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assert(text.includes('今日已打卡'), '打卡成功，按钮变为已打卡');
-  assert(text.includes('今日练习'), '今日练习进度卡渲染');
+  assertI18n(text, '今日已打卡', 'Checked in today', '打卡成功，按钮变为已打卡');
+  assertI18n(text, '今日练习', "Today's practice", '今日练习进度卡渲染');
 
   // 4. 学习页
-  await page.getByText('学习', { exact: true }).last().click();
+  await clickI18n(page, '学习', 'Study');
   await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assert(text.includes('开始练习'), '学习页渲染今日练习卡');
-  assert(text.includes('复习 0 道'), '新用户计划为纯新题');
+  assertI18n(text, '开始练习', 'Start practice', '学习页渲染今日练习卡');
+  assertI18n(text, '复习 0 道', '0 to review', '新用户计划为纯新题');
 
   // 5. 开始答题
-  await page.getByText('开始练习').click();
+  await clickI18n(page, '开始练习', 'Start practice');
   await page.waitForTimeout(1500);
   text = await page.locator('body').innerText();
-  assert(text.includes('第 1/5 题'), '会话开始，显示题号进度');
-  assert(text.includes('小测验') || text.includes('？'), '题目渲染');
+  assertI18n(text, '第 1/5 题', 'Question 1/5', '会话开始，显示题号进度');
+  assert(text.includes('？') || text.includes('?'), '题目渲染');
 
   // 6. 我的页
-  await page.getByText('我的', { exact: true }).last().click();
+  await clickI18n(page, '我的', 'Me');
   await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assert(text.includes('课程掌握度'), '我的页渲染课程掌握度');
-  assert(text.includes('每日目标'), '我的页渲染每日目标');
+  assertI18n(text, '课程掌握度', 'Course mastery', '我的页渲染课程掌握度');
+  assertI18n(text, '每日目标', 'Daily goal', '我的页渲染每日目标');
+  assertI18n(text, '语言', 'Language', '我的页渲染语言切换');
 
   const consoleErrors = errors.filter((e) => !e.includes('favicon'));
   assert(consoleErrors.length === 0, `无浏览器控制台错误${consoleErrors.length ? '：' + consoleErrors[0] : ''}`);
@@ -84,17 +98,17 @@ function assert(cond, msg) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(2000);
   text = await page.locator('body').innerText();
-  assert(text.includes('每日学习打卡'), '桌面端显示侧边栏品牌');
-  assert(text.includes('退出登录'), '桌面端侧边栏有退出入口');
-  const tabBarVisible = await page.getByText('打卡', { exact: true }).first().isVisible();
+  assertI18n(text, '每日学习打卡', 'Daily study check-ins', '桌面端显示侧边栏品牌');
+  assertI18n(text, '退出登录', 'Sign out', '桌面端侧边栏有退出入口');
+  const tabBarVisible = await page.getByText(/打卡|Check in/).first().isVisible();
   // 桌面端应隐藏底部 Tab 栏（侧边栏的"打卡"在左边，底部栏的"打卡"不应可见）
   const flameIcons = await page.locator('[class*="tabBar"]').count();
   assert(flameIcons === 0 || !tabBarVisible, '桌面端隐藏底部 Tab 栏');
   // 通过侧边栏导航到学习页
-  await page.getByText('学习', { exact: true }).first().click();
+  await clickI18n(page, '学习', 'Study');
   await page.waitForTimeout(2000);
   text = await page.locator('body').innerText();
-  assert(text.includes('开始练习'), '桌面端侧边栏导航到学习页');
+  assertI18n(text, '开始练习', 'Start practice', '桌面端侧边栏导航到学习页');
 
   console.log(`\n🎉 全部通过（测试账号 ${EMAIL}，密码 ${PASSWORD}）`);
   await browser.close();

@@ -46,6 +46,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "i18n:check": "node scripts/check-i18n.mjs",
     "uxe:check": "python3 .uxe/scripts/check.py --project-root .",
     "uxe:component": "python3 .uxe/scripts/component.py --project-root .",
     "uxe:taste": "python3 .uxe/scripts/taste.py --project-root .",

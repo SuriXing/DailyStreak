@@ -11,8 +11,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { Ionicons } from '@expo/vector-icons';
 
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { signInWithAppleIdentityToken, signInWithGoogle } from '@/lib/social-auth';
 import { errorMessage } from '@/lib/errors';
 import { useI18n } from '@/i18n';
 import { ControlHeight, Radius, Spacing } from '@/constants/theme';
@@ -43,6 +46,42 @@ export default function AuthScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  async function onGoogle() {
+    setBusy(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+      // 成功后由会话状态驱动界面切换（web 整页跳转 / 原生 setSession）
+    } catch (e) {
+      setError(errorMessage(e, t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onApple() {
+    setBusy(true);
+    setError(null);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        throw new Error('no identity token');
+      }
+      await signInWithAppleIdentityToken(credential.identityToken);
+    } catch (e) {
+      // 用户主动取消时不提示错误
+      if (e && (e as { code?: string }).code === 'ERR_REQUEST_CANCELED') return;
+      setError(errorMessage(e, t));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit() {
@@ -159,6 +198,40 @@ export default function AuthScreen() {
                 {mode === 'login' ? t('auth.toSignup') : t('auth.toLogin')}
               </Text>
             </Pressable>
+
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.socialButton,
+                { backgroundColor: colors.backgroundElement, borderColor: colors.border },
+                pressed && styles.pressed,
+                busy && styles.disabled,
+              ]}
+              onPress={onGoogle}
+              disabled={busy}>
+              <Ionicons name="logo-google" size={18} color="#EA4335" />
+              <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.google')}</Text>
+            </Pressable>
+
+            {Platform.OS === 'ios' && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.socialButton,
+                  { backgroundColor: colors.backgroundElement, borderColor: colors.border },
+                  pressed && styles.pressed,
+                  busy && styles.disabled,
+                ]}
+                onPress={onApple}
+                disabled={busy}>
+                <Ionicons name="logo-apple" size={18} color={colors.text} />
+                <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.apple')}</Text>
+              </Pressable>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -200,6 +273,19 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   switchText: { textAlign: 'center', fontSize: 14 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  dividerText: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  socialButton: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    minHeight: ControlHeight.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  socialButtonText: { fontSize: 15, fontWeight: '600' },
   error: { color: '#ff4d4f', fontSize: 13 },
   notice: { color: '#52c41a', fontSize: 13 },
   pressed: { opacity: 0.8 },

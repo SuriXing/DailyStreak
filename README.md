@@ -160,12 +160,19 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 ## Quality Gates
 
 ```bash
-npm run precheck           # 本地一键门禁: i18n completeness + type check + lint
+npm run precheck           # 本地一键门禁: i18n completeness + ruff + type check + lint
+npm run typecheck          # tsc --noEmit
+npm run lint               # Expo ESLint
+npm run lint:py            # ruff 检查 .uxe/scripts（配置在 pyproject.toml）
 npm run i18n:check         # i18n completeness audit
-npx expo lint              # lint only
 ```
 
-`npm install` 自动把 pre-commit 钩子装到 `.git/hooks`（`scripts/install-hooks.js`，幂等），每次提交前运行 `npm run precheck`；单次跳过用 `git commit --no-verify`。
+`npm install` 自动把 git 钩子装到 `.git/hooks`（`scripts/install-hooks.js`，幂等）：
+
+- **pre-commit** — 运行 `npm run precheck`（快门禁：i18n / ruff / 类型 / lint）。
+- **pre-push** — 运行完整 `precheck` + `expo export -p web` 构建门禁，与 CI check job 对齐。
+
+单次跳过用 `--no-verify`（`git commit --no-verify` / `git push --no-verify`）。ruff 只需装一次：`python3 -m pip install --user ruff`。
 
 Two lint layers guard the i18n setup:
 
@@ -180,7 +187,7 @@ npm run web &                     # dev server
 npm run smoke                     # 14 assertions, exits non-zero on failure
 ```
 
-CI (`.github/workflows/ci.yml`) runs type check, lint, web export, and the smoke test on every push (smoke needs the `EXPO_PUBLIC_SUPABASE_*` repo secrets).
+CI (`.github/workflows/ci.yml`) runs i18n check, ruff, type check, lint, web export, and the smoke test on every push (smoke needs the `EXPO_PUBLIC_SUPABASE_*` repo secrets).
 
 The repo also carries a UXE design contract (`.uxe/`) that audits surfaces, tokens, and AI-tell patterns on rendered output.
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+
 from uxe_chart_runtime import chartjs_snippet, renderer_key, renderer_runtime_snippet
 
 FULL_TYPES = {"line", "bar", "area", "doughnut", "donut", "radar"}
@@ -55,7 +56,8 @@ def required_set(contract):
 def allowed_types(contract):
     declared = (contract or {}).get("fullChartTypes")
     allowed = {str(item).lower() for item in declared} if isinstance(declared, list) else set(FULL_TYPES)
-    if "doughnut" in allowed: allowed.add("donut")
+    if "doughnut" in allowed:
+        allowed.add("donut")
     return allowed
 
 

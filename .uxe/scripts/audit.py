@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REQUIRED = ["contract.json", "surfaces.json", "token-map.json", "checks.json", "checklist.md"]
 
 

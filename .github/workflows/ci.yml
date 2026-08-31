@@ -17,10 +17,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Type check
-        run: npx tsc --noEmit
       - name: i18n completeness
         run: npm run i18n:check
+      - name: Ruff（Python 工具脚本）
+        uses: astral-sh/ruff-action@v4
+        with:
+          args: check .uxe/scripts
+      - name: Type check
+        run: npx tsc --noEmit
       - name: Lint
         run: npx expo lint
       - name: Web export

@@ -4,8 +4,13 @@ import json
 import re
 from pathlib import Path
 
-from uxe_contract_computed import computed_cascade_failures, computed_data, rendered_distance, terminal_font
-from uxe_contract_css import VAR_DEF, VAR_USE, binding_satisfied, read, surface_text
+from uxe_contract_computed import (
+    computed_cascade_failures,
+    computed_data,
+    rendered_distance,
+    terminal_font,
+)
+from uxe_contract_css import VAR_DEF, VAR_USE, binding_satisfied, surface_text
 
 STYLE_REQUIRED = {
     "ant-design": ["--btn-primary-bg", "--input-bg", "--table-header-bg", "--tag-info-bg", "--card-bg"],

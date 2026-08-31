@@ -1,0 +1,4 @@
+#!/bin/sh
+# DailyStreak pre-commit 门禁：i18n 完整性 + 类型 + lint
+# 跳过本次校验：git commit --no-verify
+npm run --silent precheck

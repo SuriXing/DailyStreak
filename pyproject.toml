@@ -1,6 +1,7 @@
 # Ruff 配置：仓库内唯一的 Python 代码是 .uxe/scripts 工具脚本。
 # 本地运行：python3 -m ruff check .uxe/scripts（npm run lint:py）
 [tool.ruff]
+required-version = ">=0.16.5,<0.17"
 target-version = "py39"
 line-length = 100
 extend-exclude = ["node_modules", "dist", ".expo"]

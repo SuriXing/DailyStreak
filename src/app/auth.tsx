@@ -20,11 +20,13 @@ import { errorMessage } from '@/lib/errors';
 import { useI18n } from '@/i18n';
 import { ControlHeight, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useThemePreference } from '@/contexts/theme-preference';
 
 type Mode = 'login' | 'signup';
 
 export default function AuthScreen() {
   const colors = useTheme();
+  const { resolved } = useThemePreference();
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -126,6 +128,9 @@ export default function AuthScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
+            <View style={[styles.brandMark, { backgroundColor: colors.primary }]}>
+              <Ionicons name="flash" size={26} color="#fff" />
+            </View>
             <Text style={[styles.title, { color: colors.text }]}>DailyStreak</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               {t('auth.tagline')}
@@ -208,28 +213,38 @@ export default function AuthScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.socialButton,
-                { backgroundColor: colors.backgroundElement, borderColor: colors.border },
+                styles.googleButton,
                 pressed && styles.pressed,
                 busy && styles.disabled,
               ]}
               onPress={onGoogle}
               disabled={busy}>
               <Ionicons name="logo-google" size={18} color="#EA4335" />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.google')}</Text>
+              <Text style={styles.googleButtonText}>{t('auth.google')}</Text>
             </Pressable>
 
             {Platform.OS === 'ios' && (
               <Pressable
                 style={({ pressed }) => [
                   styles.socialButton,
-                  { backgroundColor: colors.backgroundElement, borderColor: colors.border },
+                  resolved === 'dark' ? styles.appleButtonDark : styles.appleButtonLight,
                   pressed && styles.pressed,
                   busy && styles.disabled,
                 ]}
                 onPress={onApple}
                 disabled={busy}>
-                <Ionicons name="logo-apple" size={18} color={colors.text} />
-                <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.apple')}</Text>
+                <Ionicons
+                  name="logo-apple"
+                  size={18}
+                  color={resolved === 'dark' ? '#000000' : '#ffffff'}
+                />
+                <Text
+                  style={[
+                    styles.socialButtonText,
+                    { color: resolved === 'dark' ? '#000000' : '#ffffff' },
+                  ]}>
+                  {t('auth.apple')}
+                </Text>
               </Pressable>
             )}
           </View>
@@ -252,6 +267,14 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   hero: { alignItems: 'center', gap: Spacing.two },
+  brandMark: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
+  },
   emoji: { fontSize: 56 },
   title: { fontSize: 32, fontWeight: '800' },
   subtitle: { fontSize: 14 },
@@ -277,14 +300,18 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
   dividerText: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
   socialButton: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    minHeight: ControlHeight.lg,
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
   },
+  googleButton: { backgroundColor: '#ffffff', borderColor: '#dadce0' },
+  googleButtonText: { color: '#3c4043', fontSize: 15, fontWeight: '600' },
+  appleButtonLight: { backgroundColor: '#000000', borderColor: '#000000' },
+  appleButtonDark: { backgroundColor: '#ffffff', borderColor: '#ffffff' },
   socialButtonText: { fontSize: 15, fontWeight: '600' },
   error: { color: '#ff4d4f', fontSize: 13 },
   notice: { color: '#52c41a', fontSize: 13 },

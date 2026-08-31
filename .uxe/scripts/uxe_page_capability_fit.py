@@ -5,7 +5,9 @@ import json
 import re
 from html.parser import HTMLParser
 from pathlib import Path
+
 from uxe_chart_anatomy import full_chart_fit
+
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
 METRIC_CLASSES = {"metric-grid", "kpi-grid", "stat-grid"}
 METRIC_CARD_CLASSES = {"metric-card", "ant-stat-card", "kpi-card", "stat-card"}

@@ -1,0 +1,10 @@
+#!/bin/sh
+# DailyStreak pre-push 门禁：完整 precheck（i18n + ruff + 类型 + lint）+ web 构建导出，
+# 对应 CI 的 check job。冒烟测试依赖 secrets，交给 CI 跑。
+# 跳过本次校验：git push --no-verify
+set -e
+echo "[pre-push] 运行完整门禁（i18n / ruff / typecheck / lint）..."
+npm run --silent precheck
+echo "[pre-push] web 构建导出..."
+npx expo export -p web
+echo "[pre-push] 通过 ✓"

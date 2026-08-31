@@ -5,6 +5,7 @@ import html
 import json
 import re
 from pathlib import Path
+
 from uxe_ai_detector_bridge import ai_detector_issues
 
 IGNORED = {".git", ".next", ".uxe", "build", "coverage", "dist", "node_modules", "playwright-report", "test-results"}

@@ -11,6 +11,7 @@ Built with Expo, it runs on **iOS** and the **web** from a single TypeScript cod
 - **Contribution calendar** — a GitHub-style heat map of the last 12 weeks, with today highlighted
 - **Daily lesson** — knowledge cards with a short quiz and instant explanations, rotating daily per course
 - **Multi-course framework** — any AP course or subject plugs in via the course registry (AP CSA / CSP / Calculus AB included)
+- **i18n** — full UI + lesson content in **中文 / English / Español**: device language detected on first launch, switchable in Profile, persisted locally
 - **Cloud sync** — email sign-up; history follows you across devices
 - **Stats** — total check-ins and current streak at a glance
 - **Accessibility-minded** — visible focus rings, `prefers-reduced-motion` support, screen-reader labels, polite live regions for feedback
@@ -21,6 +22,7 @@ Built with Expo, it runs on **iOS** and the **web** from a single TypeScript cod
 |---|---|
 | Cross-platform | [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/) (React Native 0.86 + TypeScript) |
 | Navigation | expo-router (file-based routing, classic tabs) |
+| i18n | Custom typed dictionaries (`src/i18n/`) + `expo-localization` for device detection |
 | Backend | [Supabase](https://supabase.com) — Auth, Postgres, Row Level Security |
 | Session storage | AsyncStorage (persisted auth session) |
 
@@ -63,19 +65,30 @@ npm start
 ```
 src/
 ├── app/
-│   ├── _layout.tsx          # Root layout: session gate (auth vs. tabs)
+│   ├── _layout.tsx          # Root layout: I18nProvider + session gate (auth vs. tabs)
 │   ├── auth.tsx             # Sign in / sign up
 │   └── (tabs)/
 │       ├── _layout.tsx      # Bottom tabs: check-in / study / profile
 │       ├── index.tsx        # Check-in home (streak, calendar, stats)
 │       ├── study.tsx        # Daily lesson + quiz
-│       └── profile.tsx      # Profile, stats, sign out
-├── components/streak-calendar.tsx   # 12-week heat map
-├── data/courses.ts         # Course registry + lesson libraries (the framework core)
+│       └── profile.tsx      # Profile, stats, language switcher, sign out
+├── components/              # Sidebar, streak calendar
+├── i18n/                    # Typed dictionaries (zh/en/es), course-content overlays, provider
+├── data/courses.ts          # Course registry + lesson libraries (the framework core)
 ├── hooks/                   # useSessionUser, useTheme, …
-└── lib/                     # Supabase client, check-in & streak logic
+└── lib/                     # Supabase client, check-in & streak logic, i18n error helpers
 supabase/schema.sql          # Database schema (run in the SQL Editor)
 ```
+
+## Internationalization
+
+DailyStreak ships three locales: **中文 (zh, base)**, **English (en)**, and **Español (es)**.
+
+- `src/i18n/locales/{zh,en,es}.ts` — UI strings. zh defines the key set; en/es are typed against it, so a missing or extra key fails `tsc`.
+- `src/i18n/content/{en,es}.ts` — translations of course content (lesson bodies, questions, options, explanations, skills, course descriptions). The Chinese text in `courses.ts` is the fallback whenever an overlay entry is missing.
+- `src/i18n/context.tsx` — `I18nProvider` + `useI18n()` (`t`, `locale`, `setLocale`, `formatDate`). Device language is detected via `expo-localization` on first launch; the manual choice from **Profile → Language** is persisted to AsyncStorage.
+- `src/i18n/core.ts` — `t()` with `{param}` interpolation, `Intl.PluralRules` plural forms (e.g. `study.remaining`), `Intl.DateTimeFormat` dates, and the course-content localizer.
+- `npm run i18n:check` — CI-friendly completeness audit: dictionary key parity across locales and full course-content coverage.
 
 ## Adding a Course
 
@@ -114,6 +127,28 @@ const MY_ITEMS: StudyItem[] = [
 
 That's it: the course appears in the study tab switcher, and the selected course is persisted locally. Lessons start from `CONTENT_START` in the same file.
 
+### Translating the course (optional)
+
+Chinese is the base language and works out of the box. To make a new course fully available in English and Spanish, add entries to both `src/i18n/content/en.ts` and `src/i18n/content/es.ts`:
+
+```ts
+// src/i18n/content/en.ts
+descriptions: {
+  // …
+  mycourse: 'One-line intro in English',
+},
+skills: {
+  // …
+  '技能名': 'Skill label in English',
+},
+items: {
+  // …
+  'mycourse-1': { title, body, question, options: [/* same order */], explanation },
+},
+```
+
+Any entry you skip silently falls back to the Chinese base at runtime. Run `npm run i18n:check` to see exactly what is still missing.
+
 ## Deployment (Web)
 
 ```bash
@@ -125,9 +160,17 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 ## Quality Gates
 
 ```bash
-npx tsc --noEmit          # type check
-npx expo lint             # lint
+npm run precheck           # 本地一键门禁: i18n completeness + type check + lint
+npm run i18n:check         # i18n completeness audit
+npx expo lint              # lint only
 ```
+
+`npm install` 自动把 pre-commit 钩子装到 `.git/hooks`（`scripts/install-hooks.js`，幂等），每次提交前运行 `npm run precheck`；单次跳过用 `git commit --no-verify`。
+
+Two lint layers guard the i18n setup:
+
+- **Type level** — `en`/`es` dictionaries are typed against `zh`, so a missing or extra key fails `tsc`.
+- **ESLint `local/no-hardcoded-copy`** — hardcoded Chinese copy in `src/{app,components,hooks,lib}` fails lint; UI strings must go through `t()` (`src/i18n/` and the course base in `src/data/courses.ts` are exempt).
 
 Browser smoke test (Playwright): verifies the auth gate, sign-up, check-in, and all three tabs against a running dev server.
 

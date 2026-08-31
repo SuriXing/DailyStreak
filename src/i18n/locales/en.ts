@@ -105,4 +105,7 @@ export const en: UiStrings = {
   'home.milestone': '🎖️ {days}-day streak milestone!',
 
   'sidebar.toggleTheme': 'Toggle theme',
+
+  'auth.google': 'Continue with Google',
+  'auth.apple': 'Continue with Apple',
 };

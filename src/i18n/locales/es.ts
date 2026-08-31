@@ -105,4 +105,7 @@ export const es: UiStrings = {
   'home.milestone': '🎖️ ¡Hito de {days} días de racha!',
 
   'sidebar.toggleTheme': 'Cambiar tema',
+
+  'auth.google': 'Continuar con Google',
+  'auth.apple': 'Continuar con Apple',
 };

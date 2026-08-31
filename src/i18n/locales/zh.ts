@@ -105,4 +105,7 @@ export const zh: UiStrings = {
   'home.milestone': '🎖️ 达成 {days} 天连胜里程碑！',
 
   'sidebar.toggleTheme': '切换主题',
+
+  'auth.google': '继续使用 Google',
+  'auth.apple': '继续使用 Apple',
 };

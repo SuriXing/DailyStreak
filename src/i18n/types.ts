@@ -131,6 +131,8 @@ export interface UiStrings {
   'home.weeklyEmpty': DictValue;
   'home.milestone': DictValue;
   'sidebar.toggleTheme': DictValue;
+  'auth.google': DictValue;
+  'auth.apple': DictValue;
 }
 
 export type TKey = keyof UiStrings;

@@ -20,7 +20,7 @@ jobs:
       - name: i18n completeness
         run: npm run i18n:check
       - name: Ruff（Python 工具脚本）
-        uses: astral-sh/ruff-action@v4
+        uses: astral-sh/ruff-action@v4.1.0
         with:
           args: check .uxe/scripts
       - name: Type check

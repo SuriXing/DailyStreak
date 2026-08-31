@@ -87,4 +87,22 @@ export const es: UiStrings = {
   'auth.rateLimited': 'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
 
   'calendar.weekdays': 'L,X,V,D',
+
+  'profile.theme': 'Tema',
+  'profile.themeSystem': 'Sistema',
+  'profile.themeLight': 'Claro',
+  'profile.themeDark': 'Oscuro',
+
+  'badges.title': 'Hitos',
+  'badges.streakDays': 'Racha de {days} días',
+  'badges.locked': 'Bloqueado',
+
+  'home.todayLesson': 'Lección de hoy',
+  'home.goStudy': 'Estudiar',
+  'home.weekly': 'Esta semana',
+  'home.weeklySummary': 'Registro {checked}/{total} días · {answered} preguntas · {rate}% correctas',
+  'home.weeklyEmpty': 'Aún sin práctica esta semana',
+  'home.milestone': '🎖️ ¡Hito de {days} días de racha!',
+
+  'sidebar.toggleTheme': 'Cambiar tema',
 };

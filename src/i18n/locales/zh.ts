@@ -87,4 +87,22 @@ export const zh: UiStrings = {
   'auth.rateLimited': '操作过于频繁，请稍后再试',
 
   'calendar.weekdays': '一,三,五,日',
+
+  'profile.theme': '主题',
+  'profile.themeSystem': '跟随系统',
+  'profile.themeLight': '亮色',
+  'profile.themeDark': '暗色',
+
+  'badges.title': '里程碑徽章',
+  'badges.streakDays': '{days} 天连胜',
+  'badges.locked': '未达成',
+
+  'home.todayLesson': '今日知识点',
+  'home.goStudy': '去学习',
+  'home.weekly': '本周概览',
+  'home.weeklySummary': '打卡 {checked}/{total} 天 · 练习 {answered} 题 · 正确率 {rate}%',
+  'home.weeklyEmpty': '本周还没有练习记录',
+  'home.milestone': '🎖️ 达成 {days} 天连胜里程碑！',
+
+  'sidebar.toggleTheme': '切换主题',
 };

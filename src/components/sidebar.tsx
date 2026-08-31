@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { useI18n, type TKey } from '@/i18n';
+import { useThemePreference } from '@/contexts/theme-preference';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -27,6 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const user = useSessionUser();
   const { t } = useI18n();
+  const { resolved, setPreference } = useThemePreference();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -137,6 +139,25 @@ export function Sidebar() {
             </Text>
           )}
         </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.signOut,
+            collapsed && styles.signOutCollapsed,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => setPreference(resolved === 'dark' ? 'light' : 'dark')}
+          accessibilityLabel={t('sidebar.toggleTheme')}>
+          <Ionicons
+            name={resolved === 'dark' ? 'sunny-outline' : 'moon-outline'}
+            size={16}
+            color={colors.textSecondary}
+          />
+          {!collapsed && (
+            <Text style={[styles.signOutText, { color: colors.textSecondary }]}>
+              {resolved === 'dark' ? t('profile.themeLight') : t('profile.themeDark')}
+            </Text>
+          )}
+        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.signOut,

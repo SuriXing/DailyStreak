@@ -90,6 +90,28 @@ function clickI18n(page, zh, en) {
   assertI18n(text, '课程掌握度', 'Course mastery', '我的页渲染课程掌握度');
   assertI18n(text, '每日目标', 'Daily goal', '我的页渲染每日目标');
   assertI18n(text, '语言', 'Language', '我的页渲染语言切换');
+  assertI18n(text, '主题', 'Theme', '我的页渲染主题切换');
+  assertI18n(text, '里程碑徽章', 'Milestones', '我的页渲染里程碑徽章');
+
+  // 6b. 主题切换：点「暗色」后页面背景应变黑，切回后恢复
+  const bgBefore = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(245, 245, 245)'),
+  );
+  await clickI18n(page, '暗色', 'Dark');
+  await page.waitForTimeout(1200);
+  const darkApplied = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(0, 0, 0)'),
+  );
+  assert(bgBefore && darkApplied, '暗色主题生效（背景变黑）');
+  await clickI18n(page, '跟随系统', 'System');
+  await page.waitForTimeout(800);
+
+  // 6c. 打卡页新增：今日知识点 + 本周概览
+  await clickI18n(page, '打卡', 'Check in');
+  await page.waitForTimeout(2000);
+  text = await page.locator('body').innerText();
+  assertI18n(text, '今日知识点', "Today's lesson", '打卡页渲染今日知识点入口');
+  assertI18n(text, '本周概览', 'This week', '打卡页渲染本周概览');
 
   const consoleErrors = errors.filter((e) => !e.includes('favicon'));
   assert(consoleErrors.length === 0, `无浏览器控制台错误${consoleErrors.length ? '：' + consoleErrors[0] : ''}`);

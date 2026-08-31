@@ -10,6 +10,8 @@ import { withTimeout } from '@/lib/timeout';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goal';
 import { LOCALES, LOCALE_META, useI18n, type Locale } from '@/i18n';
+import { maxStreak, milestoneStatus } from '@/lib/badges';
+import { useThemePreference, type ThemePreference } from '@/contexts/theme-preference';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -17,6 +19,13 @@ export default function ProfileScreen() {
   const user = useSessionUser();
   const colors = useTheme();
   const { t, locale, setLocale } = useI18n();
+  const { preference, setPreference } = useThemePreference();
+
+  const THEME_OPTIONS: { value: ThemePreference; labelKey: 'profile.themeSystem' | 'profile.themeLight' | 'profile.themeDark' }[] = [
+    { value: 'system', labelKey: 'profile.themeSystem' },
+    { value: 'light', labelKey: 'profile.themeLight' },
+    { value: 'dark', labelKey: 'profile.themeDark' },
+  ];
 
   const [checkedSet, setCheckedSet] = useState<Set<string> | null>(null);
   const [answersByCourse, setAnswersByCourse] = useState<Record<string, AnswerRecord[]>>({});
@@ -70,6 +79,7 @@ export default function ProfileScreen() {
     'Suri';
   const total = checkedSet?.size ?? null;
   const streak = checkedSet ? computeStreak(checkedSet) : null;
+  const milestones = milestoneStatus(maxStreak(checkedSet ?? new Set()));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -187,6 +197,62 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('profile.theme')}</Text>
+          <View style={styles.goalRow}>
+            {THEME_OPTIONS.map((opt) => {
+              const active = preference === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  style={({ pressed }) => [
+                    styles.langChip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.backgroundElement,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setPreference(opt.value)}
+                  accessibilityState={{ selected: active }}>
+                  <Text
+                    style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
+                    {t(opt.labelKey)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{t('badges.title')}</Text>
+          <View style={styles.badgeRow}>
+            {milestones.map((m) => (
+              <View
+                key={m.days}
+                style={[
+                  styles.badgeChip,
+                  {
+                    backgroundColor: m.earned ? colors.successBg : colors.backgroundElement,
+                    borderColor: m.earned ? colors.success : colors.border,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.badgeDays,
+                    { color: m.earned ? colors.success : colors.textTertiary },
+                  ]}>
+                  {m.earned ? '🏆' : '🔒'} {t('badges.streakDays', { days: m.days })}
+                </Text>
+                <Text style={[styles.badgeHint, { color: colors.textSecondary }]}>
+                  {m.earned ? '✓' : t('badges.locked')}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
         <Pressable
           style={({ pressed }) => [
             styles.signOut,
@@ -246,6 +312,17 @@ const styles = StyleSheet.create({
   progressFill: { height: 8, borderRadius: 4 },
   masteryPercent: { fontSize: 12, fontWeight: '700', width: 36, textAlign: 'right' },
   goalRow: { flexDirection: 'row', gap: Spacing.two },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  badgeChip: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+    gap: 2,
+  },
+  badgeDays: { fontSize: 12, fontWeight: '700' },
+  badgeHint: { fontSize: 10 },
   goalChip: {
     borderRadius: Radius.md,
     borderWidth: 1,

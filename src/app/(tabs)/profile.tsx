@@ -100,7 +100,7 @@ export default function ProfileScreen() {
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('home.totalCheckins')}</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.stat}>
               {streak === null ? (
                 <ActivityIndicator color={colors.primary} />
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: Radius.lg, padding: Spacing.four },
   statRow: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, alignItems: 'center', gap: Spacing.one },
-  statDivider: { width: StyleSheet.hairlineWidth, height: 40, backgroundColor: '#A0A4AB' },
+  statDivider: { width: StyleSheet.hairlineWidth, height: 40 },
   statNumber: { fontSize: 30, fontWeight: '900' },
   cardTitle: { fontSize: 16, fontWeight: '700' },
   cardHint: { fontSize: 12, lineHeight: 18 },

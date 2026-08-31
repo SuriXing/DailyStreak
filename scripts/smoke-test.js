@@ -45,6 +45,7 @@ function clickI18n(page, zh, en) {
   let text = await page.locator('body').innerText();
   assertI18n(text, '登 录', 'Log in', '未登录时显示登录页（路由守卫生效）');
   assertI18n(text, '没有账号？去注册', 'No account? Sign up', '登录页有注册入口');
+  assertI18n(text, '继续使用 Google', 'Continue with Google', '登录页有 Google 登录按钮');
 
   // 2. 注册并进入主界面
   await clickI18n(page, '没有账号？去注册', 'No account? Sign up');

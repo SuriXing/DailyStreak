@@ -20,6 +20,11 @@ import {
 import { errorMessage } from '@/lib/errors';
 import { withTimeout } from '@/lib/timeout';
 import { useI18n } from '@/i18n';
+import { useCourse } from '@/hooks/use-course';
+import { getTodayItem } from '@/data/courses';
+import { isMilestoneDay } from '@/lib/badges';
+import { weeklyStats } from '@/lib/weekly';
+import { useRouter } from 'expo-router';
 import { useSessionUser } from '@/hooks/use-session-user';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
@@ -38,8 +43,13 @@ export default function CheckinScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justChecked, setJustChecked] = useState(false);
+  const [milestoneHit, setMilestoneHit] = useState<number | null>(null);
   const [goal] = useDailyGoal();
   const isDesktop = useIsDesktop();
+  const router = useRouter();
+  const [course] = useCourse();
+  const todayItem = getTodayItem(course);
+  const week = weeklyStats(checkedSet, answers);
 
   const todayKey = toDateKey(new Date());
   const todayChecked = checkedSet.has(todayKey);
@@ -108,6 +118,11 @@ export default function CheckinScreen() {
         return next;
       });
       setJustChecked(true);
+      const newStreak = computeStreak(new Set([...checkedSet, todayKey]));
+      if (isMilestoneDay(newStreak)) {
+        setMilestoneHit(newStreak);
+        setTimeout(() => setMilestoneHit(null), 4000);
+      }
       setTimeout(() => setJustChecked(false), 2500);
     } catch (e) {
       setError(errorMessage(e, t));
@@ -154,6 +169,11 @@ export default function CheckinScreen() {
               {justChecked && (
                 <Text accessibilityLiveRegion="polite" style={styles.celebrate}>
                   {t('home.celebrate')}
+                </Text>
+              )}
+              {milestoneHit !== null && (
+                <Text accessibilityLiveRegion="polite" style={styles.milestone}>
+                  {t('home.milestone', { days: milestoneHit })}
                 </Text>
               )}
             </View>
@@ -216,6 +236,39 @@ export default function CheckinScreen() {
               </View>
             )}
 
+            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+              <View style={styles.progressHeader}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.todayLesson')}</Text>
+                <Pressable onPress={() => router.push('/study')} accessibilityRole="link">
+                  <Text style={[styles.goStudy, { color: colors.primary }]}>{t('home.goStudy')} →</Text>
+                </Pressable>
+              </View>
+              <Text style={[styles.lessonTitle, { color: colors.text }]} numberOfLines={1}>
+                [{course.shortName}] {todayItem.title}
+              </Text>
+              <Text style={[styles.lessonBody, { color: colors.textSecondary }]} numberOfLines={2}>
+                {todayItem.body}
+              </Text>
+            </View>
+
+            <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.weekly')}</Text>
+              {week.answered > 0 ? (
+                <Text style={[styles.lessonBody, { color: colors.textSecondary }]}>
+                  {t('home.weeklySummary', {
+                    checked: week.checked,
+                    total: week.total,
+                    answered: week.answered,
+                    rate: week.rate ?? 0,
+                  })}
+                </Text>
+              ) : (
+                <Text style={[styles.lessonBody, { color: colors.textSecondary }]}>
+                  {t('home.weeklyEmpty')}
+                </Text>
+              )}
+            </View>
+
             <View style={[styles.twoCol, isDesktop && styles.twoColRow]}>
               <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, isDesktop && styles.twoColCard]}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.calendar')}</Text>
@@ -272,6 +325,10 @@ const styles = StyleSheet.create({
   streakNumber: { fontSize: 56, fontWeight: '900' },
   streakLabel: { fontSize: 15 },
   celebrate: { color: '#52c41a', fontSize: 15, fontWeight: '700', marginTop: Spacing.one },
+  milestone: { color: '#faad14', fontSize: 16, fontWeight: '800', marginTop: Spacing.one },
+  goStudy: { fontSize: 14, fontWeight: '700' },
+  lessonTitle: { fontSize: 15, fontWeight: '700' },
+  lessonBody: { fontSize: 13, lineHeight: 19 },
   checkinButton: {
     backgroundColor: '#1677ff',
     borderRadius: Radius.lg,

@@ -87,4 +87,22 @@ export const en: UiStrings = {
   'auth.rateLimited': 'Too many attempts. Please wait and try again.',
 
   'calendar.weekdays': 'Mon,Wed,Fri,Sun',
+
+  'profile.theme': 'Theme',
+  'profile.themeSystem': 'System',
+  'profile.themeLight': 'Light',
+  'profile.themeDark': 'Dark',
+
+  'badges.title': 'Milestones',
+  'badges.streakDays': '{days}-day streak',
+  'badges.locked': 'Locked',
+
+  'home.todayLesson': "Today's lesson",
+  'home.goStudy': 'Go study',
+  'home.weekly': 'This week',
+  'home.weeklySummary': 'Checked {checked}/{total} days · {answered} questions · {rate}% correct',
+  'home.weeklyEmpty': 'No practice this week yet',
+  'home.milestone': '🎖️ {days}-day streak milestone!',
+
+  'sidebar.toggleTheme': 'Toggle theme',
 };

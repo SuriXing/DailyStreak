@@ -4,11 +4,9 @@
  */
 
 import { Colors, type ThemeColor } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemePreference } from '@/contexts/theme-preference';
 
 export function useTheme(): Record<ThemeColor, string> {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
+  const { resolved } = useThemePreference();
+  return Colors[resolved];
 }

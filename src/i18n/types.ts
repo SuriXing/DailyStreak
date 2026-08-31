@@ -117,6 +117,20 @@ export interface UiStrings {
   'auth.rateLimited': DictValue;
 
   'calendar.weekdays': DictValue;
+  'profile.theme': DictValue;
+  'profile.themeSystem': DictValue;
+  'profile.themeLight': DictValue;
+  'profile.themeDark': DictValue;
+  'badges.title': DictValue;
+  'badges.streakDays': DictValue;
+  'badges.locked': DictValue;
+  'home.todayLesson': DictValue;
+  'home.goStudy': DictValue;
+  'home.weekly': DictValue;
+  'home.weeklySummary': DictValue;
+  'home.weeklyEmpty': DictValue;
+  'home.milestone': DictValue;
+  'sidebar.toggleTheme': DictValue;
 }
 
 export type TKey = keyof UiStrings;

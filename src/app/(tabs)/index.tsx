@@ -21,11 +21,16 @@ import { errorMessage } from '@/lib/errors';
 import { withTimeout } from '@/lib/timeout';
 import { useI18n } from '@/i18n';
 import { useCourse } from '@/hooks/use-course';
-import { getTodayItem } from '@/data/courses';
+import { COURSES, getTodayItem } from '@/data/courses';
 import { isMilestoneDay } from '@/lib/badges';
 import { weeklyStats } from '@/lib/weekly';
 import { useRouter } from 'expo-router';
 import { useSessionUser } from '@/hooks/use-session-user';
+
+/** 拉取所有课程的答题记录：首页进度/周报/完成日必须覆盖全部课程，不能只统计一门 */
+function fetchAllAnswers(userId: string): Promise<AnswerRecord[]> {
+  return Promise.all(COURSES.map((c) => fetchAnswers(userId, c.id))).then((lists) => lists.flat());
+}
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
 import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
@@ -70,7 +75,7 @@ export default function CheckinScreen() {
     if (!user) return;
     let active = true;
     withTimeout(
-      Promise.all([fetchCheckins(user.id), fetchAnswers(user.id, 'csa')]),
+      Promise.all([fetchCheckins(user.id), fetchAllAnswers(user.id)]),
       10000,
     )
       .then(([dates, ans]) => {
@@ -95,7 +100,7 @@ export default function CheckinScreen() {
     setError(null);
     setLoading(true);
     withTimeout(
-      Promise.all([fetchCheckins(user.id), fetchAnswers(user.id, 'csa')]),
+      Promise.all([fetchCheckins(user.id), fetchAllAnswers(user.id)]),
       10000,
     )
       .then(([dates, ans]) => {

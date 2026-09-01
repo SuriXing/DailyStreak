@@ -1,65 +1,56 @@
-# Daily Practice Design — 研究综述与落地说明
+# Daily Practice Design — Research Summary and Implementation Notes
 
-> 本文档把业界标杆产品的机制研究（2026-08 桌面研究，含 40+ 产品）沉淀为
-> DailyStreak 的每日练习设计决策。研究来源见文末。
+> This document distills the mechanism research across industry-leading products (desktop research, 2026-08, 40+ products) into the daily practice design decisions behind DailyStreak. Sources at the bottom.
 
-## 一、每日题量
+## 1. Daily Question Volume
 
-| 来源 | 每日题量 | 单次时长 |
+| Source | Daily volume | Session length |
 |---|---|---|
-| Duolingo | 单课 5-8 题，"1 课即打卡" | 3-5 分钟 |
-| Khan Academy | 练习 4-7 题 / 测验 ≥5 题 | ~10 分钟 |
-| 百词斩 / 墨墨 / 不背单词 | 保底 3 道，默认 5-10 道 | 3-10 分钟甜区；>1 小时必流失 |
-| Babbel / Busuu | 每天 ~10 分钟 | 5-10 分钟 |
+| Duolingo | 5-8 questions per lesson, one lesson counts as the check-in | 3-5 min |
+| Khan Academy | 4-7 questions per exercise, 5+ per quiz | ~10 min |
+| Baicizhan / Maimemo / Bubudanci | floor of 3, default 5-10 | 3-10 min sweet spot; over an hour loses users |
+| Babbel / Busuu | ~10 minutes per day | 5-10 min |
 
-**决策：默认 5 题/天（约 4-6 分钟），保底 3 题，档位 3/5/10 可调（`useDailyGoal`）。**
-AP 题思考成本（30-60 秒/题）高于单词题（3-5 秒），故低于百词斩的 20 词/天。
+**Decision: 5 questions per day by default (~4-6 min), a floor of 3, and 3/5/10 tiers (`useDailyGoal`).** AP questions cost 30-60 seconds of thought each, above the 3-5 seconds of vocabulary questions, so the volume stays below the vocabulary apps' 20 words a day.
 
-## 二、新学 : 复习 = 1:2，复习优先，动态分配
+## 2. New : Review = 1:2, Review-First, Dynamic Allocation
 
-- 复习调度：简化 SRS 阶梯 `1/3/7/14` 天——连续答对则间隔翻倍，答错重置为 1 天
-- 会话构建（`buildSessionPlan`）：到期复习题优先（最多 3 道），再补新题到每日目标；
-  复习积压大时自动少出新题（墨墨"动态分配"防复习雪球）
-- 逾期复习不惩罚、不强迫清空（断签回归只面对今天的题量）
-- 参考：Khan Mastery Challenge "6 题 / 3 技能 / 每技能 2 题"；扇贝"复习上限阀门"；
-  Anki/FSRS desired retention 90% 是默认甜点，不引入复杂算法
+- Review scheduling: a simplified SRS ladder of `1/3/7/14` days — consecutive correct answers double the interval, a miss resets to 1 day
+- Session building (`buildSessionPlan`): due reviews come first (capped at 3), then new items fill up to the daily goal; heavy review backlog automatically reduces new items (Maimemo-style dynamic allocation against the review snowball)
+- Overdue reviews are never punished or force-cleared: coming back after a break only faces today's volume
+- References: Khan's Mastery Challenge formula of 6 questions over 3 skills; Shanbay's review cap; Anki/FSRS desired retention of 90% as the default sweet spot, without importing the full algorithm
 
-## 三、打卡与做题：双层设计
+## 3. Check-In and Practice: Two-Layer Design
 
-- **轻打卡**：一键保住连胜（3 秒完成，Duolingo "最小可行单元"）
-- **做题完成**：完成当日题量后，日历格子从浅绿"已打卡"升级为深绿"已完成"（双态热力图）
-- 止损：连胜按"昨天仍可保"规则（已有）；冻结/修复道具留作后续迭代
-- 明确不做：Habitica 式掉血惩罚、Snapchat 式 24h 硬断、Hearts/能量门控
-  （多邻国 2025 自己都在从 Hearts 转向"不惩罚错误"的 Energy）
+- **Light check-in**: one tap keeps the streak alive (3 seconds, Duolingo's minimum viable unit)
+- **Practice completion**: finishing the daily goal upgrades the calendar cell from light green checked-in to deep green completed (two-state heat map)
+- Safety: the streak rule already counts through yesterday; freeze and repair items are left for a later iteration
+- Explicitly not doing: Habitica-style health-penalty punishment, Snapchat-style 24-hour hard breaks, or hearts/energy gating (Duolingo itself moved from Hearts to a non-punitive Energy system in 2025)
 
-## 四、进步证据（动机消退占教育类流失 40%）
+## 4. Progress Evidence (motivation decay accounts for 40% of edtech churn)
 
-- 技能掌握度（Khan 式 100 分制简化版）：连续答对 1 次=熟悉 50 / 2 次=精通 80 / 3 次=掌握 100；
-  答错重置。按技能聚合展示（`computeMastery`）
-- 每次练习结束给小结卡：正确率 + 掌握度变化 + 明日复习提示
-- 里程碑徽章（7/30/90 天）留作后续；不做多币种多层级徽章体系
+- Skill mastery (simplified Khan 100-point ladder): 1 consecutive correct = familiar 50, 2 = proficient 80, 3+ = mastered 100; a miss resets. Aggregated per skill (`computeMastery`)
+- Every session ends with a summary card: accuracy, mastery delta, and what tomorrow's review will lead with
+- Milestone badges (7/30/90 days) are a later iteration; no multi-currency, multi-tier badge system
 
-## 五、通知（后续迭代）
+## 5. Notifications (later iteration)
 
-- 用户自选提醒时间 + 晚间"连胜告急"损失框架文案（Duolingo 验证为最高转化手段）
-- 默认频率克制（1-3 条/天），关闭流程做挽留
+- User-chosen reminder time plus an evening "streak at risk" message in loss framing (Duolingo's highest-converting lever)
+- Restrained default frequency (1-3 per day), with a retention-minded opt-out flow
 
-## 研究来源（精选）
+## Research Sources (selected)
 
-- Duolingo：官方博客《The habit-building research behind your Duolingo streak》、
-  Lenny's Podcast（Jackson Shuttleworth）、The Verge《Duolingo is replacing hearts with energy》
-- Khan Academy：官方帮助中心（Mastery levels / Mastery Challenges / Streaks）、
-  官方博客《Get Motivated to Learn with Streaks and Levels》
-- 背单词类：墨墨官方帮助（动态学习量）、smzdm《复习高利贷实测》、
-  Anki 源码默认参数（20 新卡/200 复习）、Babbel 官方 10 分钟/天文章
-- 习惯类：Apple 活动圆环心理学、GitHub 贡献图损失厌恶、Streaks 最小可行行动
-- 留存数据：RetentionCheck（教育类月流失 10.5%，动机消退 40%）
+- Duolingo: official blog "The habit-building research behind your Duolingo streak", Lenny's Podcast (Jackson Shuttleworth), The Verge "Duolingo is replacing hearts with energy"
+- Khan Academy: official help center (Mastery levels / Mastery Challenges / Streaks), official blog "Get Motivated to Learn with Streaks and Levels"
+- Vocabulary apps: Maimemo official help (dynamic daily volume), smzdm review-debt field report, Anki source defaults (20 new / 200 review), Babbel's official 10-minutes-a-day article
+- Habit products: Apple activity rings psychology, GitHub contribution graph loss aversion, Streaks minimum viable action
+- Retention data: RetentionCheck (edtech monthly churn 10.5%, motivation decay 40%)
 
-## 落地文件
+## Implementation Files
 
-- `src/lib/answers.ts` — SRS 状态、会话构建、掌握度计算
-- `src/hooks/use-daily-goal.ts` — 每日题量档位（3/5/10）
-- `src/app/(tabs)/study.tsx` — 会话式答题（复习优先）+ 小结卡
-- `src/app/(tabs)/index.tsx` — 今日进度条 + 双层日历
-- `src/app/(tabs)/profile.tsx` — 课程掌握度 + 目标档位
-- `supabase/schema.sql` — `answers` 答题记录表（RLS）
+- `src/lib/answers.ts` — SRS state, session building, mastery computation
+- `src/hooks/use-daily-goal.ts` — daily volume tiers (3/5/10)
+- `src/app/(tabs)/study.tsx` — session-based practice (review-first) with summary card
+- `src/app/(tabs)/index.tsx` — daily progress bar and two-state calendar
+- `src/app/(tabs)/profile.tsx` — course mastery and goal tiers
+- `supabase/schema.sql` — the `answers` table (RLS)

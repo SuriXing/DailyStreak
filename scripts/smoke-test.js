@@ -134,6 +134,24 @@ function clickI18n(page, zh, en) {
   assertI18n(text, '开始练习', 'Start practice', '桌面端侧边栏导航到学习页');
 
   console.log(`\n🎉 全部通过（测试账号 ${EMAIL}，密码 ${PASSWORD}）`);
+
+  // 自清理：配置了 SMOKE_SUPABASE_ACCESS_TOKEN 时删除本次测试账号（CI 可配 SUPABASE_ACCESS_TOKEN secret）
+  const mgmtToken = process.env.SMOKE_SUPABASE_ACCESS_TOKEN || process.env.SUPABASE_ACCESS_TOKEN;
+  if (mgmtToken) {
+    try {
+      const ref = new URL(BASE).hostname.split('.')[0];
+      const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${mgmtToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: `delete from auth.users where email like 'smoke%';` }),
+      });
+      console.log(res.ok ? '🧹 测试用户已自清理' : `⚠️ 自清理失败 HTTP ${res.status}`);
+    } catch (e) {
+      console.log('⚠️ 自清理跳过:', String(e).slice(0, 80));
+    }
+  } else {
+    console.log('ℹ️ 未配置管理 token，测试用户需手动清理');
+  }
   await browser.close();
 })().catch((e) => {
   console.error(e.message);

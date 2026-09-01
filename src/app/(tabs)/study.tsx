@@ -25,7 +25,6 @@ type Phase = 'ready' | 'quiz' | 'done';
 
 export default function StudyScreen() {
   const colors = useTheme();
-  const { resolved } = useThemePreference();
   const user = useSessionUser();
   const { t, locale } = useI18n();
   const [course, setCourseId] = useCourse();

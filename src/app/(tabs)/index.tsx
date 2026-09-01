@@ -27,15 +27,16 @@ import { weeklyStats } from '@/lib/weekly';
 import { useRouter } from 'expo-router';
 import { useSessionUser } from '@/hooks/use-session-user';
 
-/** 拉取所有课程的答题记录：首页进度/周报/完成日必须覆盖全部课程，不能只统计一门 */
-function fetchAllAnswers(userId: string): Promise<AnswerRecord[]> {
-  return Promise.all(COURSES.map((c) => fetchAnswers(userId, c.id))).then((lists) => lists.flat());
-}
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
 import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+
+/** 拉取所有课程的答题记录：首页进度/周报/完成日必须覆盖全部课程，不能只统计一门 */
+function fetchAllAnswers(userId: string): Promise<AnswerRecord[]> {
+  return Promise.all(COURSES.map((c) => fetchAnswers(userId, c.id))).then((lists) => lists.flat());
+}
 
 export default function CheckinScreen() {
   const user = useSessionUser();

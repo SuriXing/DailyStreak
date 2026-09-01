@@ -155,6 +155,19 @@ export function computeMastery(course: Course, answers: AnswerRecord[]): CourseM
   return { percent: Math.round((totalEarned / totalAll) * 100), bySkill: skills };
 }
 
+/** 清除今天（本地日期）记录的全部答题，用于"重新做一遍" */
+export async function clearTodayAnswers(userId: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const { error } = await getSupabase()
+    .from('answers')
+    .delete()
+    .eq('user_id', userId)
+    .gte('answered_at', startOfDay.toISOString());
+  if (error) throw new Error(error.message);
+}
+
 /** 今天已答题目数（按本地日期） */
 export function todayAnsweredCount(answers: AnswerRecord[]): number {
   const today = toDateKey(new Date());

@@ -110,4 +110,9 @@ export const es: UiStrings = {
   'auth.apple': 'Continuar con Apple',
 
   'study.noSession': 'No hay repaso pendiente hoy, vuelve mañana',
+
+  'study.redo': 'Repetir hoy',
+  'study.redoWarning': 'Repetir borrará los registros de hoy',
+  'study.redoConfirm': 'Borrar y repetir',
+  'study.redoCancel': 'Cancelar',
 };

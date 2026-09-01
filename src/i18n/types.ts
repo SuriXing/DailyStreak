@@ -134,6 +134,10 @@ export interface UiStrings {
   'auth.google': DictValue;
   'auth.apple': DictValue;
   'study.noSession': DictValue;
+  'study.redo': DictValue;
+  'study.redoWarning': DictValue;
+  'study.redoConfirm': DictValue;
+  'study.redoCancel': DictValue;
 }
 
 export type TKey = keyof UiStrings;

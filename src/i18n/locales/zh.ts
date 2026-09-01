@@ -110,4 +110,9 @@ export const zh: UiStrings = {
   'auth.apple': '继续使用 Apple',
 
   'study.noSession': '今天没有可练习的内容，明天再来吧',
+
+  'study.redo': '重新做一遍',
+  'study.redoWarning': '重新做会清除今天的答题记录',
+  'study.redoConfirm': '确认清除并重做',
+  'study.redoCancel': '取消',
 };

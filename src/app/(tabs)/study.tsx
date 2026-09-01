@@ -10,6 +10,7 @@ import { useIsDesktop } from '@/hooks/use-media';
 import { localizeStudyItem, useI18n } from '@/i18n';
 import {
   buildSessionPlan,
+  clearTodayAnswers,
   computeMastery,
   fetchAnswers,
   recordAnswer,
@@ -38,6 +39,7 @@ export default function StudyScreen() {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
+  const [confirmRedo, setConfirmRedo] = useState(false);
 
   const item = queue[index];
   /** 展示用：按当前语言本地化的题目（逻辑仍用结构化 course） */
@@ -102,6 +104,18 @@ export default function StudyScreen() {
 
   function finish() {
     setPhase('ready');
+    setConfirmRedo(false);
+  }
+
+  async function redoToday() {
+    if (!user) return;
+    setConfirmRedo(false);
+    try {
+      await clearTodayAnswers(user.id);
+      await load();
+    } catch {
+      // 清除失败保持现状，不做破坏性操作
+    }
   }
 
   const answered = selected !== null;
@@ -151,6 +165,10 @@ export default function StudyScreen() {
             plan={buildSessionPlan(course, answers, goal)}
             onStart={startSession}
             isDesktop={isDesktop}
+            confirmRedo={confirmRedo}
+            onRedo={() => setConfirmRedo(true)}
+            onRedoCancel={() => setConfirmRedo(false)}
+            onRedoConfirm={redoToday}
           />
         ) : phase === 'quiz' && localizedItem ? (
           <QuizView
@@ -192,6 +210,10 @@ function ReadyView(props: {
   plan: { reviews: StudyItem[]; news: StudyItem[]; total: number };
   onStart: () => void;
   isDesktop: boolean;
+  confirmRedo: boolean;
+  onRedo: () => void;
+  onRedoCancel: () => void;
+  onRedoConfirm: () => void;
 }) {
   const colors = useTheme();
   const { t } = useI18n();
@@ -221,17 +243,57 @@ function ReadyView(props: {
           <Text style={[styles.readyBody, { color: colors.textSecondary }]}>
             {t('study.masteryLine', { percent: props.masteryPercent, goal: props.goal })}
           </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.primaryButton,
-              { backgroundColor: props.courseColor },
-              pressed && styles.pressed,
-            ]}
-            onPress={props.onStart}>
-            <Text style={styles.primaryButtonText}>
-              {props.todayAnswered >= props.goal ? t('study.practiceAgain') : t('study.start')}
+          {plan.total === 0 ? (
+            <Text style={[styles.readyBody, { color: colors.textTertiary, marginTop: Spacing.two }]}>
+              {t('study.noSession')}
             </Text>
-          </Pressable>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: props.courseColor },
+                pressed && styles.pressed,
+              ]}
+              onPress={props.onStart}>
+              <Text style={styles.primaryButtonText}>
+                {props.todayAnswered >= props.goal ? t('study.practiceAgain') : t('study.start')}
+              </Text>
+            </Pressable>
+          )}
+
+          {props.todayAnswered > 0 && (
+            <View style={styles.redoWrap}>
+              {props.confirmRedo ? (
+                <>
+                  <Text style={[styles.redoWarning, { color: colors.error }]}>
+                    {t('study.redoWarning')}
+                  </Text>
+                  <View style={styles.redoRow}>
+                    <Pressable
+                      style={({ pressed }) => [styles.redoConfirm, pressed && styles.pressed]}
+                      onPress={props.onRedoConfirm}>
+                      <Text style={styles.redoConfirmText}>{t('study.redoConfirm')}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.redoCancel, pressed && styles.pressed]}
+                      onPress={props.onRedoCancel}>
+                      <Text style={[styles.redoCancelText, { color: colors.textSecondary }]}>
+                        {t('study.redoCancel')}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [styles.redoLink, pressed && styles.pressed]}
+                  onPress={props.onRedo}>
+                  <Text style={[styles.redoLinkText, { color: colors.textSecondary }]}>
+                    {t('study.redo')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card, props.isDesktop && styles.readyCol]}>
@@ -462,6 +524,26 @@ const styles = StyleSheet.create({
   readyColsRow: { flexDirection: 'row', alignItems: 'flex-start' },
   readyCol: { flex: 1 },
   quizCols: { flexDirection: 'row', gap: Spacing.four, alignItems: 'flex-start' },
+  redoWrap: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
+  redoWarning: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  redoRow: { flexDirection: 'row', gap: Spacing.three },
+  redoConfirm: {
+    backgroundColor: '#ff4d4f',
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  redoConfirmText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  redoCancel: {
+    borderWidth: 1,
+    borderColor: '#d9d9d9',
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  redoCancelText: { fontSize: 14, fontWeight: '600' },
+  redoLink: { padding: Spacing.one },
+  redoLinkText: { fontSize: 13, textDecorationLine: 'underline' },
   quizPane: { flex: 1, gap: Spacing.three },
   badge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 3, alignSelf: 'flex-start' },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },

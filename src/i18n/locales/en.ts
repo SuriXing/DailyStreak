@@ -108,4 +108,6 @@ export const en: UiStrings = {
 
   'auth.google': 'Continue with Google',
   'auth.apple': 'Continue with Apple',
+
+  'study.noSession': 'No review items due today, come back tomorrow',
 };

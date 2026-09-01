@@ -19,11 +19,13 @@ import {
 import { withTimeout } from '@/lib/timeout';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useThemePreference } from '@/contexts/theme-preference';
 
 type Phase = 'ready' | 'quiz' | 'done';
 
 export default function StudyScreen() {
   const colors = useTheme();
+  const { resolved } = useThemePreference();
   const user = useSessionUser();
   const { t, locale } = useI18n();
   const [course, setCourseId] = useCourse();
@@ -65,6 +67,7 @@ export default function StudyScreen() {
 
   function startSession() {
     const plan = buildSessionPlan(course, answers, goal);
+    if (plan.total === 0) return; // 没有到期复习也没有新题时留在就绪页
     const q = [...plan.reviews, ...plan.news];
     setQueue(q);
     setIndex(0);
@@ -256,6 +259,7 @@ function QuizView(props: {
   const colors = useTheme();
   const { t } = useI18n();
   const { item, answered, selected } = props;
+  const { resolved } = useThemePreference();
 
   // 桌面端：左侧知识点栏 + 右侧答题栏
   const knowledgePane = (
@@ -318,7 +322,16 @@ function QuizView(props: {
           <Text
             style={[
               styles.explanationTitle,
-              { color: selected === item.answerIndex ? '#237804' : '#a8071a' },
+              {
+                color:
+                  selected === item.answerIndex
+                    ? resolved === 'dark'
+                      ? '#b7eb8f'
+                      : '#237804'
+                    : resolved === 'dark'
+                      ? '#ffa39e'
+                      : '#a8071a',
+              },
             ]}>
             {selected === item.answerIndex ? t('quiz.correct') : t('quiz.answerIs', { letter: String.fromCharCode(65 + item.answerIndex) })}
           </Text>

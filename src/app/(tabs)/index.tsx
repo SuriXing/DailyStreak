@@ -24,7 +24,7 @@ import { useCourse } from '@/hooks/use-course';
 import { COURSES, getTodayItem } from '@/data/courses';
 import { isMilestoneDay } from '@/lib/badges';
 import { weeklyStats } from '@/lib/weekly';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSessionUser } from '@/hooks/use-session-user';
 
 import { useDailyGoal } from '@/hooks/use-daily-goal';
@@ -95,6 +95,21 @@ export default function CheckinScreen() {
       active = false;
     };
   }, [user, t]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let active = true;
+      withTimeout(fetchAllAnswers(user.id), 10000)
+        .then((ans) => {
+          if (active) setAnswers(ans);
+        })
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
+    }, [user]),
+  );
 
   const load = useCallback(() => {
     if (!user) return;

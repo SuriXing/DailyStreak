@@ -72,6 +72,10 @@ drop policy if exists "answers_insert_own" on public.answers;
 create policy "answers_insert_own" on public.answers
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "answers_delete_own" on public.answers;
+create policy "answers_delete_own" on public.answers
+  for delete using (auth.uid() = user_id);
+
 -- 4) 新用户注册时自动创建 profile
 create or replace function public.handle_new_user()
 returns trigger

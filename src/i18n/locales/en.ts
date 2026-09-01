@@ -110,4 +110,9 @@ export const en: UiStrings = {
   'auth.apple': 'Continue with Apple',
 
   'study.noSession': 'No review items due today, come back tomorrow',
+
+  'study.redo': 'Redo today',
+  'study.redoWarning': "Redoing will clear today's answer records",
+  'study.redoConfirm': 'Clear and redo',
+  'study.redoCancel': 'Cancel',
 };

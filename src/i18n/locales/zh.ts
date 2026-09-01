@@ -108,4 +108,6 @@ export const zh: UiStrings = {
 
   'auth.google': '继续使用 Google',
   'auth.apple': '继续使用 Apple',
+
+  'study.noSession': '今天没有可练习的内容，明天再来吧',
 };

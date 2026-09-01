@@ -133,6 +133,7 @@ export interface UiStrings {
   'sidebar.toggleTheme': DictValue;
   'auth.google': DictValue;
   'auth.apple': DictValue;
+  'study.noSession': DictValue;
 }
 
 export type TKey = keyof UiStrings;

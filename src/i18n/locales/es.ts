@@ -108,4 +108,6 @@ export const es: UiStrings = {
 
   'auth.google': 'Continuar con Google',
   'auth.apple': 'Continuar con Apple',
+
+  'study.noSession': 'No hay repaso pendiente hoy, vuelve mañana',
 };

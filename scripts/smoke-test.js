@@ -84,6 +84,32 @@ function clickI18n(page, zh, en) {
   assertI18n(text, '第 1/5 题', 'Question 1/5', '会话开始，显示题号进度');
   assert(text.includes('？') || text.includes('?'), '题目渲染');
 
+  // 5b. 答完 5 题 → 小结 → 完成 → 重做（清除当天记录）
+  for (let i = 0; i < 5; i++) {
+    await page.getByText(/^A\./).first().click();
+    await page.waitForTimeout(800);
+    if (i < 4) {
+      await clickI18n(page, '下一题', 'Next');
+    } else {
+      await clickI18n(page, '查看小结', 'See summary');
+    }
+    await page.waitForTimeout(800);
+  }
+  text = await page.locator('body').innerText();
+  assertI18n(text, '答对', 'correct', '小结卡渲染');
+  await page.getByText(/^(Finish|完成|Finalizar)$/).first().click();
+  await page.waitForTimeout(1200);
+  text = await page.locator('body').innerText();
+  assertI18n(text, '重新做一遍', 'Redo today', '完成后出现重做入口');
+  await clickI18n(page, '重新做一遍', 'Redo today');
+  await page.waitForTimeout(800);
+  text = await page.locator('body').innerText();
+  assertI18n(text, '确认清除并重做', 'Clear and redo', '重做前有清除确认');
+  await clickI18n(page, '确认清除并重做', 'Clear and redo');
+  await page.waitForTimeout(2000);
+  text = await page.locator('body').innerText();
+  assertI18n(text, '还差 5 题', '5 questions to go', '清除后回到今日初始状态');
+
   // 6. 我的页
   await clickI18n(page, '我的', 'Me');
   await page.waitForTimeout(2500);

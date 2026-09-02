@@ -85,7 +85,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.avatarWrap}>
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarText}>{nickname.slice(0, 1).toUpperCase()}</Text>
           </View>
           <Text style={[styles.nickname, { color: colors.text }]}>{nickname}</Text>
@@ -262,9 +262,9 @@ export default function ProfileScreen() {
           onPress={onSignOut}
           disabled={signingOut}>
           {signingOut ? (
-            <ActivityIndicator color="#ff4d4f" />
+            <ActivityIndicator color={colors.error} />
           ) : (
-            <Text style={styles.signOutText}>{t('profile.signOut')}</Text>
+            <Text style={[styles.signOutText, { color: colors.errorText }]}>{t('profile.signOut')}</Text>
           )}
         </Pressable>
 
@@ -291,7 +291,6 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#1677ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -343,7 +342,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  signOutText: { color: '#ff4d4f', fontSize: 15, fontWeight: '700' },
+  signOutText: { fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.8 },
   footer: { textAlign: 'center', fontSize: 12, marginTop: Spacing.two },
 });

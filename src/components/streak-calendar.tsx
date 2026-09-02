@@ -26,7 +26,7 @@ export function StreakCalendar({ checkedSet, completedSet, weeks = 12 }: Props) 
       <View style={styles.weekdayLabels}>
         {t('calendar.weekdays').split(',').map((d) => (
           <View key={d} style={{ height: CELL, justifyContent: 'center' }}>
-            <Text style={styles.labelText}>{d}</Text>
+            <Text style={[styles.labelText, { color: colors.textTertiary }]}>{d}</Text>
           </View>
         ))}
       </View>
@@ -42,7 +42,7 @@ export function StreakCalendar({ checkedSet, completedSet, weeks = 12 }: Props) 
                   backgroundColor: c.completed
                     ? colors.success
                     : c.checked
-                      ? '#B7EB8F'
+                      ? colors.successLight
                       : colors.fillTertiary,
                   borderColor: isToday ? colors.warning : 'transparent',
                 },
@@ -58,7 +58,7 @@ export function StreakCalendar({ checkedSet, completedSet, weeks = 12 }: Props) 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', gap: 6, alignItems: 'flex-start' },
   weekdayLabels: { gap: GAP, paddingTop: 1 },
-  labelText: { fontSize: 9, color: '#8c8c8c' },
+  labelText: { fontSize: 9 },
   grid: {
     flexDirection: 'column',
     flexWrap: 'wrap',

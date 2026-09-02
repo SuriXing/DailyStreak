@@ -27,6 +27,8 @@ jobs:
         run: npx tsc --noEmit
       - name: Lint
         run: npx expo lint
+      - name: UXE 设计契约检查（antd token 一致性）
+        run: python3 .uxe/scripts/check.py --project-root .
       - name: Web export
         run: npx expo export -p web
 

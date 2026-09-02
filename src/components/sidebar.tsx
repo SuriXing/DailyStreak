@@ -18,10 +18,11 @@ const NAV = [
 ] as const;
 
 const COLLAPSE_KEY = 'dailystreak.sidebar.collapsed';
-const SIDEBAR_WIDE = 220;
+const SIDEBAR_WIDE = 224;
 const SIDEBAR_NARROW = 64;
 
-/** 桌面端左侧导航（宽度 ≥900px 时替代底部 Tab），可折叠为图标栏 */
+/** 桌面端左侧导航（宽度 ≥900px 时替代底部 Tab），可折叠为图标栏。
+ *  采用 antd Layout.Sider 的结构：品牌头 + 顶部菜单 + 底部用户卡片。 */
 export function Sidebar() {
   const colors = useTheme();
   const router = useRouter();
@@ -70,14 +71,19 @@ export function Sidebar() {
           borderRightColor: colors.borderSecondary,
         },
       ]}>
-      <View style={[styles.topRow, collapsed && styles.topRowCollapsed]}>
+      {/* 品牌头 */}
+      <View style={[styles.header, collapsed && styles.headerCollapsed]}>
         <View style={[styles.brandMark, { backgroundColor: colors.primary }]}>
-          <Ionicons name="flash" size={18} color="#fff" />
+          <Ionicons name="flash" size={18} color={colors.primaryText} />
         </View>
         {!collapsed && (
           <View style={styles.brandText}>
-            <Text style={[styles.brandName, { color: colors.text }]}>DailyStreak</Text>
-            <Text style={[styles.brandSub, { color: colors.textSecondary }]}>{t('sidebar.tagline')}</Text>
+            <Text style={[styles.brandName, { color: colors.text }]} numberOfLines={1}>
+              DailyStreak
+            </Text>
+            <Text style={[styles.brandSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {t('sidebar.tagline')}
+            </Text>
           </View>
         )}
         <Pressable
@@ -92,7 +98,8 @@ export function Sidebar() {
         </Pressable>
       </View>
 
-      <View style={styles.nav}>
+      {/* 顶部菜单 */}
+      <View style={[styles.nav, collapsed && styles.navCollapsed]}>
         {NAV.map((item) => {
           const active = pathname === item.path;
           return (
@@ -100,10 +107,8 @@ export function Sidebar() {
               key={item.path}
               style={({ pressed }) => [
                 styles.navItem,
-                {
-                  backgroundColor: active ? colors.backgroundSelected : 'transparent',
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                },
+                { backgroundColor: active ? colors.backgroundSelected : 'transparent' },
+                collapsed && styles.navItemCollapsed,
                 pressed && styles.pressed,
               ]}
               onPress={() => router.push(item.path)}
@@ -116,10 +121,8 @@ export function Sidebar() {
               />
               {!collapsed && (
                 <Text
-                  style={[
-                    styles.navLabel,
-                    { color: active ? colors.primary : colors.textSecondary },
-                  ]}>
+                  numberOfLines={1}
+                  style={[styles.navLabel, { color: active ? colors.primary : colors.textSecondary }]}>
                   {t(item.labelKey)}
                 </Text>
               )}
@@ -128,21 +131,33 @@ export function Sidebar() {
         })}
       </View>
 
+      {/* 弹性空白，把底部用户卡片推到最下 */}
+      <View style={styles.spacer} />
+
+      {/* 底部用户卡片 */}
       <View style={[styles.footer, collapsed && styles.footerCollapsed]}>
         <View style={[styles.userRow, collapsed && styles.userRowCollapsed]}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>{nickname.slice(0, 1).toUpperCase()}</Text>
+            <Text style={[styles.avatarText, { color: colors.primaryText }]}>
+              {nickname.slice(0, 1).toUpperCase()}
+            </Text>
           </View>
           {!collapsed && (
-            <Text style={[styles.nickname, { color: colors.text }]} numberOfLines={1}>
-              {nickname}
-            </Text>
+            <View style={styles.userMeta}>
+              <Text style={[styles.nickname, { color: colors.text }]} numberOfLines={1}>
+                {nickname}
+              </Text>
+              <Text style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
+                {user?.email}
+              </Text>
+            </View>
           )}
         </View>
+
         <Pressable
           style={({ pressed }) => [
-            styles.signOut,
-            collapsed && styles.signOutCollapsed,
+            styles.action,
+            collapsed && styles.actionCollapsed,
             pressed && styles.pressed,
           ]}
           onPress={() => setPreference(resolved === 'dark' ? 'light' : 'dark')}
@@ -153,22 +168,23 @@ export function Sidebar() {
             color={colors.textSecondary}
           />
           {!collapsed && (
-            <Text style={[styles.signOutText, { color: colors.textSecondary }]}>
+            <Text style={[styles.actionText, { color: colors.textSecondary }]}>
               {resolved === 'dark' ? t('profile.themeLight') : t('profile.themeDark')}
             </Text>
           )}
         </Pressable>
+
         <Pressable
           style={({ pressed }) => [
-            styles.signOut,
-            collapsed && styles.signOutCollapsed,
+            styles.action,
+            collapsed && styles.actionCollapsed,
             pressed && styles.pressed,
           ]}
           onPress={onSignOut}
           accessibilityLabel={t('profile.signOut')}>
           <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
           {!collapsed && (
-            <Text style={[styles.signOutText, { color: colors.textSecondary }]}>{t('profile.signOut')}</Text>
+            <Text style={[styles.actionText, { color: colors.textSecondary }]}>{t('profile.signOut')}</Text>
           )}
         </Pressable>
       </View>
@@ -180,28 +196,25 @@ const styles = StyleSheet.create({
   container: {
     borderRightWidth: 1,
     paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.four,
+    paddingHorizontal: Spacing.two,
+    gap: Spacing.one,
   },
   containerCollapsed: { paddingHorizontal: Spacing.one },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.two },
-  topRowCollapsed: { flexDirection: 'column', gap: Spacing.one, paddingHorizontal: 0, alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.two },
+  headerCollapsed: { flexDirection: 'column', gap: Spacing.one, paddingHorizontal: 0, alignItems: 'center' },
   brandMark: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandText: { flex: 1 },
-  brandName: { fontSize: 17, fontWeight: '800' },
-  brandSub: { fontSize: 11 },
-  collapseBtn: {
-    padding: 2,
-    borderRadius: Radius.sm,
-    alignSelf: 'flex-start',
-  },
-  nav: { flex: 1, gap: Spacing.one },
+  brandName: { fontSize: 16, fontWeight: '800' },
+  brandSub: { fontSize: 11, marginTop: 1 },
+  collapseBtn: { padding: 4, borderRadius: Radius.sm },
+  nav: { marginTop: Spacing.three, gap: Spacing.one },
+  navCollapsed: { alignItems: 'center' },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,22 +223,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderRadius: Radius.md,
   },
-  navLabel: { fontSize: 15, fontWeight: '600' },
-  footer: { gap: Spacing.two, paddingHorizontal: Spacing.two },
-  footerCollapsed: { paddingHorizontal: 0 },
-  userRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  userRowCollapsed: { justifyContent: 'center' },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+  navItemCollapsed: { justifyContent: 'center', paddingHorizontal: 0 },
+  navLabel: { fontSize: 14, fontWeight: '600' },
+  spacer: { flex: 1 },
+  footer: {
+    marginTop: Spacing.three,
+    borderTopWidth: 1,
+    paddingTop: Spacing.three,
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.two,
   },
-  avatarText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  nickname: { fontSize: 13, fontWeight: '600', flex: 1 },
-  signOut: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.one },
-  signOutCollapsed: { justifyContent: 'center' },
-  signOutText: { fontSize: 13 },
+  footerCollapsed: { paddingHorizontal: 0, alignItems: 'center' },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingBottom: Spacing.two },
+  userRowCollapsed: { justifyContent: 'center', paddingBottom: Spacing.one },
+  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 14, fontWeight: '800' },
+  userMeta: { flex: 1 },
+  nickname: { fontSize: 14, fontWeight: '700' },
+  userEmail: { fontSize: 11, marginTop: 1 },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.md,
+  },
+  actionCollapsed: { justifyContent: 'center' },
+  actionText: { fontSize: 13 },
   pressed: { opacity: 0.7 },
 });

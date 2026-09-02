@@ -160,16 +160,17 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 ## Quality Gates
 
 ```bash
-npm run precheck           # 本地一键门禁: i18n completeness + ruff + type check + lint
+npm run precheck           # 本地一键门禁: i18n completeness + ruff + type check + lint + UXE 设计契约
 npm run typecheck          # tsc --noEmit
 npm run lint               # Expo ESLint
 npm run lint:py            # ruff 检查 .uxe/scripts（配置在 pyproject.toml）
 npm run i18n:check         # i18n completeness audit
+npm run uxe:check          # UXE 设计契约检查（antd token 一致性 / 对比度 / 明暗对称）
 ```
 
 `npm install` 自动把 git 钩子装到 `.git/hooks`（`scripts/install-hooks.js`，幂等）：
 
-- **pre-commit** — 运行 `npm run precheck`（快门禁：i18n / ruff / 类型 / lint）。
+- **pre-commit** — 运行 `npm run precheck`（快门禁：i18n / ruff / 类型 / lint / UXE 设计契约）。
 - **pre-push** — 运行完整 `precheck` + `expo export -p web` 构建门禁，与 CI check job 对齐。
 
 单次跳过用 `--no-verify`（`git commit --no-verify` / `git push --no-verify`）。ruff 只需装一次：`python3 -m pip install --user ruff`。

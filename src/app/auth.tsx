@@ -18,7 +18,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { signInWithAppleIdentityToken, signInWithGoogle } from '@/lib/social-auth';
 import { errorMessage } from '@/lib/errors';
 import { useI18n } from '@/i18n';
-import { ControlHeight, Radius, Spacing } from '@/constants/theme';
+import { Brand, ControlHeight, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemePreference } from '@/contexts/theme-preference';
 
@@ -172,12 +172,12 @@ export default function AuthScreen() {
             />
 
             {error && (
-              <Text accessibilityLiveRegion="polite" style={styles.error}>
+              <Text accessibilityLiveRegion="polite" style={[styles.error, { color: colors.error }]}>
                 {error}
               </Text>
             )}
             {notice && (
-              <Text accessibilityLiveRegion="polite" style={styles.notice}>
+              <Text accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.success }]}>
                 {notice}
               </Text>
             )}
@@ -219,7 +219,7 @@ export default function AuthScreen() {
               ]}
               onPress={onGoogle}
               disabled={busy}>
-              <Ionicons name="logo-google" size={18} color="#EA4335" />
+              <Ionicons name="logo-google" size={18} color={Brand.google} />
               <Text style={styles.googleButtonText}>{t('auth.google')}</Text>
             </Pressable>
 
@@ -236,12 +236,12 @@ export default function AuthScreen() {
                 <Ionicons
                   name="logo-apple"
                   size={18}
-                  color={resolved === 'dark' ? '#000000' : '#ffffff'}
+                  color={resolved === 'dark' ? Brand.appleBlack : Brand.appleWhite}
                 />
                 <Text
                   style={[
                     styles.socialButtonText,
-                    { color: resolved === 'dark' ? '#000000' : '#ffffff' },
+                    { color: resolved === 'dark' ? Brand.appleBlack : Brand.appleWhite },
                   ]}>
                   {t('auth.apple')}
                 </Text>
@@ -282,7 +282,6 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#d9d9d9',
     paddingHorizontal: Spacing.three,
     minHeight: ControlHeight.lg,
     fontSize: 16,
@@ -308,13 +307,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
   },
-  googleButton: { backgroundColor: '#ffffff', borderColor: '#dadce0' },
-  googleButtonText: { color: '#3c4043', fontSize: 15, fontWeight: '600' },
-  appleButtonLight: { backgroundColor: '#000000', borderColor: '#000000' },
-  appleButtonDark: { backgroundColor: '#ffffff', borderColor: '#ffffff' },
+  googleButton: { backgroundColor: Brand.googleBg, borderColor: Brand.googleBorder },
+  googleButtonText: { color: Brand.googleText, fontSize: 15, fontWeight: '600' },
+  appleButtonLight: { backgroundColor: Brand.appleBlack, borderColor: Brand.appleBlack },
+  appleButtonDark: { backgroundColor: Brand.appleWhite, borderColor: Brand.appleWhite },
   socialButtonText: { fontSize: 15, fontWeight: '600' },
-  error: { color: '#ff4d4f', fontSize: 13 },
-  notice: { color: '#52c41a', fontSize: 13 },
+  error: { fontSize: 13 },
+  notice: { fontSize: 13 },
   pressed: { opacity: 0.8 },
   disabled: { opacity: 0.5 },
   card: { padding: Spacing.four, gap: Spacing.three },

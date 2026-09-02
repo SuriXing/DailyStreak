@@ -15,7 +15,7 @@ export const en: UiStrings = {
   'tabs.study': 'Study',
   'tabs.profile': 'Me',
 
-  'sidebar.tagline': 'Daily study check-ins',
+  'sidebar.tagline': 'Daily study habit',
   'sidebar.expand': 'Expand sidebar',
   'sidebar.collapse': 'Collapse sidebar',
 

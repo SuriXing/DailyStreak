@@ -147,7 +147,7 @@ function clickI18n(page, zh, en) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(2000);
   text = await page.locator('body').innerText();
-  assertI18n(text, '每日学习打卡', 'Daily study check-ins', '桌面端显示侧边栏品牌');
+  assertI18n(text, '每日学习打卡', 'Daily study habit', '桌面端显示侧边栏品牌');
   assertI18n(text, '退出登录', 'Sign out', '桌面端侧边栏有退出入口');
   const tabBarVisible = await page.getByText(/打卡|Check in/).first().isVisible();
   // 桌面端应隐藏底部 Tab 栏（侧边栏的"打卡"在左边，底部栏的"打卡"不应可见）

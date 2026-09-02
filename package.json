@@ -51,7 +51,7 @@
     "lint:py": "python3 -m ruff check .uxe/scripts",
     "typecheck": "tsc --noEmit",
     "i18n:check": "node scripts/check-i18n.mjs",
-    "precheck": "npm run i18n:check && npm run lint:py && npm run typecheck && expo lint",
+    "precheck": "npm run i18n:check && npm run lint:py && npm run typecheck && expo lint && npm run uxe:check",
     "uxe:check": "python3 .uxe/scripts/check.py --project-root .",
     "uxe:component": "python3 .uxe/scripts/component.py --project-root .",
     "uxe:taste": "python3 .uxe/scripts/taste.py --project-root .",

@@ -188,12 +188,12 @@ export default function CheckinScreen() {
               <Text style={[styles.streakNumber, { color: colors.text }]}>{streak}</Text>
               <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{t('home.streakDays')}</Text>
               {justChecked && (
-                <Text accessibilityLiveRegion="polite" style={styles.celebrate}>
+                <Text accessibilityLiveRegion="polite" style={[styles.celebrate, { color: colors.successText }]}>
                   {t('home.celebrate')}
                 </Text>
               )}
               {milestoneHit !== null && (
-                <Text accessibilityLiveRegion="polite" style={styles.milestone}>
+                <Text accessibilityLiveRegion="polite" style={[styles.milestone, { color: colors.warning }]}>
                   {t('home.milestone', { days: milestoneHit })}
                 </Text>
               )}
@@ -202,7 +202,7 @@ export default function CheckinScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.checkinButton,
-                todayChecked && styles.checkinButtonDone,
+                { backgroundColor: todayChecked ? colors.success : colors.primary },
                 pressed && styles.pressed,
                 busy && styles.disabled,
               ]}
@@ -246,7 +246,7 @@ export default function CheckinScreen() {
 
             {error && (
               <View style={styles.errorWrap}>
-                <Text accessibilityLiveRegion="polite" style={styles.error}>
+                <Text accessibilityLiveRegion="polite" style={[styles.error, { color: colors.errorText }]}>
                   {error}
                 </Text>
                 {!loading && (
@@ -297,7 +297,7 @@ export default function CheckinScreen() {
                   <StreakCalendar checkedSet={checkedSet} completedSet={completedSet} />
                 </View>
                 <View style={styles.legendRow}>
-                  <View style={[styles.legendDot, { backgroundColor: '#B7EB8F' }]} />
+                  <View style={[styles.legendDot, { backgroundColor: colors.successLight }]} />
                   <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('home.legendChecked')}</Text>
                   <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
                   <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('home.legendCompleted')}</Text>
@@ -345,27 +345,25 @@ const styles = StyleSheet.create({
   flame: { fontSize: 64 },
   streakNumber: { fontSize: 56, fontWeight: '900' },
   streakLabel: { fontSize: 15 },
-  celebrate: { color: '#52c41a', fontSize: 15, fontWeight: '700', marginTop: Spacing.one },
-  milestone: { color: '#faad14', fontSize: 16, fontWeight: '800', marginTop: Spacing.one },
+  celebrate: { fontSize: 15, fontWeight: '700', marginTop: Spacing.one },
+  milestone: { fontSize: 16, fontWeight: '800', marginTop: Spacing.one },
   goStudy: { fontSize: 14, fontWeight: '700' },
   lessonTitle: { fontSize: 15, fontWeight: '700' },
   lessonBody: { fontSize: 13, lineHeight: 19 },
   checkinButton: {
-    backgroundColor: '#1677ff',
     borderRadius: Radius.lg,
-    minHeight: 48,
+    minHeight: 44,
     paddingHorizontal: Spacing.six,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
   },
-  checkinButtonDone: { backgroundColor: '#52c41a' },
-  checkinButtonText: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  checkinButtonText: { color: '#fff', fontSize: 18, fontWeight: '800' },
   undoText: { fontSize: 13, marginTop: Spacing.one },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.6 },
   errorWrap: { alignItems: 'center', gap: Spacing.two },
-  error: { color: '#ff4d4f', fontSize: 13 },
+  error: { fontSize: 13 },
   retryText: { fontSize: 14, fontWeight: '700' },
   card: {
     alignSelf: 'stretch',

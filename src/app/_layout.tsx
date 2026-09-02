@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { I18nProvider } from '@/i18n';
 import { ThemePreferenceProvider, useThemePreference } from '@/contexts/theme-preference';
+import { Colors } from '@/constants/theme';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -26,7 +27,7 @@ export default function RootLayout() {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#1677ff" />
+        <ActivityIndicator size="large" color={Colors.light.primary} />
       </View>
     );
   }

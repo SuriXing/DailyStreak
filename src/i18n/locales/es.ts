@@ -15,7 +15,7 @@ export const es: UiStrings = {
   'tabs.study': 'Estudiar',
   'tabs.profile': 'Perfil',
 
-  'sidebar.tagline': 'Registro diario de estudio',
+  'sidebar.tagline': 'Hábito diario',
   'sidebar.expand': 'Expandir barra lateral',
   'sidebar.collapse': 'Contraer barra lateral',
 

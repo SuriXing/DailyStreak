@@ -28,6 +28,10 @@ export const Colors = {
     successBg: '#f6ffed',
     errorBg: '#fff2f0',
     warningBg: '#fffbe6',
+    // antd 语义文本色（在彩色浅底上保证对比度）
+    successText: '#237804', // colorSuccessText (green-7)
+    errorText: '#a8071a', // colorErrorText (red-7)
+    successLight: '#B7EB8F', // 打卡日历「已打卡」的浅绿填充 (green-3)
     // antd 边框/填充
     border: '#d9d9d9',
     borderSecondary: '#f0f0f0',
@@ -50,6 +54,9 @@ export const Colors = {
     successBg: '#162312',
     errorBg: '#2c1616',
     warningBg: '#2b2111',
+    successText: '#b7eb8f', // colorSuccessText (green-2，暗色下提亮)
+    errorText: '#ffa39e', // colorErrorText (red-2，暗色下提亮)
+    successLight: '#274a17', // 暗色下「已打卡」浅绿填充
     border: '#424242',
     borderSecondary: '#303030',
     fillSecondary: 'rgba(255,255,255,0.12)',
@@ -143,3 +150,13 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+/** 第三方品牌色（非 antd 语义 token）：Google / Apple 社交登录按钮的固定品牌色。 */
+export const Brand = {
+  google: '#EA4335',
+  googleBg: '#ffffff',
+  googleBorder: '#dadce0',
+  googleText: '#3c4043',
+  appleBlack: '#000000',
+  appleWhite: '#ffffff',
+} as const;

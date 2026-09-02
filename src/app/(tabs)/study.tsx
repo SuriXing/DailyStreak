@@ -20,7 +20,6 @@ import {
 import { withTimeout } from '@/lib/timeout';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useThemePreference } from '@/contexts/theme-preference';
 
 type Phase = 'ready' | 'quiz' | 'done';
 
@@ -270,12 +269,20 @@ function ReadyView(props: {
                   </Text>
                   <View style={styles.redoRow}>
                     <Pressable
-                      style={({ pressed }) => [styles.redoConfirm, pressed && styles.pressed]}
+                      style={({ pressed }) => [
+                        styles.redoConfirm,
+                        { backgroundColor: colors.error },
+                        pressed && styles.pressed,
+                      ]}
                       onPress={props.onRedoConfirm}>
                       <Text style={styles.redoConfirmText}>{t('study.redoConfirm')}</Text>
                     </Pressable>
                     <Pressable
-                      style={({ pressed }) => [styles.redoCancel, pressed && styles.pressed]}
+                      style={({ pressed }) => [
+                        styles.redoCancel,
+                        { borderColor: colors.border },
+                        pressed && styles.pressed,
+                      ]}
                       onPress={props.onRedoCancel}>
                       <Text style={[styles.redoCancelText, { color: colors.textSecondary }]}>
                         {t('study.redoCancel')}
@@ -320,7 +327,6 @@ function QuizView(props: {
   const colors = useTheme();
   const { t } = useI18n();
   const { item, answered, selected } = props;
-  const { resolved } = useThemePreference();
 
   // 桌面端：左侧知识点栏 + 右侧答题栏
   const knowledgePane = (
@@ -367,8 +373,10 @@ function QuizView(props: {
               <Text style={[styles.optionText, { color: colors.text }]}>
                 {String.fromCharCode(65 + i)}. {opt}
               </Text>
-              {answered && isAnswer && <Text style={styles.mark}>✓</Text>}
-              {answered && isSelected && !isAnswer && <Text style={[styles.mark, styles.markWrong]}>✗</Text>}
+              {answered && isAnswer && <Text style={[styles.mark, { color: colors.success }]}>✓</Text>}
+              {answered && isSelected && !isAnswer && (
+                <Text style={[styles.mark, styles.markWrong, { color: colors.error }]}>✗</Text>
+              )}
             </Pressable>
           );
         })}
@@ -385,13 +393,7 @@ function QuizView(props: {
               styles.explanationTitle,
               {
                 color:
-                  selected === item.answerIndex
-                    ? resolved === 'dark'
-                      ? '#b7eb8f'
-                      : '#237804'
-                    : resolved === 'dark'
-                      ? '#ffa39e'
-                      : '#a8071a',
+                  selected === item.answerIndex ? colors.successText : colors.errorText,
               },
             ]}>
             {selected === item.answerIndex ? t('quiz.correct') : t('quiz.answerIs', { letter: String.fromCharCode(65 + item.answerIndex) })}
@@ -503,6 +505,8 @@ function DoneView(props: {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: Spacing.four,
     gap: Spacing.three,
     width: '100%',
@@ -528,7 +532,6 @@ const styles = StyleSheet.create({
   redoWarning: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
   redoRow: { flexDirection: 'row', gap: Spacing.three },
   redoConfirm: {
-    backgroundColor: '#ff4d4f',
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -536,7 +539,6 @@ const styles = StyleSheet.create({
   redoConfirmText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   redoCancel: {
     borderWidth: 1,
-    borderColor: '#d9d9d9',
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -578,8 +580,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   optionText: { fontSize: 15, flex: 1 },
-  mark: { fontSize: 18, color: '#52c41a', fontWeight: '900' },
-  markWrong: { color: '#ff4d4f' },
+  mark: { fontSize: 18, fontWeight: '900' },
+  markWrong: {},
   pressed: { opacity: 0.8 },
   explanation: { borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.two },
   explanationTitle: { fontSize: 15, fontWeight: '800' },

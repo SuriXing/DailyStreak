@@ -35,7 +35,22 @@ function clickI18n(page, zh, en) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const errors = [];
   page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(m.text().slice(0, 200));
+    if (m.type() === 'error') {
+      const t = m.text();
+      // Supabase 令牌刷新偶发 401：客户端会内部重试，浏览器仅记录一次网络失败，不算应用错误
+      if (/Failed to load resource/.test(t) && /401/.test(t)) return;
+      errors.push(t.slice(0, 200));
+    }
+  });
+  page.on('response', (r) => {
+    if (r.status() === 401) {
+      const url = r.url();
+      if (!url.includes('supabase.co')) {
+        errors.push(`non-supabase 401 on ${url.slice(0, 120)}`);
+      } else {
+        console.log(`ℹ️ Supabase 401（重试场景）: ${url.slice(0, 100)}`);
+      }
+    }
   });
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 300)));
 

@@ -138,6 +138,20 @@ export interface UiStrings {
   'study.redoWarning': DictValue;
   'study.redoConfirm': DictValue;
   'study.redoCancel': DictValue;
+
+  'tabs.flashcards': DictValue;
+  'flashcards.title': DictValue;
+  'flashcards.allDecks': DictValue;
+  'flashcards.all': DictValue;
+  'flashcards.core': DictValue;
+  'flashcards.advance': DictValue;
+  'flashcards.boundary': DictValue;
+  'flashcards.flip': DictValue;
+  'flashcards.prev': DictValue;
+  'flashcards.next': DictValue;
+  'flashcards.progress': DictValue;
+  'flashcards.empty': DictValue;
+  'flashcards.tapHint': DictValue;
 }
 
 export type TKey = keyof UiStrings;

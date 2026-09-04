@@ -13,6 +13,7 @@ export const zh: UiStrings = {
 
   'tabs.checkin': '打卡',
   'tabs.study': '学习',
+  'tabs.flashcards': '闪卡',
   'tabs.profile': '我的',
 
   'sidebar.tagline': '每日学习打卡',
@@ -115,4 +116,17 @@ export const zh: UiStrings = {
   'study.redoWarning': '重新做会清除今天的答题记录',
   'study.redoConfirm': '确认清除并重做',
   'study.redoCancel': '取消',
+
+  'flashcards.title': 'AMC 10 闪卡',
+  'flashcards.allDecks': '全部卡组',
+  'flashcards.all': '全部',
+  'flashcards.core': '核心',
+  'flashcards.advance': '提高',
+  'flashcards.boundary': '边界',
+  'flashcards.flip': '翻面',
+  'flashcards.prev': '上一张',
+  'flashcards.next': '下一张',
+  'flashcards.progress': '{current} / {total}',
+  'flashcards.empty': '没有符合条件的卡片',
+  'flashcards.tapHint': '点击卡片查看答案',
 };

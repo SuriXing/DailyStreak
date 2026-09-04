@@ -13,6 +13,7 @@ export const en: UiStrings = {
 
   'tabs.checkin': 'Check in',
   'tabs.study': 'Study',
+  'tabs.flashcards': 'Flashcards',
   'tabs.profile': 'Me',
 
   'sidebar.tagline': 'Daily study habit',
@@ -115,4 +116,17 @@ export const en: UiStrings = {
   'study.redoWarning': "Redoing will clear today's answer records",
   'study.redoConfirm': 'Clear and redo',
   'study.redoCancel': 'Cancel',
+
+  'flashcards.title': 'AMC 10 Flashcards',
+  'flashcards.allDecks': 'All decks',
+  'flashcards.all': 'All',
+  'flashcards.core': 'Core',
+  'flashcards.advance': 'Advanced',
+  'flashcards.boundary': 'Boundary',
+  'flashcards.flip': 'Flip',
+  'flashcards.prev': 'Prev',
+  'flashcards.next': 'Next',
+  'flashcards.progress': '{current} / {total}',
+  'flashcards.empty': 'No cards match this filter',
+  'flashcards.tapHint': 'Tap the card to reveal the answer',
 };

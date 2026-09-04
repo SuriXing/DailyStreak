@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 const NAV = [
   { path: '/', labelKey: 'tabs.checkin' as TKey, icon: 'flame' as const },
   { path: '/study', labelKey: 'tabs.study' as TKey, icon: 'book' as const },
+  { path: '/flashcards', labelKey: 'tabs.flashcards' as TKey, icon: 'albums' as const },
   { path: '/profile', labelKey: 'tabs.profile' as TKey, icon: 'person' as const },
 ] as const;
 

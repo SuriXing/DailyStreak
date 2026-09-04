@@ -13,6 +13,7 @@ export const es: UiStrings = {
 
   'tabs.checkin': 'Registro',
   'tabs.study': 'Estudiar',
+  'tabs.flashcards': 'Tarjetas',
   'tabs.profile': 'Perfil',
 
   'sidebar.tagline': 'Hábito diario',
@@ -115,4 +116,17 @@ export const es: UiStrings = {
   'study.redoWarning': 'Repetir borrará los registros de hoy',
   'study.redoConfirm': 'Borrar y repetir',
   'study.redoCancel': 'Cancelar',
+
+  'flashcards.title': 'Tarjetas AMC 10',
+  'flashcards.allDecks': 'Todos los mazos',
+  'flashcards.all': 'Todas',
+  'flashcards.core': 'Clave',
+  'flashcards.advance': 'Avanzado',
+  'flashcards.boundary': 'Límite',
+  'flashcards.flip': 'Voltear',
+  'flashcards.prev': 'Anterior',
+  'flashcards.next': 'Siguiente',
+  'flashcards.progress': '{current} / {total}',
+  'flashcards.empty': 'No hay tarjetas para este filtro',
+  'flashcards.tapHint': 'Toca la tarjeta para ver la respuesta',
 };

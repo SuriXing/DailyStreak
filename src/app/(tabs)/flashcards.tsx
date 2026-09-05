@@ -7,27 +7,30 @@ import { useI18n } from '@/i18n';
 import { useTheme } from '@/hooks/use-theme';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import {
-  AMC10_DECKS,
-  AMC10_FLASHCARDS,
-  type AMC10Deck,
+  ALL_FLASHCARDS,
+  FLASHCARD_DECKS,
+  type FlashcardDeck,
   type FlashcardLevel,
-} from '@/data/amc10-flashcards';
+} from '@/data/flashcards';
 
-/** AMC 10 闪卡：选卡组 + 层级过滤，点击卡片翻面。 */
+/** 闪卡：选卡组 + （AMC10 才有）难度过滤，点击卡片翻面。 */
 export default function FlashcardsScreen() {
   const colors = useTheme();
   const { t } = useI18n();
-  const [deck, setDeck] = useState<AMC10Deck | null>(null);
+  const [deck, setDeck] = useState<string | null>(null);
   const [level, setLevel] = useState<FlashcardLevel | null>(null);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
+  const selected = FLASHCARD_DECKS.find((d) => d.key === deck) ?? null;
+  const showLevels = selected ? selected.hasLevels : false;
+
   const cards = useMemo(
     () =>
-      AMC10_FLASHCARDS.filter(
-        (c) => (deck == null || c.deck === deck) && (level == null || c.level === level),
+      ALL_FLASHCARDS.filter(
+        (c) => (deck == null || c.deck === deck) && (!showLevels || level == null || c.level === level),
       ),
-    [deck, level],
+    [deck, level, showLevels],
   );
 
   const current = cards[index];
@@ -38,16 +41,11 @@ export default function FlashcardsScreen() {
     setFlipped(false);
   };
 
-  const pickDeck = (d: AMC10Deck | null) => {
+  const pickDeck = (d: string | null) => {
     setDeck(d);
     setIndex(0);
     setFlipped(false);
-  };
-
-  const pickLevel = (l: FlashcardLevel | null) => {
-    setLevel(l);
-    setIndex(0);
-    setFlipped(false);
+    setLevel(null);
   };
 
   const chip = (label: string, active: boolean, onPress: () => void) => (
@@ -55,7 +53,10 @@ export default function FlashcardsScreen() {
       key={label}
       style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: active ? colors.primary : colors.backgroundElement, borderColor: active ? colors.primary : colors.border },
+        {
+          backgroundColor: active ? colors.primary : colors.backgroundElement,
+          borderColor: active ? colors.primary : colors.border,
+        },
         pressed && styles.pressed,
       ]}
       onPress={onPress}
@@ -77,16 +78,20 @@ export default function FlashcardsScreen() {
           <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.allDecks')}</Text>
           <View style={styles.chipRow}>
             {chip(t('flashcards.all'), deck == null, () => pickDeck(null))}
-            {AMC10_DECKS.map((d) => chip(d.label, deck === d.key, () => pickDeck(d.key)))}
+            {FLASHCARD_DECKS.map((d: FlashcardDeck) => chip(d.label, deck === d.key, () => pickDeck(d.key)))}
           </View>
 
-          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.all')}</Text>
-          <View style={styles.chipRow}>
-            {chip(t('flashcards.all'), level == null, () => pickLevel(null))}
-            {chip(t('flashcards.core'), level === 'core', () => pickLevel('core'))}
-            {chip(t('flashcards.advance'), level === 'advance', () => pickLevel('advance'))}
-            {chip(t('flashcards.boundary'), level === 'boundary', () => pickLevel('boundary'))}
-          </View>
+          {showLevels && (
+            <>
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.all')}</Text>
+              <View style={styles.chipRow}>
+                {chip(t('flashcards.all'), level == null, () => setLevel(null))}
+                {chip(t('flashcards.core'), level === 'core', () => setLevel('core'))}
+                {chip(t('flashcards.advance'), level === 'advance', () => setLevel('advance'))}
+                {chip(t('flashcards.boundary'), level === 'boundary', () => setLevel('boundary'))}
+              </View>
+            </>
+          )}
         </View>
 
         {empty ? (
@@ -107,7 +112,9 @@ export default function FlashcardsScreen() {
                 pressed && styles.cardPressed,
               ]}>
               <View style={[styles.badge, { backgroundColor: colors.backgroundSelected }]}>
-                <Text style={[styles.badgeText, { color: colors.primary }]}>{current.category}</Text>
+                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                  {current.category}
+                </Text>
               </View>
               <Text style={[styles.front, { color: colors.text }]}>
                 {flipped ? current.back : current.front}

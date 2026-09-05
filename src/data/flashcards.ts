@@ -1,5 +1,5 @@
 import { AMC10_DECKS, AMC10_FLASHCARDS } from './amc10-flashcards';
-import { SUBJECT_DECKS, SUBJECT_FLASHCARDS } from './subject-decks/csa';
+import { SUBJECT_DECKS, SUBJECT_FLASHCARDS } from './subject-decks';
 
 export type FlashcardLevel = 'core' | 'advance' | 'boundary';
 

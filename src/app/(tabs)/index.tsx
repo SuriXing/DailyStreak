@@ -30,6 +30,7 @@ import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
 import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
 import { ALL_FLASHCARDS, toQuiz } from '@/data/flashcards';
+import { Button, Tag } from '@ant-design/react-native';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -310,9 +311,7 @@ export default function CheckinScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={flipped ? todayCard.back : todayCard.front}
                   style={({ pressed }) => [styles.flipCard, pressed && styles.pressed]}>
-                  <View style={[styles.badge, { backgroundColor: colors.backgroundSelected }]}>
-                    <Text style={[styles.badgeText, { color: colors.primary }]}>{todayCard.category}</Text>
-                  </View>
+                  <Tag>{todayCard.category}</Tag>
                   <Text style={[styles.flipFront, { color: colors.text }]}>
                     {flipped ? todayCard.back : todayCard.front}
                   </Text>
@@ -322,33 +321,19 @@ export default function CheckinScreen() {
                 </Pressable>
               )}
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.todayCta,
-                  todayChecked
-                    ? { backgroundColor: colors.success, borderColor: 'transparent' }
-                    : doneStep
-                      ? { backgroundColor: colors.primary, borderColor: 'transparent' }
-                      : { backgroundColor: 'transparent', borderColor: colors.primary },
-                  pressed && styles.pressed,
-                  busy && styles.disabled,
-                ]}
-                onPress={todayChecked ? undefined : doneStep ? onCheckIn : () => setFlipped(true)}
-                disabled={busy || todayChecked || (todayQuiz ? selected === null : false)}>
-                <Text
-                  style={[
-                    styles.todayCtaText,
-                    { color: todayChecked || doneStep ? colors.primaryText : colors.primary },
-                  ]}>
-                  {todayChecked
-                    ? t('home.checkedIn')
-                    : doneStep
-                      ? t('home.checkIn')
-                      : todayQuiz
-                        ? t('home.flipFirst')
-                        : t('home.flipFirst')}
-                </Text>
-              </Pressable>
+              {todayChecked ? (
+                <Button type="primary" disabled size="large" style={styles.ctaBlock}>
+                  {t('home.checkedIn')}
+                </Button>
+              ) : doneStep ? (
+                <Button type="primary" onPress={onCheckIn} disabled={busy} size="large" style={styles.ctaBlock}>
+                  {t('home.checkIn')}
+                </Button>
+              ) : (
+                <Button type="ghost" onPress={() => setFlipped(true)} size="large" style={styles.ctaBlock}>
+                  {t('home.flipFirst')}
+                </Button>
+              )}
               {todayChecked && (
                 <Pressable onPress={onUndo} disabled={busy}>
                   <Text style={[styles.undoText, { color: colors.textSecondary }]}>{t('home.undoCheckIn')}</Text>
@@ -462,14 +447,7 @@ const styles = StyleSheet.create({
   feedback: { borderRadius: Radius.md, padding: Spacing.two, gap: Spacing.one, marginTop: Spacing.two },
   feedbackTitle: { fontSize: 14, fontWeight: '800' },
   feedbackBody: { fontSize: 13, lineHeight: 19 },
-  todayCta: {
-    borderRadius: Radius.md,
-    minHeight: 46,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-  },
+  ctaBlock: { alignSelf: 'stretch', marginTop: Spacing.two },
   todayCtaText: { fontSize: 16, fontWeight: '800' },
   undoText: { fontSize: 13, marginTop: Spacing.one },
   pressed: { opacity: 0.85 },

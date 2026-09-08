@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -184,41 +183,25 @@ export default function StudyScreen() {
             )}
 
             <View style={styles.controls}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.controlBtn,
-                  { borderColor: colors.border },
-                  index === 0 && styles.controlDisabled,
-                  pressed && styles.pressed,
-                ]}
+              <Button
                 onPress={() => go(index - 1)}
                 disabled={index === 0}
-                accessibilityLabel={t('flashcards.prev')}>
-                <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
-                <Text style={[styles.controlText, { color: colors.textSecondary }, index === 0 && styles.controlTextDisabled]}>
-                  {t('flashcards.prev')}
-                </Text>
-              </Pressable>
+                size="large"
+                style={styles.ctrl}>
+                {t('flashcards.prev')}
+              </Button>
               {!quiz && (
-                <Button type="primary" size="large" onPress={() => setFlipped((f) => !f)}>
+                <Button type="primary" size="large" onPress={() => setFlipped((f) => !f)} style={styles.ctrl}>
                   {t('flashcards.flip')}
                 </Button>
               )}
-              <Pressable
-                style={({ pressed }) => [
-                  styles.controlBtn,
-                  { borderColor: colors.border },
-                  index === cards.length - 1 && styles.controlDisabled,
-                  pressed && styles.pressed,
-                ]}
+              <Button
                 onPress={() => go(index + 1)}
                 disabled={index === cards.length - 1}
-                accessibilityLabel={t('flashcards.next')}>
-                <Text style={[styles.controlText, { color: colors.textSecondary }, index === cards.length - 1 && styles.controlTextDisabled]}>
-                  {t('flashcards.next')}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </Pressable>
+                size="large"
+                style={styles.ctrl}>
+                {t('flashcards.next')}
+              </Button>
             </View>
           </>
         )}
@@ -280,29 +263,7 @@ const styles = StyleSheet.create({
   tap: { fontSize: 12, textAlign: 'center', marginTop: Spacing.two },
   empty: { alignItems: 'center', paddingVertical: Spacing.five },
   emptyText: { fontSize: 15 },
-  controls: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, marginTop: Spacing.two },
-  controlBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.one,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    minHeight: 44,
-    paddingHorizontal: Spacing.two,
-  },
-  controlText: { fontSize: 14, fontWeight: '700' },
-  controlDisabled: { opacity: 0.4 },
-  controlTextDisabled: { opacity: 0.4 },
-  flipBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.md,
-    minHeight: 44,
-    paddingHorizontal: Spacing.three,
-  },
-  flipText: { fontSize: 15, fontWeight: '800' },
+  controls: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.three },
+  ctrl: { flex: 1 },
   pressed: { opacity: 0.8 },
 });

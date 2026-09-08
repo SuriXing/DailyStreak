@@ -11,8 +11,8 @@ export const es: UiStrings = {
   'errors.undoFailed': 'No se pudo deshacer',
   'errors.supabaseNotConfigured': 'Supabase no está configurado',
 
-  'tabs.checkin': 'Registro',
-  'tabs.study': 'Estudiar',
+  'tabs.checkin': 'Hoy',
+  'tabs.study': 'Práctica',
   'tabs.flashcards': 'Tarjetas',
   'tabs.profile': 'Perfil',
 
@@ -104,6 +104,7 @@ export const es: UiStrings = {
   'home.weeklySummary': 'Registro {checked}/{total} días · {answered} preguntas · {rate}% correctas',
   'home.weeklyEmpty': 'Aún sin práctica esta semana',
   'home.milestone': '🎖️ ¡Hito de {days} días de racha!',
+  'home.flipFirst': 'Ver respuesta',
 
   'sidebar.toggleTheme': 'Cambiar tema',
 

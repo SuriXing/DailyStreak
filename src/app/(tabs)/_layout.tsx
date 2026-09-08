@@ -37,13 +37,6 @@ export default function TabsLayout() {
         name="study"
         options={{
           title: t('tabs.study'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="book" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="flashcards"
-        options={{
-          title: t('tabs.flashcards'),
           tabBarIcon: ({ color, size }) => <Ionicons name="albums" size={size} color={color} />,
         }}
       />

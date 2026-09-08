@@ -20,8 +20,7 @@ import {
 import { errorMessage } from '@/lib/errors';
 import { withTimeout } from '@/lib/timeout';
 import { useI18n } from '@/i18n';
-import { useCourse } from '@/hooks/use-course';
-import { COURSES, getTodayItem } from '@/data/courses';
+import { COURSES } from '@/data/courses';
 import { isMilestoneDay } from '@/lib/badges';
 import { weeklyStats } from '@/lib/weekly';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -30,6 +29,7 @@ import { useSessionUser } from '@/hooks/use-session-user';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
 import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
+import { ALL_FLASHCARDS, toQuiz } from '@/data/flashcards';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -37,6 +37,9 @@ import { useTheme } from '@/hooks/use-theme';
 function fetchAllAnswers(userId: string): Promise<AnswerRecord[]> {
   return Promise.all(COURSES.map((c) => fetchAnswers(userId, c.id))).then((lists) => lists.flat());
 }
+
+/** 按天轮换的今日贴卡索引（模块级只算一次，跨天自然切换） */
+const TODAY_CARD_INDEX = Math.floor(Date.now() / 86_400_000) % ALL_FLASHCARDS.length;
 
 export default function CheckinScreen() {
   const user = useSessionUser();
@@ -50,12 +53,17 @@ export default function CheckinScreen() {
   const [error, setError] = useState<string | null>(null);
   const [justChecked, setJustChecked] = useState(false);
   const [milestoneHit, setMilestoneHit] = useState<number | null>(null);
+  /** 今日一课（闪卡）：是否已翻面看到答案 */
+  const [flipped, setFlipped] = useState(false);
+  const [selected, setSelected] = useState<number | null>(null);
   const [goal] = useDailyGoal();
   const isDesktop = useIsDesktop();
   const router = useRouter();
-  const [course] = useCourse();
-  const todayItem = getTodayItem(course);
   const week = weeklyStats(checkedSet, answers);
+  /** 今日的一张贴卡：按天从内容池里轮转一张（模块级计算一次，按日轮换） */
+  const todayCard = ALL_FLASHCARDS[TODAY_CARD_INDEX];
+  const todayQuiz = toQuiz(todayCard);
+  const doneStep = todayQuiz ? selected !== null : flipped;
 
   const todayKey = toDateKey(new Date());
   const todayChecked = checkedSet.has(todayKey);
@@ -199,26 +207,6 @@ export default function CheckinScreen() {
               )}
             </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.checkinButton,
-                { backgroundColor: todayChecked ? colors.success : colors.primary },
-                pressed && styles.pressed,
-                busy && styles.disabled,
-              ]}
-              onPress={onCheckIn}
-              disabled={busy || todayChecked}>
-              <Text style={styles.checkinButtonText}>
-                {todayChecked ? t('home.checkedIn') : t('home.checkIn')}
-              </Text>
-            </Pressable>
-
-            {todayChecked && (
-              <Pressable onPress={onUndo} disabled={busy}>
-                <Text style={[styles.undoText, { color: colors.textSecondary }]}>{t('home.undoCheckIn')}</Text>
-              </Pressable>
-            )}
-
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
               <View style={styles.progressHeader}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.todayPractice')}</Text>
@@ -264,12 +252,108 @@ export default function CheckinScreen() {
                   <Text style={[styles.goStudy, { color: colors.primary }]}>{t('home.goStudy')} →</Text>
                 </Pressable>
               </View>
-              <Text style={[styles.lessonTitle, { color: colors.text }]} numberOfLines={1}>
-                [{course.shortName}] {todayItem.title}
-              </Text>
-              <Text style={[styles.lessonBody, { color: colors.textSecondary }]} numberOfLines={2}>
-                {todayItem.body}
-              </Text>
+              {todayQuiz ? (
+                <View style={styles.todayQuiz}>
+                  <Text style={[styles.quizStem, { color: colors.text }]}>{todayQuiz.question}</Text>
+                  <View style={styles.options}>
+                    {todayQuiz.options.map((opt, i) => {
+                      const isSel = selected === i;
+                      const isAns = i === todayQuiz.answerIndex;
+                      let bg = colors.backgroundElement;
+                      let border = colors.border;
+                      if (selected !== null) {
+                        if (isAns) {
+                          bg = colors.successBg;
+                          border = colors.success;
+                        } else if (isSel) {
+                          bg = colors.errorBg;
+                          border = colors.error;
+                        }
+                      }
+                      return (
+                        <Pressable
+                          key={i}
+                          style={[styles.option, { backgroundColor: bg, borderColor: border }]}
+                          onPress={() => setSelected(i)}
+                          disabled={selected !== null}>
+                          <Text style={[styles.optionText, { color: colors.text }]}>
+                            {String.fromCharCode(65 + i)}. {opt}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  {selected !== null && (
+                    <View
+                      style={[
+                        styles.feedback,
+                        { backgroundColor: selected === todayQuiz.answerIndex ? colors.successBg : colors.errorBg },
+                      ]}>
+                      <Text
+                        style={[
+                          styles.feedbackTitle,
+                          { color: selected === todayQuiz.answerIndex ? colors.successText : colors.errorText },
+                        ]}>
+                        {selected === todayQuiz.answerIndex
+                          ? t('quiz.correct')
+                          : t('quiz.answerIs', { letter: String.fromCharCode(65 + todayQuiz.answerIndex) })}
+                      </Text>
+                      {todayQuiz.explanation ? (
+                        <Text style={[styles.feedbackBody, { color: colors.text }]}>{todayQuiz.explanation}</Text>
+                      ) : null}
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => setFlipped((f) => !f)}
+                  accessibilityRole="button"
+                  accessibilityLabel={flipped ? todayCard.back : todayCard.front}
+                  style={({ pressed }) => [styles.flipCard, pressed && styles.pressed]}>
+                  <View style={[styles.badge, { backgroundColor: colors.backgroundSelected }]}>
+                    <Text style={[styles.badgeText, { color: colors.primary }]}>{todayCard.category}</Text>
+                  </View>
+                  <Text style={[styles.flipFront, { color: colors.text }]}>
+                    {flipped ? todayCard.back : todayCard.front}
+                  </Text>
+                  <Text style={[styles.flipHint, { color: colors.textTertiary }]}>
+                    {flipped ? todayCard.front : t('flashcards.tapHint')}
+                  </Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.todayCta,
+                  todayChecked
+                    ? { backgroundColor: colors.success, borderColor: 'transparent' }
+                    : doneStep
+                      ? { backgroundColor: colors.primary, borderColor: 'transparent' }
+                      : { backgroundColor: 'transparent', borderColor: colors.primary },
+                  pressed && styles.pressed,
+                  busy && styles.disabled,
+                ]}
+                onPress={todayChecked ? undefined : doneStep ? onCheckIn : () => setFlipped(true)}
+                disabled={busy || todayChecked || (todayQuiz ? selected === null : false)}>
+                <Text
+                  style={[
+                    styles.todayCtaText,
+                    { color: todayChecked || doneStep ? colors.primaryText : colors.primary },
+                  ]}>
+                  {todayChecked
+                    ? t('home.checkedIn')
+                    : doneStep
+                      ? t('home.checkIn')
+                      : todayQuiz
+                        ? t('home.flipFirst')
+                        : t('home.flipFirst')}
+                </Text>
+              </Pressable>
+              {todayChecked && (
+                <Pressable onPress={onUndo} disabled={busy}>
+                  <Text style={[styles.undoText, { color: colors.textSecondary }]}>{t('home.undoCheckIn')}</Text>
+                </Pressable>
+              )}
             </View>
 
             <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
@@ -350,15 +434,43 @@ const styles = StyleSheet.create({
   goStudy: { fontSize: 14, fontWeight: '700' },
   lessonTitle: { fontSize: 15, fontWeight: '700' },
   lessonBody: { fontSize: 13, lineHeight: 19 },
-  checkinButton: {
-    borderRadius: Radius.lg,
-    minHeight: 44,
-    paddingHorizontal: Spacing.six,
+  flipCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    paddingVertical: Spacing.four,
+    minHeight: 180,
+  },
+  badge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 3 },
+  badgeText: { fontSize: 12, fontWeight: '700' },
+  flipFront: { fontSize: 19, fontWeight: '700', lineHeight: 27, textAlign: 'center' },
+  flipHint: { fontSize: 12, textAlign: 'center' },
+  flipFirst: { fontSize: 13, marginTop: Spacing.two, textAlign: 'center' },
+  quizQuestion: { fontSize: 15, fontWeight: '700', lineHeight: 21, marginTop: Spacing.one },
+  todayQuiz: { alignSelf: 'stretch', marginTop: Spacing.one },
+  quizStem: { fontSize: 16, fontWeight: '700', lineHeight: 23, textAlign: 'center', marginBottom: Spacing.two },
+  options: { gap: Spacing.one, marginTop: Spacing.one },
+  option: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  optionText: { fontSize: 14, lineHeight: 19 },
+  feedback: { borderRadius: Radius.md, padding: Spacing.two, gap: Spacing.one, marginTop: Spacing.two },
+  feedbackTitle: { fontSize: 14, fontWeight: '800' },
+  feedbackBody: { fontSize: 13, lineHeight: 19 },
+  todayCta: {
+    borderRadius: Radius.md,
+    minHeight: 46,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
   },
-  checkinButtonText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  todayCtaText: { fontSize: 16, fontWeight: '800' },
   undoText: { fontSize: 13, marginTop: Spacing.one },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.6 },

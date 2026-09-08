@@ -130,6 +130,7 @@ export interface UiStrings {
   'home.weeklySummary': DictValue;
   'home.weeklyEmpty': DictValue;
   'home.milestone': DictValue;
+  'home.flipFirst': DictValue;
   'sidebar.toggleTheme': DictValue;
   'auth.google': DictValue;
   'auth.apple': DictValue;

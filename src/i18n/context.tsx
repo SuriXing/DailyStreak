@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { formatDateLong, getDeviceLocale, translate } from './core';
+import { formatDateLong, translate } from './core';
 import { LOCALES, type Locale, type TFn } from './types';
 
 const LOCALE_KEY = 'dailystreak.locale';
@@ -28,7 +28,7 @@ const I18nContext = createContext<I18nContextValue | null>(null);
  * 切换即时生效（Context 驱动重渲染），无需重启应用。
  */
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => getDeviceLocale());
+  const [locale, setLocaleState] = useState<Locale>('zh');
 
   useEffect(() => {
     let active = true;

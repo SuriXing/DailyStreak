@@ -11,8 +11,8 @@ export const zh: UiStrings = {
   'errors.undoFailed': '撤销失败',
   'errors.supabaseNotConfigured': 'Supabase 未配置',
 
-  'tabs.checkin': '打卡',
-  'tabs.study': '学习',
+  'tabs.checkin': '今日',
+  'tabs.study': '自由练',
   'tabs.flashcards': '闪卡',
   'tabs.profile': '我的',
 
@@ -104,6 +104,7 @@ export const zh: UiStrings = {
   'home.weeklySummary': '打卡 {checked}/{total} 天 · 练习 {answered} 题 · 正确率 {rate}%',
   'home.weeklyEmpty': '本周还没有练习记录',
   'home.milestone': '🎖️ 达成 {days} 天连胜里程碑！',
+  'home.flipFirst': '翻看答案',
 
   'sidebar.toggleTheme': '切换主题',
 

@@ -11,8 +11,8 @@ export const en: UiStrings = {
   'errors.undoFailed': 'Failed to undo',
   'errors.supabaseNotConfigured': 'Supabase is not configured',
 
-  'tabs.checkin': 'Check in',
-  'tabs.study': 'Study',
+  'tabs.checkin': 'Today',
+  'tabs.study': 'Practice',
   'tabs.flashcards': 'Flashcards',
   'tabs.profile': 'Me',
 
@@ -104,6 +104,7 @@ export const en: UiStrings = {
   'home.weeklySummary': 'Checked {checked}/{total} days · {answered} questions · {rate}% correct',
   'home.weeklyEmpty': 'No practice this week yet',
   'home.milestone': '🎖️ {days}-day streak milestone!',
+  'home.flipFirst': 'Reveal answer',
 
   'sidebar.toggleTheme': 'Toggle theme',
 

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import { signInWithAppleIdentityToken, signInWithGoogle } from '@/lib/social-aut
 import { errorMessage } from '@/lib/errors';
 import { useI18n } from '@/i18n';
 import { Brand, ControlHeight, Radius, Spacing } from '@/constants/theme';
+import { Button } from '@ant-design/react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemePreference } from '@/contexts/theme-preference';
 
@@ -182,21 +182,9 @@ export default function AuthScreen() {
               </Text>
             )}
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.button,
-                { backgroundColor: colors.primary },
-                pressed && styles.pressed,
-                busy && styles.disabled,
-              ]}
-              onPress={submit}
-              disabled={busy}>
-              {busy ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>{mode === 'login' ? t('auth.login') : t('auth.signup')}</Text>
-              )}
-            </Pressable>
+            <Button type="primary" onPress={submit} disabled={busy} loading={busy} style={styles.button}>
+              {mode === 'login' ? t('auth.login') : t('auth.signup')}
+            </Button>
 
             <Pressable onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}>
               <Text style={[styles.switchText, { color: colors.textSecondary }]}>

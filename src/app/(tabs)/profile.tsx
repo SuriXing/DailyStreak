@@ -12,6 +12,7 @@ import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goa
 import { LOCALES, LOCALE_META, useI18n, type Locale } from '@/i18n';
 import { maxStreak, milestoneStatus } from '@/lib/badges';
 import { useThemePreference, type ThemePreference } from '@/contexts/theme-preference';
+import { Progress, Tag } from '@ant-design/react-native';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -118,17 +119,8 @@ export default function ProfileScreen() {
             const mastery = computeMastery(c, answersByCourse[c.id] ?? []);
             return (
               <View key={c.id} style={styles.masteryRow}>
-                <View style={[styles.masteryBadge, { backgroundColor: c.color }]}>
-                  <Text style={styles.masteryBadgeText}>{c.shortName}</Text>
-                </View>
-                <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { backgroundColor: c.color, width: `${mastery.percent}%` },
-                    ]}
-                  />
-                </View>
+                <Tag>{c.shortName}</Tag>
+                <Progress percent={mastery.percent} barStyle={{ backgroundColor: c.color }} style={styles.masteryBar} />
                 <Text style={[styles.masteryPercent, { color: colors.textSecondary }]}>
                   {mastery.percent}%
                 </Text>
@@ -305,6 +297,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '700' },
   cardHint: { fontSize: 12, lineHeight: 18 },
   masteryRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  masteryBar: { flex: 1 },
   masteryBadge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 2 },
   masteryBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   progressTrack: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },

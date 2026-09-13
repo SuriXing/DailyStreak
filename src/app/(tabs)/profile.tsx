@@ -12,6 +12,7 @@ import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goa
 import { LOCALES, LOCALE_META, useI18n, type Locale } from '@/i18n';
 import { maxStreak, milestoneStatus } from '@/lib/badges';
 import { useThemePreference, type ThemePreference } from '@/contexts/theme-preference';
+import { Progress, Tag } from '@ant-design/react-native';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -118,17 +119,8 @@ export default function ProfileScreen() {
             const mastery = computeMastery(c, answersByCourse[c.id] ?? []);
             return (
               <View key={c.id} style={styles.masteryRow}>
-                <View style={[styles.masteryBadge, { backgroundColor: c.color }]}>
-                  <Text style={styles.masteryBadgeText}>{c.shortName}</Text>
-                </View>
-                <View style={[styles.progressTrack, { backgroundColor: colors.fillTertiary }]}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { backgroundColor: c.color, width: `${mastery.percent}%` },
-                    ]}
-                  />
-                </View>
+                <Tag>{c.shortName}</Tag>
+                <Progress percent={mastery.percent} barStyle={{ backgroundColor: c.color }} style={styles.masteryBar} />
                 <Text style={[styles.masteryPercent, { color: colors.textSecondary }]}>
                   {mastery.percent}%
                 </Text>
@@ -229,26 +221,12 @@ export default function ProfileScreen() {
           <Text style={[styles.cardTitle, { color: colors.text }]}>{t('badges.title')}</Text>
           <View style={styles.badgeRow}>
             {milestones.map((m) => (
-              <View
+              <Tag
                 key={m.days}
-                style={[
-                  styles.badgeChip,
-                  {
-                    backgroundColor: m.earned ? colors.successBg : colors.backgroundElement,
-                    borderColor: m.earned ? colors.success : colors.border,
-                  },
-                ]}>
-                <Text
-                  style={[
-                    styles.badgeDays,
-                    { color: m.earned ? colors.success : colors.textTertiary },
-                  ]}>
-                  {m.earned ? '🏆' : '🔒'} {t('badges.streakDays', { days: m.days })}
-                </Text>
-                <Text style={[styles.badgeHint, { color: colors.textSecondary }]}>
-                  {m.earned ? '✓' : t('badges.locked')}
-                </Text>
-              </View>
+                style={m.earned ? { backgroundColor: colors.successBg, borderColor: colors.success } : undefined}>
+                {m.earned ? '🏆' : '🔒'} {t('badges.streakDays', { days: m.days })}
+                {m.earned ? '' : ` · ${t('badges.locked')}`}
+              </Tag>
             ))}
           </View>
         </View>
@@ -305,6 +283,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '700' },
   cardHint: { fontSize: 12, lineHeight: 18 },
   masteryRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  masteryBar: { flex: 1 },
   masteryBadge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 2 },
   masteryBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   progressTrack: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },

@@ -11,8 +11,9 @@ export const en: UiStrings = {
   'errors.undoFailed': 'Failed to undo',
   'errors.supabaseNotConfigured': 'Supabase is not configured',
 
-  'tabs.checkin': 'Check in',
-  'tabs.study': 'Study',
+  'tabs.checkin': 'Today',
+  'tabs.study': 'Practice',
+  'tabs.flashcards': 'Flashcards',
   'tabs.profile': 'Me',
 
   'sidebar.tagline': 'Daily study habit',
@@ -103,6 +104,7 @@ export const en: UiStrings = {
   'home.weeklySummary': 'Checked {checked}/{total} days · {answered} questions · {rate}% correct',
   'home.weeklyEmpty': 'No practice this week yet',
   'home.milestone': '🎖️ {days}-day streak milestone!',
+  'home.flipFirst': 'Reveal answer',
 
   'sidebar.toggleTheme': 'Toggle theme',
 
@@ -115,4 +117,17 @@ export const en: UiStrings = {
   'study.redoWarning': "Redoing will clear today's answer records",
   'study.redoConfirm': 'Clear and redo',
   'study.redoCancel': 'Cancel',
+
+  'flashcards.title': 'AMC 10 Flashcards',
+  'flashcards.allDecks': 'All decks',
+  'flashcards.all': 'All',
+  'flashcards.core': 'Core',
+  'flashcards.advance': 'Advanced',
+  'flashcards.boundary': 'Boundary',
+  'flashcards.flip': 'Flip',
+  'flashcards.prev': 'Prev',
+  'flashcards.next': 'Next',
+  'flashcards.progress': '{current} / {total}',
+  'flashcards.empty': 'No cards match this filter',
+  'flashcards.tapHint': 'Tap the card to reveal the answer',
 };

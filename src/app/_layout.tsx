@@ -7,6 +7,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { I18nProvider } from '@/i18n';
 import { ThemePreferenceProvider, useThemePreference } from '@/contexts/theme-preference';
 import { Colors } from '@/constants/theme';
+import { Provider as AntdProvider } from '@ant-design/react-native';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -33,11 +34,13 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemePreferenceProvider>
-      <I18nProvider>
-        <ThemedStack session={session} />
-      </I18nProvider>
-    </ThemePreferenceProvider>
+    <AntdProvider>
+      <ThemePreferenceProvider>
+        <I18nProvider>
+          <ThemedStack session={session} />
+        </I18nProvider>
+      </ThemePreferenceProvider>
+    </AntdProvider>
   );
 }
 

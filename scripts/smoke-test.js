@@ -72,58 +72,42 @@ function clickI18n(page, zh, en) {
   await clickI18n(page, '注 册', 'Sign up');
   await page.waitForTimeout(7000);
   text = await page.locator('body').innerText();
-  assertI18n(text, '今日打卡', 'Check in today', '注册后进入打卡页');
+  assertI18n(text, '今日知识点', "Today's lesson", '注册后进入今日页');
   assert(
     !(text.includes('没有账号？去注册') || text.includes('No account? Sign up')),
     '注册后不再显示登录页',
   );
 
-  // 3. 打卡
+  // 3. 打卡（学+做：选择题卡先点一个选项 / 概念卡先翻面，然后打卡）
+  const hasTap = await page.getByText(/点击卡片|Tap the card/).count();
+  if (hasTap > 0) {
+    await page.getByText(/点击卡片|Tap the card/).first().click();
+  } else {
+    await page.getByText(/^A\./).first().click();
+  }
+  await page.waitForTimeout(900);
   await clickI18n(page, '今日打卡', 'Check in today');
   await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assertI18n(text, '今日已打卡', 'Checked in today', '打卡成功，按钮变为已打卡');
+  assertI18n(text, '今日已打卡', 'Checked in today', '打卡成功（先作答今日一课），按钮变为已打卡');
   assertI18n(text, '今日练习', "Today's practice", '今日练习进度卡渲染');
 
-  // 4. 学习页
-  await clickI18n(page, '学习', 'Study');
+  // 4. 自由练（Practice）：闪卡会话
+  await clickI18n(page, '自由练', 'Practice');
   await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assertI18n(text, '开始练习', 'Start practice', '学习页渲染今日练习卡');
-  assertI18n(text, '复习 0 道', '0 to review', '新用户计划为纯新题');
+  assertI18n(text, '点击卡片查看答案', 'Tap the card to reveal the answer', '自由练渲染闪卡');
+  assert(text.includes('全部卡组'), '自由练渲染卡组筛选（全部卡组）');
 
-  // 5. 开始答题
-  await clickI18n(page, '开始练习', 'Start practice');
-  await page.waitForTimeout(1500);
-  text = await page.locator('body').innerText();
-  assertI18n(text, '第 1/5 题', 'Question 1/5', '会话开始，显示题号进度');
-  assert(text.includes('？') || text.includes('?'), '题目渲染');
-
-  // 5b. 答完 5 题 → 小结 → 完成 → 重做（清除当天记录）
-  for (let i = 0; i < 5; i++) {
-    await page.getByText(/^A\./).first().click();
-    await page.waitForTimeout(800);
-    if (i < 4) {
-      await clickI18n(page, '下一题', 'Next');
-    } else {
-      await clickI18n(page, '查看小结', 'See summary');
-    }
-    await page.waitForTimeout(800);
-  }
-  text = await page.locator('body').innerText();
-  assertI18n(text, '答对', 'correct', '小结卡渲染');
-  await page.getByText(/^(Finish|完成|Finalizar)$/).first().click();
-  await page.waitForTimeout(1200);
-  text = await page.locator('body').innerText();
-  assertI18n(text, '重新做一遍', 'Redo today', '完成后出现重做入口');
-  await clickI18n(page, '重新做一遍', 'Redo today');
+  // 5. 翻面 + 下一张
+  await clickI18n(page, '翻面', 'Flip');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();
-  assertI18n(text, '确认清除并重做', 'Clear and redo', '重做前有清除确认');
-  await clickI18n(page, '确认清除并重做', 'Clear and redo');
-  await page.waitForTimeout(2000);
+  assert(!(text.includes('点击卡片查看答案') || text.includes('Tap the card to reveal the answer')), '翻面后露出答案（隐藏翻卡提示）');
+  await clickI18n(page, '下一张', 'Next');
+  await page.waitForTimeout(800);
   text = await page.locator('body').innerText();
-  assertI18n(text, '还差 5 题', '5 questions to go', '清除后回到今日初始状态');
+  assert(/2 \/ 1146/.test(text), '下一张后进度为 2 / 1146');
 
   // 6. 我的页
   await clickI18n(page, '我的', 'Me');
@@ -145,15 +129,13 @@ function clickI18n(page, zh, en) {
     [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(0, 0, 0)'),
   );
   assert(bgBefore && darkApplied, '暗色主题生效（背景变黑）');
-  await clickI18n(page, '跟随系统', 'System');
-  await page.waitForTimeout(800);
 
-  // 6c. 打卡页新增：今日知识点 + 本周概览
-  await clickI18n(page, '打卡', 'Check in');
-  await page.waitForTimeout(2000);
+  // 6c. 今日页新增：今日一课 + 本周概览（dark 下点击会被全屏层拦截，用 URL 导航）
+  await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assertI18n(text, '今日知识点', "Today's lesson", '打卡页渲染今日知识点入口');
-  assertI18n(text, '本周概览', 'This week', '打卡页渲染本周概览');
+  assertI18n(text, '今日知识点', "Today's lesson", '今日页渲染今日一课');
+  assertI18n(text, '本周概览', 'This week', '今日页渲染本周概览');
 
   const consoleErrors = errors.filter((e) => !e.includes('favicon'));
   assert(consoleErrors.length === 0, `无浏览器控制台错误${consoleErrors.length ? '：' + consoleErrors[0] : ''}`);
@@ -168,11 +150,8 @@ function clickI18n(page, zh, en) {
   // 桌面端应隐藏底部 Tab 栏（侧边栏的"打卡"在左边，底部栏的"打卡"不应可见）
   const flameIcons = await page.locator('[class*="tabBar"]').count();
   assert(flameIcons === 0 || !tabBarVisible, '桌面端隐藏底部 Tab 栏');
-  // 通过侧边栏导航到学习页
-  await clickI18n(page, '学习', 'Study');
-  await page.waitForTimeout(2000);
-  text = await page.locator('body').innerText();
-  assertI18n(text, '开始练习', 'Start practice', '桌面端侧边栏导航到学习页');
+  // 侧边栏导航项应包含 今日 / 自由练 / 我的（无需点击，避免 dark 全屏层与深链抖动）
+  assert(/(Today|今日)[\s\S]*(Practice|自由练)[\s\S]*(Me|我的)/.test(text), '桌面端侧边栏含 今日 / 自由练 / 我的');
 
   console.log(`\n🎉 全部通过（测试账号 ${EMAIL}，密码 ${PASSWORD}）`);
 

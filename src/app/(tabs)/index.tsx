@@ -30,6 +30,7 @@ import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useIsDesktop } from '@/hooks/use-media';
 import { fetchAnswers, todayAnsweredCount, type AnswerRecord } from '@/lib/answers';
 import { ALL_FLASHCARDS, toQuiz } from '@/data/flashcards';
+import { localizeFlashcard } from '@/data/flashcard-i18n';
 import { Button, Card, Progress, Tag } from '@ant-design/react-native';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -45,7 +46,7 @@ const TODAY_CARD_INDEX = Math.floor(Date.now() / 86_400_000) % ALL_FLASHCARDS.le
 export default function CheckinScreen() {
   const user = useSessionUser();
   const colors = useTheme();
-  const { t, formatDate } = useI18n();
+  const { t, locale, formatDate } = useI18n();
 
   const [checkedSet, setCheckedSet] = useState<Set<string>>(new Set());
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
@@ -62,7 +63,7 @@ export default function CheckinScreen() {
   const router = useRouter();
   const week = weeklyStats(checkedSet, answers);
   /** 今日的一张贴卡：按天从内容池里轮转一张（模块级计算一次，按日轮换） */
-  const todayCard = ALL_FLASHCARDS[TODAY_CARD_INDEX];
+  const todayCard = localizeFlashcard(ALL_FLASHCARDS[TODAY_CARD_INDEX], locale);
   const todayQuiz = toQuiz(todayCard);
   const doneStep = todayQuiz ? selected !== null : flipped;
 

@@ -13,11 +13,12 @@ import {
   type FlashcardDeck,
   type FlashcardLevel,
 } from '@/data/flashcards';
+import { localizeFlashcard } from '@/data/flashcard-i18n';
 
 /** 自由练：一场闪卡会话 —— 选卡组 + （AMC10 才有）难度过滤，点击翻面。 */
 export default function StudyScreen() {
   const colors = useTheme();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [deck, setDeck] = useState<string | null>(null);
   const [level, setLevel] = useState<FlashcardLevel | null>(null);
   const [index, setIndex] = useState(0);
@@ -35,7 +36,7 @@ export default function StudyScreen() {
     [deck, level, showLevels],
   );
 
-  const current = cards[index];
+  const current = cards[index] ? localizeFlashcard(cards[index], locale) : cards[index];
   const quiz = current ? toQuiz(current) : null;
   const empty = cards.length === 0;
 

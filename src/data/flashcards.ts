@@ -30,10 +30,14 @@ export function toQuiz(card: Flashcard): QuizCard | null {
   if (lines.length < 2 || !/^[A-D]\.\s/.test(lines[1] ?? '')) return null;
   const question = (lines[0] || '').trim();
   const options = lines.slice(1).map((l) => l.replace(/^[A-D]\.\s*/, '').trim());
-  const answer = card.back.match(/答案：([A-D])/);
+  const answer = card.back.match(/(?:答案：|Answer[:：])\s*([A-D])/);
   if (!answer) return null;
   const explanation =
-    card.back.split('\n').find((l) => l.startsWith('简析：'))?.replace('简析：', '').trim() ?? '';
+    card.back
+      .split('\n')
+      .find((l) => /^(简析：|Why[:：])/.test(l))
+      ?.replace(/^(简析：|Why[:：])\s*/, '')
+      .trim() ?? '';
   return { question, options, answerIndex: answer[1].charCodeAt(0) - 65, explanation };
 }
 

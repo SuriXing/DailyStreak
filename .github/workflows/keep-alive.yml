@@ -1,0 +1,28 @@
+name: Supabase keep-alive
+
+# Supabase 免费项目在 7 天无活动后会被暂停；这里每天 ping 一次 REST 端点保活。
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::warning::未配置 EXPO_PUBLIC_SUPABASE_URL/ANON_KEY secrets，跳过保活。"
+            exit 0
+          fi
+          code=$(curl -sS -o /dev/null -w '%{http_code}' "$SUPABASE_URL/rest/v1/" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "Supabase ping -> HTTP $code"
+          case "$code" in
+            2*|4*) echo "项目已响应（保活成功）" ;;
+            *) echo "::error::保活请求异常 HTTP $code"; exit 1 ;;
+          esac

@@ -13,6 +13,9 @@ export interface Flashcard {
   level?: FlashcardLevel;
 }
 
+/** 选项行可能连着两层标签（生成脚本回归时会产出 "A. A. 3"），一次性剥干净。 */
+const OPTION_LABELS = /^(?:[A-D]\.\s*)+/;
+
 /** 结构化题目卡片（从 "题干\nA. …\nB. …" + "答案：X" 解析而来） */
 export interface QuizCard {
   question: string;
@@ -32,7 +35,7 @@ export function toQuiz(card: Flashcard): QuizCard | null {
   const first = lines.findIndex((l) => /^A\.\s/.test(l));
   if (first < 1) return null;
   const question = lines.slice(0, first).join('\n').trim();
-  const options = lines.slice(first).map((l) => l.replace(/^[A-D]\.\s*/, '').trim());
+  const options = lines.slice(first).map((l) => l.trim().replace(OPTION_LABELS, '').trim());
   if (!question || options.length < 2 || options.some((o) => !o)) return null;
   const answer = card.back.match(/(?:答案：|Answer[:：])\s*([A-D])/);
   if (!answer) return null;

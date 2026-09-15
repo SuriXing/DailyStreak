@@ -68,6 +68,15 @@ function clean(s) {
     .trim();
 }
 
+/**
+ * 选项文本统一剥掉残留的 "A. " 前缀。
+ * 切分出的第一段带前导空格，必须先 trim 再剥标签，否则 "A. 3" 会被当成选项文本，
+ * 在 UI 里渲染成 "A. A. 3"（CSA/CSP 全部 240 张卡都踩过这个坑）。
+ */
+function stripOptionLabel(s) {
+  return s.trim().replace(/^[A-D]\.\s*/, '');
+}
+
 /* ---------- 'dot' style (CSA/CSP): "1. Q? A. a B. b C. c D. d" + table answer ---------- */
 function parseDotMcq(line) {
   const t = line.trim();
@@ -75,7 +84,7 @@ function parseDotMcq(line) {
   const idx = t.search(/\sA\.\s/);
   if (idx < 0) return null;
   const stem = t.slice(0, idx).trim();
-  const opts = t.slice(idx).split(/\s(?=[BCD]\.\s)/).map((o) => o.replace(/^[A-D]\.\s*/, '').trim());
+  const opts = t.slice(idx).split(/\s(?=[BCD]\.\s)/).map(stripOptionLabel);
   if (opts.length < 2) return null;
   return { num: parseInt(t.match(/^(\d+)/)[1], 10), stem, options: opts };
 }
@@ -98,7 +107,7 @@ function parseSpaceMcq(line) {
   const rest = t.slice(idx).trim();
   const m = rest.match(/^A\s+(.+?)\s+B\s+(.+?)\s+C\s+(.+?)\s+D\s+(.+)$/);
   if (!m) return null;
-  return { num: parseInt(t.match(/^(\d+)/)[1], 10), stem, options: m.slice(1).map((s) => s.trim()) };
+  return { num: parseInt(t.match(/^(\d+)/)[1], 10), stem, options: m.slice(1).map(stripOptionLabel) };
 }
 function parseSpaceAnswer(text) {
   const map = {};

@@ -147,6 +147,8 @@ function buildDeck(cfg) {
         category: cfg.label.replace(' · 选择题', ''),
         front: clean(front),
         back: clean(back).replace(/\n{3,}/g, '\n\n'),
+        source: 'ai-mcq',
+        verified: false,
       });
     }
   }
@@ -159,7 +161,7 @@ const generated = [];
 for (const cfg of SUBJECTS) {
   const { key, label, cards } = buildDeck(cfg);
   const cardLines = cards
-    .map((c) => `  { id: ${q(c.id)}, deck: ${q(c.deck)}, category: ${q(c.category)}, front: ${q(c.front)}, back: ${q(c.back)} },`)
+    .map((c) => `  { id: ${q(c.id)}, deck: ${q(c.deck)}, category: ${q(c.category)}, front: ${q(c.front)}, back: ${q(c.back)}, source: ${q(c.source)}, verified: ${c.verified} },`)
     .join('\n');
   const ts = `// AUTO-GENERATED from the ${label} materials (${cards.length} cards). Do not hand-edit.
 // Regenerate: node scripts/build-subject-decks.js
@@ -171,6 +173,10 @@ export interface SubjectFlashcard {
   category: string;
   front: string;
   back: string;
+  /** 文本来源：ai-mcq = AI 生成的原创选择题，不是 College Board 真题 */
+  source: 'ai-mcq';
+  /** 是否经过逐题独立验算/事实核查 */
+  verified: boolean;
 }
 
 export const SUBJECT_DECKS_${key.toUpperCase()}: { key: SubjectDeckKey; label: string }[] = [

@@ -3,6 +3,13 @@ import { SUBJECT_DECKS, SUBJECT_FLASHCARDS } from './subject-decks';
 
 export type FlashcardLevel = 'core' | 'advance' | 'boundary';
 
+/**
+ * 卡片文本来源，与生成脚本写进数据模块的字面量类型一一对应：
+ * - amc10-concept：依据考点审计把 AMC10 知识点拆成的问答卡，不是真题；
+ * - ai-mcq：AI 生成的 AP 原创选择题，不是 College Board 真题。
+ */
+export type FlashcardSource = 'amc10-concept' | 'ai-mcq';
+
 export interface Flashcard {
   id: string;
   deck: string;
@@ -11,6 +18,10 @@ export interface Flashcard {
   back: string;
   /** AMC10-only: 难度分层 */
   level?: FlashcardLevel;
+  /** 文本来源，界面据此标注这是哪一种"AI 生成" */
+  source: FlashcardSource;
+  /** 是否经过逐题独立验算/事实核查；当前全部为 false */
+  verified: boolean;
 }
 
 /** 选项行可能连着两层标签（生成脚本回归时会产出 "A. A. 3"），一次性剥干净。 */
@@ -70,6 +81,8 @@ export const ALL_FLASHCARDS: Flashcard[] = [
     front: c.front,
     back: c.back,
     level: c.level,
+    source: c.source,
+    verified: c.verified,
   })),
   ...SUBJECT_FLASHCARDS.map((c) => ({
     id: c.id,
@@ -77,5 +90,7 @@ export const ALL_FLASHCARDS: Flashcard[] = [
     category: c.category,
     front: c.front,
     back: c.back,
+    source: c.source,
+    verified: c.verified,
   })),
 ];

@@ -60,6 +60,8 @@ for (const [file, deck, label] of FILES) {
       category: c.category || label,
       front: c.front,
       back: c.back,
+      source: 'amc10-concept',
+      verified: false,
     });
   }
 }
@@ -71,7 +73,7 @@ const deckArr = Object.entries(deckLabels)
 const cardLines = cards
   .map(
     (c) =>
-      `  { id: ${q(c.id)}, level: ${q(c.level)}, deck: ${q(c.deck)}, category: ${q(c.category)}, front: ${q(c.front)}, back: ${q(c.back)} },`,
+      `  { id: ${q(c.id)}, level: ${q(c.level)}, deck: ${q(c.deck)}, category: ${q(c.category)}, front: ${q(c.front)}, back: ${q(c.back)}, source: ${q(c.source)}, verified: ${c.verified} },`,
   )
   .join('\n');
 
@@ -88,6 +90,10 @@ export interface AMC10Flashcard {
   category: string;
   front: string;
   back: string;
+  /** 文本来源：amc10-concept = 依据考点审计把知识点拆成的问答卡，不是真题 */
+  source: 'amc10-concept';
+  /** 是否经过逐题独立验算/事实核查 */
+  verified: boolean;
 }
 
 export const AMC10_DECKS: { key: AMC10Deck; label: string }[] = [

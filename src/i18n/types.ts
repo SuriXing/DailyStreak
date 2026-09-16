@@ -153,6 +153,16 @@ export interface UiStrings {
   'flashcards.progress': DictValue;
   'flashcards.empty': DictValue;
   'flashcards.tapHint': DictValue;
+  'flashcards.kinds': DictValue;
+  'flashcards.kindQuiz': DictValue;
+  'flashcards.kindConcept': DictValue;
+  'flashcards.level': DictValue;
+  'flashcards.order': DictValue;
+  'flashcards.shuffle': DictValue;
+  'flashcards.sourceAmc10': DictValue;
+  'flashcards.sourceAiMcq': DictValue;
+  'flashcards.unverified': DictValue;
+  'flashcards.provenanceNote': DictValue;
 }
 
 export type TKey = keyof UiStrings;

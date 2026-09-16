@@ -137,6 +137,34 @@ function checkSubjectCard(rel, card) {
   }
 }
 
+/**
+ * 生成文件里的字面量类型必须和 app 侧的 FlashcardSource 联合一致，
+ * 否则界面上的来源标注会静默落到错误的分支。
+ */
+function checkSourceUnion() {
+  const src = read('src/data/flashcards.ts');
+  const union = src.match(/export type FlashcardSource = ([^;]+);/);
+  if (!union) {
+    problems.push('src/data/flashcards.ts: 找不到 FlashcardSource 联合类型');
+    return;
+  }
+  for (const literal of ['amc10-concept', 'ai-mcq']) {
+    if (!union[1].includes(`'${literal}'`)) {
+      problems.push(`src/data/flashcards.ts: FlashcardSource 缺少字面量 '${literal}'`);
+    }
+  }
+}
+
+/** 每张卡都必须声明来源，且在没有独立核验前 verified 保持 false。 */
+function checkProvenance(rel, card, expected) {
+  if (card.source !== expected) {
+    problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
+  }
+  if (card.verified !== false) {
+    problems.push(`${rel}/${card.id}: verified 应为 false，实际 ${JSON.stringify(card.verified)}`);
+  }
+}
+
 /** 概念卡：AMC10 卡组，靠翻面复习，不应混进选项块。 */
 function checkConceptCard(rel, card) {
   if (card.front.split('\n').some((l) => LABEL_RE.test(l))) {
@@ -153,6 +181,7 @@ counts.amc10 = amc10.length;
 for (const card of amc10) {
   checkIdAndCategory(AMC10_REL, card);
   checkConceptCard(AMC10_REL, card);
+  checkProvenance(AMC10_REL, card, 'amc10-concept');
 }
 
 for (const deck of SUBJECT_DECKS) {
@@ -163,8 +192,11 @@ for (const deck of SUBJECT_DECKS) {
     checkIdAndCategory(rel, card);
     if (card.deck !== deck) problems.push(`${rel}/${card.id}: deck 字段是 "${card.deck}"`);
     checkSubjectCard(rel, card);
+    checkProvenance(rel, card, 'ai-mcq');
   }
 }
+
+checkSourceUnion();
 
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
@@ -178,5 +210,5 @@ if (problems.length) {
 console.log(
   `✅ 闪卡数据校验通过: ${Object.entries(counts)
     .map(([k, v]) => `${k}=${v}`)
-    .join(' ')}（共 ${total} 张，选择题与概念卡形状均自洽）`,
+    .join(' ')}（共 ${total} 张，形状自洽且全部标注了来源与未核验状态）`,
 );

@@ -14,9 +14,12 @@ import {
   type FlashcardLevel,
 } from '@/data/flashcards';
 import { localizeFlashcard } from '@/data/flashcard-i18n';
-import { availableKinds, filterCards, type CardKind } from '@/lib/flashcard-session';
+import { availableKinds, filterCards, shuffleCards, type CardKind } from '@/lib/flashcard-session';
 
 /** 自由练：一场闪卡会话 —— 卡组 + 题型（+ AMC10 才有的难度），选择题点选、概念卡翻面。 */
+
+/** 新顺序的种子：切换卡组/题型/顺序时重新洗一次，同一次会话里顺序保持稳定。 */
+const nextSeed = () => Math.floor(Math.random() * 0xffffffff);
 export default function StudyScreen() {
   const colors = useTheme();
   const { t, locale } = useI18n();
@@ -24,6 +27,9 @@ export default function StudyScreen() {
   const [level, setLevel] = useState<FlashcardLevel | null>(null);
   // 默认只练选择题：AMC10 概念卡是"XX 是什么？"式词条，一进自由练就翻词条不像在练题
   const [kind, setKind] = useState<CardKind | null>('quiz');
+  // 默认乱序：否则每次进来都从同一张卡开始
+  const [shuffled, setShuffled] = useState(true);
+  const [seed, setSeed] = useState(nextSeed);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
@@ -35,10 +41,10 @@ export default function StudyScreen() {
   const showKinds = kinds.length > 1;
   const activeKind = showKinds ? kind : null;
 
-  const cards = useMemo(
-    () => filterCards({ deck, level, kind: activeKind }, ALL_FLASHCARDS),
-    [deck, level, activeKind],
-  );
+  const cards = useMemo(() => {
+    const list = filterCards({ deck, level, kind: activeKind }, ALL_FLASHCARDS);
+    return shuffled ? shuffleCards(list, seed) : list;
+  }, [deck, level, activeKind, shuffled, seed]);
 
   const current = cards[index] ? localizeFlashcard(cards[index], locale) : cards[index];
   const quiz = current ? toQuiz(current) : null;
@@ -54,6 +60,12 @@ export default function StudyScreen() {
     setIndex(0);
     setFlipped(false);
     setSelected(null);
+    setSeed(nextSeed());
+  };
+
+  const toggleShuffle = () => {
+    setShuffled((s) => !s);
+    resetSession();
   };
 
   const pickDeck = (d: string | null) => {
@@ -128,6 +140,8 @@ export default function StudyScreen() {
               </View>
             </>
           )}
+          <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.order')}</Text>
+          <View style={styles.chipRow}>{chip(t('flashcards.shuffle'), shuffled, toggleShuffle)}</View>
         </View>
 
         {empty ? (

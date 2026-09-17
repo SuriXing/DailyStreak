@@ -10,6 +10,7 @@ import {
   ALL_FLASHCARDS,
   FLASHCARD_DECKS,
   toQuiz,
+  type Flashcard,
   type FlashcardDeck,
   type FlashcardLevel,
 } from '@/data/flashcards';
@@ -77,6 +78,12 @@ export default function StudyScreen() {
   const pickKind = (k: CardKind | null) => {
     setKind(k);
     resetSession();
+  };
+
+  /** 卡片来源标注：题库来自 AI 生成的资料，没有任何一题的答案被独立核验过。 */
+  const sourceLine = (card: Flashcard) => {
+    const label = t(card.source === 'ai-mcq' ? 'flashcards.sourceAiMcq' : 'flashcards.sourceAmc10');
+    return card.verified ? label : `${label} · ${t('flashcards.unverified')}`;
   };
 
   const chip = (label: string, active: boolean, onPress: () => void) => (
@@ -153,6 +160,7 @@ export default function StudyScreen() {
             {quiz ? (
               <View key={current.id} style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
                 <Tag>{current.category}</Tag>
+                <Text style={[styles.source, { color: colors.textTertiary }]}>{sourceLine(current)}</Text>
                 <Text style={[styles.question, { color: colors.text }]}>{quiz.question}</Text>
                 <View style={styles.options}>
                   {quiz.options.map((opt, i) => {
@@ -216,6 +224,7 @@ export default function StudyScreen() {
                   pressed && styles.cardPressed,
                 ]}>
                 <Tag>{current.category}</Tag>
+                <Text style={[styles.source, { color: colors.textTertiary }]}>{sourceLine(current)}</Text>
                 <Text style={[styles.front, { color: colors.text }]}>
                   {flipped ? current.back : current.front}
                 </Text>
@@ -289,6 +298,7 @@ const styles = StyleSheet.create({
   badge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 3 },
   badgeText: { fontSize: 12, fontWeight: '700' },
   front: { fontSize: 18, fontWeight: '700', lineHeight: 26, textAlign: 'center' },
+  source: { fontSize: 11, textAlign: 'center' },
   question: { fontSize: 17, fontWeight: '700', lineHeight: 24, textAlign: 'center', marginTop: Spacing.one },
   options: { alignSelf: 'stretch', gap: Spacing.two, marginTop: Spacing.three },
   option: {

@@ -14,26 +14,30 @@ import {
   type FlashcardLevel,
 } from '@/data/flashcards';
 import { localizeFlashcard } from '@/data/flashcard-i18n';
+import { availableKinds, filterCards, type CardKind } from '@/lib/flashcard-session';
 
-/** 自由练：一场闪卡会话 —— 选卡组 + （AMC10 才有）难度过滤，点击翻面。 */
+/** 自由练：一场闪卡会话 —— 卡组 + 题型（+ AMC10 才有的难度），选择题点选、概念卡翻面。 */
 export default function StudyScreen() {
   const colors = useTheme();
   const { t, locale } = useI18n();
   const [deck, setDeck] = useState<string | null>(null);
   const [level, setLevel] = useState<FlashcardLevel | null>(null);
+  // 默认只练选择题：AMC10 概念卡是"XX 是什么？"式词条，一进自由练就翻词条不像在练题
+  const [kind, setKind] = useState<CardKind | null>('quiz');
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
 
   const selectedDeck = FLASHCARD_DECKS.find((d) => d.key === deck) ?? null;
   const showLevels = selectedDeck ? selectedDeck.hasLevels : false;
+  // AMC10 卡组整组都是概念卡，题型筛选在那里没有意义，这种情况直接不显示这一行
+  const kinds = useMemo(() => availableKinds(deck), [deck]);
+  const showKinds = kinds.length > 1;
+  const activeKind = showKinds ? kind : null;
 
   const cards = useMemo(
-    () =>
-      ALL_FLASHCARDS.filter(
-        (c) => (deck == null || c.deck === deck) && (!showLevels || level == null || c.level === level),
-      ),
-    [deck, level, showLevels],
+    () => filterCards({ deck, level, kind: activeKind }, ALL_FLASHCARDS),
+    [deck, level, activeKind],
   );
 
   const current = cards[index] ? localizeFlashcard(cards[index], locale) : cards[index];
@@ -46,12 +50,21 @@ export default function StudyScreen() {
     setSelected(null);
   };
 
-  const pickDeck = (d: string | null) => {
-    setDeck(d);
+  const resetSession = () => {
     setIndex(0);
     setFlipped(false);
-    setLevel(null);
     setSelected(null);
+  };
+
+  const pickDeck = (d: string | null) => {
+    setDeck(d);
+    setLevel(null);
+    resetSession();
+  };
+
+  const pickKind = (k: CardKind | null) => {
+    setKind(k);
+    resetSession();
   };
 
   const chip = (label: string, active: boolean, onPress: () => void) => (
@@ -89,6 +102,21 @@ export default function StudyScreen() {
             {chip(t('flashcards.all'), deck == null, () => pickDeck(null))}
             {FLASHCARD_DECKS.map((d: FlashcardDeck) => chip(d.label, deck === d.key, () => pickDeck(d.key)))}
           </ScrollView>
+          {showKinds && (
+            <>
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.kinds')}</Text>
+              <View style={styles.chipRow}>
+                {chip(t('flashcards.all'), kind == null, () => pickKind(null))}
+                {kinds.map((k) =>
+                  chip(
+                    k === 'quiz' ? t('flashcards.kindQuiz') : t('flashcards.kindConcept'),
+                    kind === k,
+                    () => pickKind(k),
+                  ),
+                )}
+              </View>
+            </>
+          )}
           {showLevels && (
             <>
               <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.all')}</Text>

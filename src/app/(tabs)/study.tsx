@@ -151,6 +151,8 @@ export default function StudyScreen() {
           <View style={styles.chipRow}>{chip(t('flashcards.shuffle'), shuffled, toggleShuffle)}</View>
         </View>
 
+        <Text style={[styles.note, { color: colors.textTertiary }]}>{t('flashcards.provenanceNote')}</Text>
+
         {empty ? (
           <View style={styles.empty}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('flashcards.empty')}</Text>
@@ -273,6 +275,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '800' },
   subtitle: { fontSize: 13, marginTop: -Spacing.two },
+  note: { fontSize: 11, lineHeight: 16 },
   filterWrap: { gap: Spacing.two },
   filterLabel: {
     fontSize: 12,

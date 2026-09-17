@@ -26,6 +26,11 @@ function assertI18n(text, zh, en, msg) {
   assert(text.includes(zh) || text.includes(en), `${msg}（${zh} / ${en}）`);
 }
 
+/** 行标签在 UI 里带 text-transform: uppercase，innerText 拿到的是大写，断言时忽略大小写 */
+function assertLabel(text, zh, en, msg) {
+  assert(text.includes(zh) || text.toLowerCase().includes(en.toLowerCase()), `${msg}（${zh} / ${en}）`);
+}
+
 function clickI18n(page, zh, en) {
   return page.getByText(new RegExp(`${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).first().click();
 }
@@ -92,22 +97,30 @@ function clickI18n(page, zh, en) {
   assertI18n(text, '今日已打卡', 'Checked in today', '打卡成功（先作答今日一课），按钮变为已打卡');
   assertI18n(text, '今日练习', "Today's practice", '今日练习进度卡渲染');
 
-  // 4. 自由练（Practice）：闪卡会话
+  // 4. 自由练（Practice）：默认应为选择题卡（默认只练选择题，不再一进来就是概念词条）
   await clickI18n(page, '自由练', 'Practice');
   await page.waitForTimeout(2500);
   text = await page.locator('body').innerText();
-  assertI18n(text, '点击卡片查看答案', 'Tap the card to reveal the answer', '自由练渲染闪卡');
-  assert(text.includes('全部卡组'), '自由练渲染卡组筛选（全部卡组）');
+  assertLabel(text, '全部卡组', 'all decks', '自由练渲染卡组筛选');
+  assertLabel(text, '题型', 'card type', '自由练渲染题型筛选');
+  assertLabel(text, '乱序', 'shuffle', '自由练渲染乱序开关');
+  assertI18n(text, '答案未核验', 'answer unchecked', '卡片标注来源与"答案未核验"');
+  assertI18n(text, '题库由 AI 生成', 'AI-generated study material', '筛选区下方有题库来源提示');
+  assert(/\nA\.\s/.test(text) && /\nB\.\s/.test(text), '默认渲染选择题选项（A/B）');
 
-  // 5. 翻面 + 下一张
+  // 5. 下一张 + 切到概念卡翻面
+  await clickI18n(page, '下一张', 'Next');
+  await page.waitForTimeout(800);
+  text = await page.locator('body').innerText();
+  assert(/2 \/ 582/.test(text), '下一张后进度为 2 / 582（582 张选择题）');
+  await clickI18n(page, '概念卡', 'Concept cards');
+  await page.waitForTimeout(800);
+  text = await page.locator('body').innerText();
+  assertI18n(text, '点击卡片查看答案', 'Tap the card to reveal the answer', '切到概念卡后走翻面模式');
   await clickI18n(page, '翻面', 'Flip');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();
   assert(!(text.includes('点击卡片查看答案') || text.includes('Tap the card to reveal the answer')), '翻面后露出答案（隐藏翻卡提示）');
-  await clickI18n(page, '下一张', 'Next');
-  await page.waitForTimeout(800);
-  text = await page.locator('body').innerText();
-  assert(/2 \/ 1146/.test(text), '下一张后进度为 2 / 1146');
 
   // 6. 我的页
   await clickI18n(page, '我的', 'Me');

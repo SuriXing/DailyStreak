@@ -157,10 +157,54 @@ npx expo export -p web   # outputs to dist/
 
 Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 
+## Flashcard Question Bank
+
+The 1146 practice cards are generated data, not copy typed into the app:
+
+| Decks | Cards | Source material | Generator |
+|---|---|---|---|
+| AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
+| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 582 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
+
+Both builders read a local material pack (default `~/Downloads/AP-AMC学习资料-2026-27/`) and write
+committed TS modules — `src/data/amc10-flashcards.ts` and `src/data/subject-decks/*.ts` — each headed
+with `// AUTO-GENERATED … Do not hand-edit.`. To change a card, change the markdown and regenerate:
+
+```bash
+node scripts/build-amc10-flashcards.js [srcDir]
+node scripts/build-subject-decks.js [baseDir]
+```
+
+### Provenance, and what this bank is not
+
+Every card carries `source` and `verified`:
+
+- `source: 'amc10-concept'` — the AMC 10 cards are a rewrite of the pack's knowledge map（知识点拆解），
+  not exam questions. Expect prompts like "运算顺序是什么？" rather than competition problems.
+- `source: 'ai-mcq'` — the AP items are AI-written multiple choice. The material pack says so itself
+  （“文件名标注「原创」的题由AI生成”）, and its own QA report records that the original questions were
+  never independently recomputed.
+- `verified: false` — nothing in the bank has been answer-checked question by question. Treat the cards
+  as review prompts, not as a source of truth, and prefer official material when it matters.
+
+The practice screen labels this on every card and repeats it under the filters.
+
+### Guarding the generated data
+
+```bash
+npm run check:flashcards   # 声明张数 / id 唯一 / 恰好四个选项 / 无重复标签 / 答案字母与选项自洽 / 来源字段齐全
+```
+
+The check exists because all 240 CSA and CSP cards once shipped with their first option reading
+`A. A. 3`: the builder split the option line and left the label inside the first option's text, which
+the UI then prefixed a second time. It also pinned the runtime parser down — a stem may span several
+lines, so the option block is located by the first `A. ` line instead of assuming line two.
+
 ## Quality Gates
 
 ```bash
-npm run precheck           # 本地一键门禁: i18n completeness + ruff + type check + lint + UXE 设计契约
+npm run precheck           # 本地一键门禁: i18n completeness + 闪卡数据校验 + ruff + type check + lint + UXE 设计契约
+npm run check:flashcards   # 闪卡生成数据完整性校验（张数 / id / 选项 / 答案字母 / 来源字段）
 npm run typecheck          # tsc --noEmit
 npm run lint               # Expo ESLint
 npm run lint:py            # ruff 检查 .uxe/scripts（配置在 pyproject.toml）
@@ -185,7 +229,7 @@ Browser smoke test (Playwright): verifies the auth gate, sign-up, check-in, and 
 ```bash
 npx playwright install chromium   # once, after npm install
 npm run web &                     # dev server
-npm run smoke                     # 14 assertions, exits non-zero on failure
+npm run smoke                     # 30 assertions, exits non-zero on failure
 ```
 
 CI (`.github/workflows/ci.yml`) runs i18n check, ruff, type check, lint, web export, and the smoke test on every push (smoke needs the `EXPO_PUBLIC_SUPABASE_*` repo secrets).

@@ -119,7 +119,7 @@ export default function StudyScreen() {
           )}
           {showLevels && (
             <>
-              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.all')}</Text>
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.level')}</Text>
               <View style={styles.chipRow}>
                 {chip(t('flashcards.all'), level == null, () => setLevel(null))}
                 {chip(t('flashcards.core'), level === 'core', () => setLevel('core'))}

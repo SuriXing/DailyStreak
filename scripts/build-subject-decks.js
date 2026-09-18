@@ -156,7 +156,8 @@ function buildDeck(cfg) {
       const correct = q.options[letterIdx] || ans.letter;
       const back = `答案：${ans.letter}\n${ans.brief ? '简析：' + ans.brief : ''}\n\n正确选项：${correct}`;
       cards.push({
-        id: `${cfg.key}-${String(n).padStart(3, '0')}`,
+        // id 用源题号：卡号与题库题号一一对应，将来补回缺题也不会让后面的卡片整体改号。
+        id: `${cfg.key}-${String(q.num).padStart(3, '0')}`,
         deck: cfg.key,
         category: cfg.label.replace(' · 选择题', ''),
         front: clean(front),

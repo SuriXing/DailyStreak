@@ -125,6 +125,14 @@ function parseSpaceAnswer(text) {
   return map;
 }
 
+/**
+ * 题干里的“上题/上式/上述”说明这道题依赖上一题。卡片在 app 里是单张展示的
+ * （自由练还默认乱序），所以生成时把上一题的题干作为承接行内联进来，
+ * 否则这张卡根本没条件作答——审计里 19 张卡就是这样失效的。
+ */
+const REFERS_BACK = /上题|上式|上述|前一题/;
+const CONTEXT_PREFIX = '【承接上题】';
+
 function buildDeck(cfg) {
   const answerMap = {};
   for (const af of cfg.ans) {
@@ -136,7 +144,9 @@ function buildDeck(cfg) {
   const unanswered = [];
   const unparsed = [];
   let n = 0;
+  let prevStem = '';
   for (const mf of cfg.mcq) {
+    prevStem = '';   // 承接只看同一份文件内的上一题
     for (const line of fs.readFileSync(path.join(BASE, mf), 'utf8').split('\n')) {
       const q = parse(line);
       if (!q) {
@@ -144,6 +154,9 @@ function buildDeck(cfg) {
         if (/^\d+\.\s/.test(line.trim())) unparsed.push(line.trim().slice(0, 60));
         continue;
       }
+      const rawStem = q.stem.replace(/^\d+\.\s*/, '');
+      const context = REFERS_BACK.test(rawStem) && prevStem ? `${CONTEXT_PREFIX}${prevStem}\n` : '';
+      prevStem = rawStem;
       const ans = answerMap[q.num];
       if (!ans) {
         unanswered.push(q.num);
@@ -151,8 +164,7 @@ function buildDeck(cfg) {
       }
       n += 1;
       const letterIdx = ans.letter.charCodeAt(0) - 65;
-      const stem = q.stem.replace(/^\d+\.\s*/, '');
-      const front = `${stem}\nA. ${q.options[0] || ''}\nB. ${q.options[1] || ''}\nC. ${q.options[2] || ''}\nD. ${q.options[3] || ''}`;
+      const front = `${context}${rawStem}\nA. ${q.options[0] || ''}\nB. ${q.options[1] || ''}\nC. ${q.options[2] || ''}\nD. ${q.options[3] || ''}`;
       const correct = q.options[letterIdx] || ans.letter;
       const back = `答案：${ans.letter}\n${ans.brief ? '简析：' + ans.brief : ''}\n\n正确选项：${correct}`;
       cards.push({

@@ -111,11 +111,16 @@ function parseSpaceMcq(line) {
 }
 function parseSpaceAnswer(text) {
   const map = {};
-  // entries: "N LETTER（brief）; " — split on ; or 。 across all answer files
-  const joined = text.split('\n').join(' ');
-  for (const entry of joined.split(/[;。]/)) {
-    const m = entry.trim().match(/^(\d+)\s*([A-D])(?:（([^）]*)）)?/);
-    if (m) map[parseInt(m[1], 10)] = { letter: m[2], brief: (m[3] || '').trim() };
+  // entries: "N LETTER（brief）; " —— 逐行切分。
+  // 旧实现先把全文拼成一行再按 ; 。 切分，并用 ^(\d+) 从头锚定：
+  // 块标题（## 1–20）会和该块第一个答案黏成同一条 entry，从头匹配失败后整条被丢，
+  // 于是每 20 题的第一题答案消失（18 道题因此从未进入 app）。
+  // 现在允许 entry 前带非数字前缀，块标题再也吞不掉答案。
+  for (const line of text.split('\n')) {
+    for (const entry of line.split(/[;。]/)) {
+      const m = entry.trim().match(/(?:^|[^\d])(\d+)\s*([A-D])(?:（([^）]*)）)?/);
+      if (m) map[parseInt(m[1], 10)] = { letter: m[2], brief: (m[3] || '').trim() };
+    }
   }
   return map;
 }
@@ -128,13 +133,22 @@ function buildDeck(cfg) {
   }
   const parse = cfg.style === 'dot' ? parseDotMcq : parseSpaceMcq;
   const cards = [];
+  const unanswered = [];
+  const unparsed = [];
   let n = 0;
   for (const mf of cfg.mcq) {
     for (const line of fs.readFileSync(path.join(BASE, mf), 'utf8').split('\n')) {
       const q = parse(line);
-      if (!q) continue;
+      if (!q) {
+        // 只记“看起来是编号题但解析不出来”的行，普通标题/正文不算
+        if (/^\d+\.\s/.test(line.trim())) unparsed.push(line.trim().slice(0, 60));
+        continue;
+      }
       const ans = answerMap[q.num];
-      if (!ans) continue;
+      if (!ans) {
+        unanswered.push(q.num);
+        continue;
+      }
       n += 1;
       const letterIdx = ans.letter.charCodeAt(0) - 65;
       const stem = q.stem.replace(/^\d+\.\s*/, '');
@@ -152,6 +166,16 @@ function buildDeck(cfg) {
       });
     }
   }
+  // 源题必须一道不落地变成卡片：缺答案或编号行解析不出来就直接失败。
+  // 静默跳过正是“18 道题从未进入 app”的成因，这里不给它留后门。
+  const dropped = [
+    ...unanswered.map((num) => `第 ${num} 题找不到答案`),
+    ...unparsed.map((text) => `解析不出题目: ${text}`),
+  ];
+  if (dropped.length) {
+    throw new Error(`${cfg.key}: ${dropped.length} 处源题会被丢弃 —— ${dropped.join('；')}`);
+  }
+
   return { key: cfg.key, label: cfg.label, cards };
 }
 

@@ -20,7 +20,7 @@ export const SUBJECT_DECKS_STATS: { key: SubjectDeckKey; label: string }[] = [
 
 export const SUBJECT_FLASHCARDS_STATS: SubjectFlashcard[] = [
   { id: "stats-001", deck: "stats", category: "AP Stats", front: "数据2,4,4,10的均值是？\nA. 4\nB. 5\nC. 6\nD. 20", back: "答案：B\n\n正确选项：5", source: "ai-mcq", verified: false },
-  { id: "stats-002", deck: "stats", category: "AP Stats", front: "上述数据的中位数是？\nA. 3\nB. 4\nC. 5\nD. 7", back: "答案：B\n\n正确选项：4", source: "ai-mcq", verified: false },
+  { id: "stats-002", deck: "stats", category: "AP Stats", front: "【承接上题】数据2,4,4,10的均值是？\n上述数据的中位数是？\nA. 3\nB. 4\nC. 5\nD. 7", back: "答案：B\n\n正确选项：4", source: "ai-mcq", verified: false },
   { id: "stats-003", deck: "stats", category: "AP Stats", front: "哪组统计量对极端高值最稳健？\nA. 均值与标准差\nB. 中位数与IQR\nC. 均值与极差\nD. z分数与方差", back: "答案：B\n\n正确选项：中位数与IQR", source: "ai-mcq", verified: false },
   { id: "stats-004", deck: "stats", category: "AP Stats", front: "右偏分布通常？\nA. 均值<中位数\nB. 均值>中位数\nC. 均值=中位数必然\nD. 无中心", back: "答案：B\n\n正确选项：均值>中位数", source: "ai-mcq", verified: false },
   { id: "stats-005", deck: "stats", category: "AP Stats", front: "IQR等于？\nA. Q1+Q3\nB. Q3-Q1\nC. 最大-最小\nD. 1.5Q3", back: "答案：B\n\n正确选项：Q3-Q1", source: "ai-mcq", verified: false },
@@ -70,7 +70,7 @@ export const SUBJECT_FLASHCARDS_STATS: SubjectFlashcard[] = [
   { id: "stats-049", deck: "stats", category: "AP Stats", front: "独立X,Y的SD为3,4，则SD(X+Y)=?\nA. 1\nB. 5\nC. 7\nD. 25", back: "答案：B\n\n正确选项：5", source: "ai-mcq", verified: false },
   { id: "stats-050", deck: "stats", category: "AP Stats", front: "二项分布要求？\nA. 成功概率每次改变\nB. 固定试验数与相同成功概率\nC. 直到首次成功\nD. 连续结果", back: "答案：B\n\n正确选项：固定试验数与相同成功概率", source: "ai-mcq", verified: false },
   { id: "stats-051", deck: "stats", category: "AP Stats", front: "X~Bin(20,.3)，E(X)=?\nA. .3\nB. 6\nC. 14\nD. 20", back: "答案：B\n\n正确选项：6", source: "ai-mcq", verified: false },
-  { id: "stats-052", deck: "stats", category: "AP Stats", front: "上题SD(X)=?\nA. sqrt(4.2)\nB. sqrt6\nC. 4.2\nD. 6", back: "答案：A\n\n正确选项：sqrt(4.2)", source: "ai-mcq", verified: false },
+  { id: "stats-052", deck: "stats", category: "AP Stats", front: "【承接上题】X~Bin(20,.3)，E(X)=?\n上题SD(X)=?\nA. sqrt(4.2)\nB. sqrt6\nC. 4.2\nD. 6", back: "答案：A\n\n正确选项：sqrt(4.2)", source: "ai-mcq", verified: false },
   { id: "stats-053", deck: "stats", category: "AP Stats", front: "几何随机变量通常计数？\nA. 固定n中成功数\nB. 首次成功所需试验数\nC. 样本均值\nD. 失败比例", back: "答案：B\n\n正确选项：首次成功所需试验数", source: "ai-mcq", verified: false },
   { id: "stats-054", deck: "stats", category: "AP Stats", front: "成功概率.25，首次成功试验数的期望？\nA. .25\nB. 2\nC. 4\nD. 25", back: "答案：C\n\n正确选项：4", source: "ai-mcq", verified: false },
   { id: "stats-055", deck: "stats", category: "AP Stats", front: "模拟估计概率，估计值通常是？\nA. 成功试验比例\nB. 随机数字总和\nC. 最大编号\nD. 理论值必相等", back: "答案：A\n\n正确选项：成功试验比例", source: "ai-mcq", verified: false },

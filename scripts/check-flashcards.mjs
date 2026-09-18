@@ -28,6 +28,10 @@ const LABEL_RE = /^[A-D]\.\s/;
 
 const problems = [];
 const counts = {};
+
+/** 题干引用“上题/上式/上述”时必须带内联的承接行，否则卡片在 app 里没法作答。 */
+const REFERS_BACK = /上题|上式|上述|前一题/;
+const CONTEXT_PREFIX = '【承接上题】';
 const seenIds = new Set();
 
 const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
@@ -91,6 +95,19 @@ function parseCards(rel) {
     problems.push(`${rel}: 文件头声明 ${declared[1]} 张，实际 ${cards.length} 张`);
   }
   return cards;
+}
+
+/** 题干（第一个选项行之前）——依赖标记只在这里才算数。 */
+function stemOf(card) {
+  const lines = card.front.split('\n');
+  const first = lines.findIndex((l) => /^A\.\s/.test(l));
+  return (first < 0 ? lines : lines.slice(0, first)).join('\n');
+}
+
+function checkBackReference(rel, card) {
+  if (REFERS_BACK.test(stemOf(card)) && !card.front.startsWith(CONTEXT_PREFIX)) {
+    problems.push(`${rel}/${card.id}: 题干引用上一题，但没有 ${CONTEXT_PREFIX} 承接行`);
+  }
 }
 
 function checkIdAndCategory(rel, card) {
@@ -181,6 +198,7 @@ counts.amc10 = amc10.length;
 for (const card of amc10) {
   checkIdAndCategory(AMC10_REL, card);
   checkConceptCard(AMC10_REL, card);
+  checkBackReference(AMC10_REL, card);
   checkProvenance(AMC10_REL, card, 'amc10-concept');
 }
 
@@ -193,6 +211,7 @@ for (const deck of SUBJECT_DECKS) {
     if (card.deck !== deck) problems.push(`${rel}/${card.id}: deck 字段是 "${card.deck}"`);
     checkSubjectCard(rel, card);
     checkProvenance(rel, card, 'ai-mcq');
+    checkBackReference(rel, card);
   }
 }
 

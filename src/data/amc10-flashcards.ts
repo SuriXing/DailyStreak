@@ -217,7 +217,7 @@ export const AMC10_FLASHCARDS: AMC10Flashcard[] = [
   { id: "amc10-0189", level: "core", deck: "algebra", category: "不等式", front: "n个数的平方和下界是什么？", back: "Σx_i²≥(Σx_i)²/n，等号在全部相等。", source: "amc10-concept", verified: false },
   { id: "amc10-0190", level: "advance", deck: "algebra", category: "不等式", front: "Titu/Engel形式是什么？", back: "正分母下，Σa_i²/x_i≥(Σa_i)²/(Σx_i)，等号当且仅当a_i/x_i全相等。", source: "amc10-concept", verified: false },
   { id: "amc10-0191", level: "core", deck: "algebra", category: "不等式", front: "1/x+1/y在x+y=S时的下界是什么？", back: "4/S，正数且x=y时取等。", source: "amc10-concept", verified: false },
-  { id: "amc10-0192", level: "advance", deck: "algebra", category: "不等式", front: "QM-AM是什么？", back: "均方根不小于算术平均：√(Σa_i²/n)≥Σa_i/n，等号当且仅当所有数相等；是Cauchy的直接结果。", source: "amc10-concept", verified: false },
+  { id: "amc10-0192", level: "advance", deck: "algebra", category: "不等式", front: "QM-AM是什么？", back: "均方根不小于算术平均：√(Σa_i²/n)≥Σa_i/n（对任意实数成立），等号当且仅当所有数相等且公共值≥0；是Cauchy的直接结果。", source: "amc10-concept", verified: false },
   { id: "amc10-0193", level: "advance", deck: "algebra", category: "不等式", front: "线性式在固定平方和下如何最大化？", back: "用Cauchy；变量向系数向量成比例时取等。", source: "amc10-concept", verified: false },
   { id: "amc10-0194", level: "core", deck: "algebra", category: "不等式", front: "连续最值用于整数题后还要做什么？", back: "检查最邻近整数、实际因数对和同余可达性。", source: "amc10-concept", verified: false },
   { id: "amc10-0195", level: "core", deck: "algebra", category: "不等式", front: "整数平滑原则是什么？", back: "固定和时若两数相差至少2，把大数减1、小数加1通常增大乘积。", source: "amc10-concept", verified: false },

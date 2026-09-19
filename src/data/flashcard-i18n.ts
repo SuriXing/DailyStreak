@@ -197,7 +197,7 @@ export const FLASHCARD_EN: Record<string, { front: string; back: string }> = {
   'amc10-0189': { front: 'What is the lower bound on the sum of squares of n numbers?', back: 'Σx_i²≥(Σx_i)²/n, with equality when all are equal.' },
   'amc10-0190': { front: 'What is the Titu/Engel form?', back: 'With positive denominators, Σa_i²/x_i≥(Σa_i)²/(Σx_i), with equality exactly when all a_i/x_i are equal.' },
   'amc10-0191': { front: 'What is the lower bound on 1/x+1/y when x+y=S?', back: '4/S, attained for positive x=y.' },
-  'amc10-0192': { front: 'What is QM-AM?', back: 'The root mean square is at least the arithmetic mean: √(Σa_i²/n)≥Σa_i/n, with equality exactly when all terms are equal; it follows directly from Cauchy.' },
+  'amc10-0192': { front: 'What is QM-AM?', back: 'The root mean square is at least the arithmetic mean: √(Σa_i²/n)≥Σa_i/n, which holds for all real numbers, with equality exactly when all terms are equal and that common value is ≥0; it follows directly from Cauchy.' },
   'amc10-0193': { front: 'How do you maximize a linear expression under a fixed sum of squares?', back: 'Use Cauchy; equality holds when the variables are proportional to the coefficient vector.' },
   'amc10-0194': { front: 'After using a continuous extremum on an integer problem, what else must you do?', back: 'Check the nearest integers, the actual factor pairs, and whether the value is reachable under the congruences.' },
   'amc10-0195': { front: 'What is the integer smoothing principle?', back: 'With a fixed sum, if two numbers differ by at least 2, moving 1 from the larger to the smaller usually increases the product.' },

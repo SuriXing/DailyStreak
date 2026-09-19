@@ -162,6 +162,7 @@ export interface UiStrings {
   'flashcards.sourceAmc10': DictValue;
   'flashcards.sourceAiMcq': DictValue;
   'flashcards.unverified': DictValue;
+  'flashcards.verified': DictValue;
   'flashcards.provenanceNote': DictValue;
 }
 

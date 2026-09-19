@@ -80,10 +80,11 @@ export default function StudyScreen() {
     resetSession();
   };
 
-  /** 卡片来源标注：题库来自 AI 生成的资料，没有任何一题的答案被独立核验过。 */
+  /** 来源 + 核验状态：verified 由 scripts/flashcard-verification.json 的正文哈希决定。 */
   const sourceLine = (card: Flashcard) => {
     const label = t(card.source === 'ai-mcq' ? 'flashcards.sourceAiMcq' : 'flashcards.sourceAmc10');
-    return card.verified ? label : `${label} · ${t('flashcards.unverified')}`;
+    const state = card.verified ? t('flashcards.verified') : t('flashcards.unverified');
+    return `${label} · ${state}`;
   };
 
   const chip = (label: string, active: boolean, onPress: () => void) => (

@@ -139,5 +139,6 @@ export const zh: UiStrings = {
   'flashcards.sourceAmc10': 'AMC10 知识卡 · AI 整理',
   'flashcards.sourceAiMcq': 'AI 原创题',
   'flashcards.unverified': '答案未核验',
+  'flashcards.verified': '答案已独立核验',
   'flashcards.provenanceNote': '题库由 AI 生成的复习资料整理而来，不是官方真题；答案未经逐题独立核验，只作复习提示。',
 };

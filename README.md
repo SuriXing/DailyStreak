@@ -184,10 +184,21 @@ Every card carries `source` and `verified`:
 - `source: 'ai-mcq'` — the AP items are AI-written multiple choice. The material pack says so itself
   （“文件名标注「原创」的题由AI生成”）, and its own QA report records that the original questions were
   never independently recomputed.
-- `verified: false` — nothing in the bank has been answer-checked question by question. Treat the cards
-  as review prompts, not as a source of truth, and prefer official material when it matters.
+- `verified` — whether the answer went through an independent recomputation pass.
+  `scripts/flashcard-verification.json` records a hash of the text that was checked, and the builders stamp
+  the flag only while the hash still matches, so editing a card drops it back to unverified until somebody
+  reworks it. The practice screen shows the state on every card and repeats the provenance note under the
+  filters.
 
-The practice screen labels this on every card and repeats it under the filters.
+### What "verified" does and does not mean
+
+On 2026-09-19 every card was recomputed by independent reviewers — sixteen sharded passes, with hand
+recomputation of every flagged item and of the eighteen questions the answer parser had been dropping.
+That pass found and fixed two wrong answer keys, two questions with a second defensible option, one
+question with no context at all, three unusable stems, and twenty-six concept cards missing a condition or
+an equality case. So `verified` means an AI recomputation pass with spot checks from a human-driven
+session — **not** a human expert review — and the bank is still review material: prefer official College
+Board questions when the stakes are real.
 
 ### Guarding the generated data
 

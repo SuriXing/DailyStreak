@@ -159,12 +159,12 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 
 ## Flashcard Question Bank
 
-The 1146 practice cards are generated data, not copy typed into the app:
+The 1164 practice cards are generated data, not copy typed into the app:
 
 | Decks | Cards | Source material | Generator |
 |---|---|---|---|
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
-| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 582 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
+| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 600 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
 
 Both builders read a local material pack (default `~/Downloads/AP-AMC学习资料-2026-27/`) and write
 committed TS modules — `src/data/amc10-flashcards.ts` and `src/data/subject-decks/*.ts` — each headed

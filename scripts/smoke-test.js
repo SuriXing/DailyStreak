@@ -112,7 +112,7 @@ function clickI18n(page, zh, en) {
   await clickI18n(page, '下一张', 'Next');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();
-  assert(/2 \/ 582/.test(text), '下一张后进度为 2 / 582（582 张选择题）');
+  assert(/2 \/ 600/.test(text), '下一张后进度为 2 / 600（600 张选择题）');
   await clickI18n(page, '概念卡', 'Concept cards');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();

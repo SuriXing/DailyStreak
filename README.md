@@ -192,7 +192,7 @@ The practice screen labels this on every card and repeats it under the filters.
 ### Guarding the generated data
 
 ```bash
-npm run check:flashcards   # 声明张数 / id 唯一 / 恰好四个选项 / 无重复标签 / 答案字母与选项自洽 / 来源字段齐全
+npm run check:flashcards   # 声明张数 / id 连续且等于源题号 / 四个选项 / 无重复标签 / 答案字母自洽 / 来源字段 / 承接行齐全
 ```
 
 The check exists because all 240 CSA and CSP cards once shipped with their first option reading
@@ -200,11 +200,18 @@ The check exists because all 240 CSA and CSP cards once shipped with their first
 the UI then prefixed a second time. It also pinned the runtime parser down — a stem may span several
 lines, so the option block is located by the first `A. ` line instead of assuming line two.
 
+Two more failure modes are guarded now. The answer key parser used to join the whole key file into one
+line and anchor its regex at the start, so every `## 1–20` heading swallowed the first answer of its
+block — eighteen questions never reached the app. The builder now refuses to write anything if a source
+question would be dropped, and the check requires ids to run `deck-001…deck-120`, so a missing number
+cannot hide. Cards whose stem says "上题/上式" also carry the referenced question as an inlined
+`【承接上题】` line, because cards are shown one at a time and free practice shuffles by default.
+
 ## Quality Gates
 
 ```bash
 npm run precheck           # 本地一键门禁: i18n completeness + 闪卡数据校验 + ruff + type check + lint + UXE 设计契约
-npm run check:flashcards   # 闪卡生成数据完整性校验（张数 / id / 选项 / 答案字母 / 来源字段）
+npm run check:flashcards   # 闪卡生成数据完整性校验（张数 / id 连续 / 选项 / 答案字母 / 来源字段 / 承接行）
 npm run typecheck          # tsc --noEmit
 npm run lint               # Expo ESLint
 npm run lint:py            # ruff 检查 .uxe/scripts（配置在 pyproject.toml）

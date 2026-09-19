@@ -104,7 +104,7 @@ function clickI18n(page, zh, en) {
   assertLabel(text, '全部卡组', 'all decks', '自由练渲染卡组筛选');
   assertLabel(text, '题型', 'card type', '自由练渲染题型筛选');
   assertLabel(text, '乱序', 'shuffle', '自由练渲染乱序开关');
-  assertI18n(text, '答案未核验', 'answer unchecked', '卡片标注来源与"答案未核验"');
+  assertI18n(text, '答案已独立核验', 'answer independently checked', '卡片标注来源与核验状态');
   assertI18n(text, '题库由 AI 生成', 'AI-generated study material', '筛选区下方有题库来源提示');
   assert(/\nA\.\s/.test(text) && /\nB\.\s/.test(text), '默认渲染选择题选项（A/B）');
 

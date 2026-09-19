@@ -139,5 +139,6 @@ export const es: UiStrings = {
   'flashcards.sourceAmc10': 'Notas AMC10 · recopilado por IA',
   'flashcards.sourceAiMcq': 'Ítem generado por IA',
   'flashcards.unverified': 'respuesta sin verificar',
+  'flashcards.verified': 'respuesta verificada de forma independiente',
   'flashcards.provenanceNote': 'Estas tarjetas vienen de material de estudio generado por IA, no de exámenes oficiales; las respuestas no se verificaron una por una.',
 };

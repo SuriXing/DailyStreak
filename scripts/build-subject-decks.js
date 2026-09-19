@@ -7,6 +7,7 @@
  *
  * Usage: node scripts/build-subject-decks.js <baseDir>
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -14,6 +15,7 @@ const os = require('os');
 const home = os.homedir();
 const BASE = process.argv[2] || path.join(home, 'Downloads', 'AP-AMC学习资料-2026-27');
 const OUTDIR = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
+const VERIFICATION = path.join(__dirname, 'flashcard-verification.json');
 
 const SUBJECTS = [
   {
@@ -133,7 +135,22 @@ function parseSpaceAnswer(text) {
 const REFERS_BACK = /上题|上式|上述|前一题/;
 const CONTEXT_PREFIX = '【承接上题】';
 
+/**
+ * 复核台账（id → 复核时正文的短哈希）。只有哈希对得上才算 verified，
+ * 所以改过正文的卡会自动回到未核验，必须重新复核后更新台账。
+ */
+function verifiedHashes() {
+  if (!fs.existsSync(VERIFICATION)) return {};
+  return JSON.parse(fs.readFileSync(VERIFICATION, 'utf8')).cards || {};
+}
+
+/** 与台账生成脚本一致：sha1(front + NUL + back) 前 12 位。 */
+function hashOf(front, back) {
+  return crypto.createHash('sha1').update(`${front}\u0000${back}`).digest('hex').slice(0, 12);
+}
+
 function buildDeck(cfg) {
+  const hashes = verifiedHashes();
   const answerMap = {};
   for (const af of cfg.ans) {
     const text = fs.readFileSync(path.join(BASE, af), 'utf8');
@@ -167,15 +184,18 @@ function buildDeck(cfg) {
       const front = `${context}${rawStem}\nA. ${q.options[0] || ''}\nB. ${q.options[1] || ''}\nC. ${q.options[2] || ''}\nD. ${q.options[3] || ''}`;
       const correct = q.options[letterIdx] || ans.letter;
       const back = `答案：${ans.letter}\n${ans.brief ? '简析：' + ans.brief : ''}\n\n正确选项：${correct}`;
+      const cardId = `${cfg.key}-${String(q.num).padStart(3, '0')}`;
+      const frontClean = clean(front);
+      const backClean = clean(back).replace(/\n{3,}/g, '\n\n');
       cards.push({
         // id 用源题号：卡号与题库题号一一对应，将来补回缺题也不会让后面的卡片整体改号。
-        id: `${cfg.key}-${String(q.num).padStart(3, '0')}`,
+        id: cardId,
         deck: cfg.key,
         category: cfg.label.replace(' · 选择题', ''),
-        front: clean(front),
-        back: clean(back).replace(/\n{3,}/g, '\n\n'),
+        front: frontClean,
+        back: backClean,
         source: 'ai-mcq',
-        verified: false,
+        verified: hashes[cardId] === hashOf(frontClean, backClean),
       });
     }
   }
@@ -190,6 +210,16 @@ function buildDeck(cfg) {
   }
 
   return { key: cfg.key, label: cfg.label, cards };
+}
+
+// 台账里写错的 id 不能静默失效
+{
+  const known = new Set(SUBJECTS.flatMap((cfg) => buildDeck(cfg).cards.map((c) => c.id)));
+  const unknown = Object.keys(verifiedHashes()).filter((id) => !id.startsWith('amc10-') && !known.has(id));
+  if (unknown.length) {
+    console.error(`❌ ${VERIFICATION} 里有 ${unknown.length} 个 id 不在卡组里: ${unknown.slice(0, 5).join(', ')}`);
+    process.exit(1);
+  }
 }
 
 fs.mkdirSync(OUTDIR, { recursive: true });

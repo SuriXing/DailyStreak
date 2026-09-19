@@ -6,6 +6,7 @@
  * Usage: node scripts/build-amc10-flashcards.js [srcDir]
  *   srcDir defaults to ~/Downloads/AP-AMC学习资料-2026-27/AMC10-知识点与训练/Flashcards
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -14,6 +15,7 @@ const SRC =
   process.argv[2] ||
   path.join(home, 'Downloads', 'AP-AMC学习资料-2026-27', 'AMC10-知识点与训练', 'Flashcards');
 const OUT = path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
+const VERIFICATION = path.join(__dirname, 'flashcard-verification.json');
 
 const FILES = [
   ['21-Flashcards-算术与数论.md', 'arithmetic', '算术与数论'],
@@ -43,6 +45,17 @@ function parse(line) {
   };
 }
 
+/** 复核台账（id → 正文哈希）；哈希对得上才算 verified。 */
+function verifiedHashes() {
+  if (!fs.existsSync(VERIFICATION)) return {};
+  return JSON.parse(fs.readFileSync(VERIFICATION, 'utf8')).cards || {};
+}
+
+function hashOf(front, back) {
+  return crypto.createHash('sha1').update(`${front}\u0000${back}`).digest('hex').slice(0, 12);
+}
+
+const hashes = verifiedHashes();
 let id = 0;
 const cards = [];
 const deckLabels = {};
@@ -53,16 +66,27 @@ for (const [file, deck, label] of FILES) {
     const c = parse(line);
     if (!c) continue;
     id += 1;
+    const cardId = `amc10-${String(id).padStart(4, '0')}`;
     cards.push({
-      id: `amc10-${String(id).padStart(4, '0')}`,
+      id: cardId,
       level: c.level,
       deck,
       category: c.category || label,
       front: c.front,
       back: c.back,
       source: 'amc10-concept',
-      verified: false,
+      verified: hashes[cardId] === hashOf(c.front, c.back),
     });
+  }
+}
+
+// 台账里写错的 id 不能静默失效
+{
+  const known = new Set(cards.map((c) => c.id));
+  const unknown = Object.keys(hashes).filter((id) => id.startsWith('amc10-') && !known.has(id));
+  if (unknown.length) {
+    console.error(`❌ ${VERIFICATION} 里有 ${unknown.length} 个 id 不在卡组里: ${unknown.slice(0, 5).join(', ')}`);
+    process.exit(1);
   }
 }
 

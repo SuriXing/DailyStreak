@@ -17,6 +17,7 @@
  * 用法：npm run check:flashcards（退出码非 0 表示数据坏了）。
  */
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -28,6 +29,12 @@ const LABEL_RE = /^[A-D]\.\s/;
 
 const problems = [];
 const counts = {};
+
+/** 复核台账：id → 复核时正文的短哈希。 */
+const LEDGER = JSON.parse(readFileSync(path.join(root, 'scripts/flashcard-verification.json'), 'utf8'));
+const VERIFIED_HASHES = LEDGER.cards || {};
+const hashOf = (front, back) =>
+  createHash('sha1').update(`${front}\u0000${back}`).digest('hex').slice(0, 12);
 
 /** 题干引用“上题/上式/上述”时必须带内联的承接行，否则卡片在 app 里没法作答。 */
 const REFERS_BACK = /上题|上式|上述|前一题/;
@@ -186,13 +193,20 @@ function checkSourceUnion() {
   }
 }
 
-/** 每张卡都必须声明来源，且在没有独立核验前 verified 保持 false。 */
+/**
+ * 来源必须正确；verified 必须等于"台账里的哈希与当前正文对得上"，
+ * 这样手改 verified、或者改了正文忘了复核，都会被抓出来。
+ */
 function checkProvenance(rel, card, expected) {
   if (card.source !== expected) {
     problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
   }
-  if (card.verified !== false) {
-    problems.push(`${rel}/${card.id}: verified 应为 false，实际 ${JSON.stringify(card.verified)}`);
+  const shouldBeVerified = VERIFIED_HASHES[card.id] === hashOf(card.front, card.back);
+  if (card.verified !== shouldBeVerified) {
+    problems.push(
+      `${rel}/${card.id}: verified=${JSON.stringify(card.verified)}，` +
+        `但台账哈希${shouldBeVerified ? '对得上' : '对不上（正文改过？）'}`,
+    );
   }
 }
 
@@ -234,6 +248,15 @@ for (const deck of SUBJECT_DECKS) {
 checkSourceUnion();
 
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
+{
+  const unknown = Object.keys(VERIFIED_HASHES).filter((id) => !seenIds.has(id));
+  if (unknown.length) {
+    problems.push(
+      `scripts/flashcard-verification.json: ${unknown.length} 个 id 不在任何卡组里 → ${unknown.slice(0, 5).join(', ')}`,
+    );
+  }
+}
+const verifiedCount = Object.keys(VERIFIED_HASHES).length;
 
 if (problems.length) {
   console.error(`❌ 闪卡数据校验失败（${problems.length} 处）:`);
@@ -245,5 +268,5 @@ if (problems.length) {
 console.log(
   `✅ 闪卡数据校验通过: ${Object.entries(counts)
     .map(([k, v]) => `${k}=${v}`)
-    .join(' ')}（共 ${total} 张，形状自洽且全部标注了来源与未核验状态）`,
+    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张）`,
 );

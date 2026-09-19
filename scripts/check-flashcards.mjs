@@ -110,6 +110,20 @@ function checkBackReference(rel, card) {
   }
 }
 
+/**
+ * id 必须连续且等于源题号（deck-001…deck-120）：一旦缺号就说明有源题被丢弃，
+ * 历史上正是因为每 20 题丢 1 道，18 道题从未进入 app。
+ */
+function checkIdSequence(rel, prefix, cards, width = 3) {
+  for (let i = 0; i < cards.length; i += 1) {
+    const expected = `${prefix}-${String(i + 1).padStart(width, '0')}`;
+    if (cards[i].id !== expected) {
+      problems.push(`${rel}: 第 ${i + 1} 张的 id 是 ${cards[i].id}，应为 ${expected}（中间有源题缺号）`);
+      return;
+    }
+  }
+}
+
 function checkIdAndCategory(rel, card) {
   if (seenIds.has(card.id)) problems.push(`重复 id: ${card.id}`);
   seenIds.add(card.id);
@@ -195,6 +209,7 @@ function checkConceptCard(rel, card) {
 const AMC10_REL = 'src/data/amc10-flashcards.ts';
 const amc10 = parseCards(AMC10_REL);
 counts.amc10 = amc10.length;
+checkIdSequence(AMC10_REL, 'amc10', amc10, 4);
 for (const card of amc10) {
   checkIdAndCategory(AMC10_REL, card);
   checkConceptCard(AMC10_REL, card);
@@ -206,6 +221,7 @@ for (const deck of SUBJECT_DECKS) {
   const rel = `src/data/subject-decks/${deck}.ts`;
   const cards = parseCards(rel);
   counts[deck] = cards.length;
+  checkIdSequence(rel, deck, cards);
   for (const card of cards) {
     checkIdAndCategory(rel, card);
     if (card.deck !== deck) problems.push(`${rel}/${card.id}: deck 字段是 "${card.deck}"`);

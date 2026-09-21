@@ -5,15 +5,13 @@
  *  - 'dot':   "1. Q? A. opt B. opt C. opt D. opt" + markdown table answer (CSA/CSP)
  *  - 'space': "1. Q? A v B v C v D v" + "N LETTER（brief）; ..." answer (Precalc/Calc/Stats)
  *
- * Usage: node scripts/build-subject-decks.js <baseDir>
+ * Usage: node scripts/build-subject-decks.js [baseDir]
+ *   baseDir defaults to content/subject-banks (committed in this repo).
  */
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
-
-const home = os.homedir();
-const BASE = process.argv[2] || path.join(home, 'Downloads', 'AP-AMC学习资料-2026-27');
+const BASE = process.argv[2] || path.join(__dirname, '..', 'content', 'subject-banks');
 const OUTDIR = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
 const VERIFICATION = path.join(__dirname, 'flashcard-verification.json');
 
@@ -22,36 +20,36 @@ const SUBJECTS = [
     key: 'csa',
     label: 'AP CSA · 选择题',
     style: 'dot',
-    mcq: ['AP-CSA-CSP-知识点与题库/07-CSA原创选择题-1.md', 'AP-CSA-CSP-知识点与题库/08-CSA原创选择题-2.md'],
-    ans: ['AP-CSA-CSP-知识点与题库/09-CSA选择题答案.md'],
+    mcq: ['csa/07-CSA原创选择题-1.md', 'csa/08-CSA原创选择题-2.md'],
+    ans: ['csa/09-CSA选择题答案.md'],
   },
   {
     key: 'csp',
     label: 'AP CSP · 选择题',
     style: 'dot',
-    mcq: ['AP-CSA-CSP-知识点与题库/12-CSP原创选择题-1.md', 'AP-CSA-CSP-知识点与题库/13-CSP原创选择题-2.md'],
-    ans: ['AP-CSA-CSP-知识点与题库/14-CSP选择题答案.md'],
+    mcq: ['csp/12-CSP原创选择题-1.md', 'csp/13-CSP原创选择题-2.md'],
+    ans: ['csp/14-CSP选择题答案.md'],
   },
   {
     key: 'precalc',
     label: 'AP Precalc · 选择题',
     style: 'space',
-    mcq: ['AP-Precalculus-Calculus-BC-Statistics-知识点与题库/05-Precalculus原创选择题-1.md', 'AP-Precalculus-Calculus-BC-Statistics-知识点与题库/06-Precalculus原创选择题-2.md'],
-    ans: ['AP-Precalculus-Calculus-BC-Statistics-知识点与题库/07-Precalculus选择题答案.md'],
+    mcq: ['precalc/05-Precalculus原创选择题-1.md', 'precalc/06-Precalculus原创选择题-2.md'],
+    ans: ['precalc/07-Precalculus选择题答案.md'],
   },
   {
     key: 'calcbc',
     label: 'AP Calc BC · 选择题',
     style: 'space',
-    mcq: ['AP-Precalculus-Calculus-BC-Statistics-知识点与题库/15-CalculusBC原创选择题-1.md', 'AP-Precalculus-Calculus-BC-Statistics-知识点与题库/16-CalculusBC原创选择题-2.md'],
-    ans: ['AP-Precalculus-Calculus-BC-Statistics-知识点与题库/17-CalculusBC选择题答案.md'],
+    mcq: ['calcbc/15-CalculusBC原创选择题-1.md', 'calcbc/16-CalculusBC原创选择题-2.md'],
+    ans: ['calcbc/17-CalculusBC选择题答案.md'],
   },
   {
     key: 'stats',
     label: 'AP Stats · 选择题',
     style: 'space',
-    mcq: ['AP-Precalculus-Calculus-BC-Statistics-知识点与题库/24-Statistics原创选择题-1.md', 'AP-Precalculus-Calculus-BC-Statistics-知识点与题库/25-Statistics原创选择题-2.md'],
-    ans: ['AP-Precalculus-Calculus-BC-Statistics-知识点与题库/26-Statistics选择题答案.md'],
+    mcq: ['stats/24-Statistics原创选择题-1.md', 'stats/25-Statistics原创选择题-2.md'],
+    ans: ['stats/26-Statistics选择题答案.md'],
   },
 ];
 

@@ -166,14 +166,20 @@ The 1164 practice cards are generated data, not copy typed into the app:
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
 | AP CSA, CSP, Precalculus, Calculus BC, Statistics | 600 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
 
-Both builders read a local material pack (default `~/Downloads/AP-AMC学习资料-2026-27/`) and write
-committed TS modules — `src/data/amc10-flashcards.ts` and `src/data/subject-decks/*.ts` — each headed
-with `// AUTO-GENERATED … Do not hand-edit.`. To change a card, change the markdown and regenerate:
+Both builders read the sources committed under `content/` — the AMC 10 flashcard decks and the five
+subject question banks with their answer keys, and nothing else from the material pack (the PDFs and the
+study guides stay outside the repo). They write committed TS modules — `src/data/amc10-flashcards.ts` and
+`src/data/subject-decks/*.ts` — each headed with `// AUTO-GENERATED … Do not hand-edit.`. To change a card,
+edit the markdown under `content/` and regenerate:
 
 ```bash
-node scripts/build-amc10-flashcards.js [srcDir]
-node scripts/build-subject-decks.js [baseDir]
+node scripts/build-amc10-flashcards.js [srcDir]   # default: content/amc10-flashcards
+node scripts/build-subject-decks.js [baseDir]     # default: content/subject-banks
 ```
+
+Regenerating leaves the committed data untouched unless the markdown changed, and because the verification
+ledger keys on a hash of each card's text, a real edit drops those cards back to `verified: false` until
+somebody reworks them.
 
 ### Provenance, and what this bank is not
 

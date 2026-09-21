@@ -4,16 +4,14 @@
  * a self-contained TS data module committed into the repo.
  *
  * Usage: node scripts/build-amc10-flashcards.js [srcDir]
- *   srcDir defaults to ~/Downloads/AP-AMC学习资料-2026-27/AMC10-知识点与训练/Flashcards
+ *   srcDir defaults to content/amc10-flashcards (committed in this repo);
+ *   pass a path to build from an external material pack instead.
  */
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const home = require('os').homedir();
-const SRC =
-  process.argv[2] ||
-  path.join(home, 'Downloads', 'AP-AMC学习资料-2026-27', 'AMC10-知识点与训练', 'Flashcards');
+const SRC = process.argv[2] || path.join(__dirname, '..', 'content', 'amc10-flashcards');
 const OUT = path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
 const VERIFICATION = path.join(__dirname, 'flashcard-verification.json');
 

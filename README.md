@@ -212,6 +212,19 @@ Board questions when the stakes are real.
 npm run check:flashcards   # 声明张数 / id 连续且等于源题号 / 四个选项 / 无重复标签 / 答案字母自洽 / 来源字段 / 承接行齐全
 ```
 
+### The bundle carries a packed copy
+
+The app does not import the generated deck modules directly. `scripts/pack-decks.mjs` packs them into
+`src/data/deck-pack.ts` — a gzip+base64 blob that `src/data/deck-pack-loader.ts` unpacks at startup — and
+`src/data/flashcards.ts` imports only that loader. The packed form is 79 KB instead of 325 KB of plain
+object literals, which takes about 256 KB off the web bundle and keeps the card text out of a
+straightforward grep of the shipped JS. That is obfuscation, not protection: the app has to unpack it, so
+anybody can. The plain modules stay in the repo because the deck check reads them.
+
+Two gates keep it honest: `check:flashcards` re-packs and compares, so a stale blob fails the commit, and
+it also fails if any app file imports a plain deck module again. Both builders refresh the blob on their
+own, so `npm run pack:decks` is only needed when you pack without regenerating.
+
 The check exists because all 240 CSA and CSP cards once shipped with their first option reading
 `A. A. 3`: the builder split the option line and left the label inside the first option's text, which
 the UI then prefixed a second time. It also pinned the runtime parser down — a stem may span several

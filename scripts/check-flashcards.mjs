@@ -16,10 +16,13 @@
  *
  * 用法：npm run check:flashcards（退出码非 0 表示数据坏了）。
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+
+import { readCards } from './lib/deck-cards.mjs';
+import { buildPack, renderPackModule } from './pack-decks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SUBJECT_DECKS = ['csa', 'csp', 'precalc', 'calcbc', 'stats'];
@@ -43,60 +46,11 @@ const seenIds = new Set();
 
 const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
 
-/**
- * 生成文件里每张卡是一行 TS 对象字面量（键没有引号，所以不是合法 JSON）。
- * 这里用一个只认字符串边界的小扫描器给键补上引号，再做 JSON.parse：
- * 字符串内部的冒号不会被误判成键名。
- */
-function toJson(line) {
-  const src = line.trim().replace(/,$/, '');
-  let out = '';
-  let inString = false;
-  let escaped = false;
-  for (let i = 0; i < src.length; i += 1) {
-    const ch = src[i];
-    if (inString) {
-      out += ch;
-      if (escaped) escaped = false;
-      else if (ch === '\\') escaped = true;
-      else if (ch === '"') inString = false;
-      continue;
-    }
-    if (ch === '"') {
-      inString = true;
-      out += ch;
-      continue;
-    }
-    if (/[A-Za-z_$]/.test(ch) && /(?:^|[{,]\s*)$/.test(out)) {
-      let end = i;
-      while (end < src.length && /[A-Za-z0-9_$]/.test(src[end])) end += 1;
-      let colon = end;
-      while (colon < src.length && src[colon] === ' ') colon += 1;
-      if (src[colon] === ':') {
-        out += `"${src.slice(i, end)}"`;
-        i = end - 1;
-        continue;
-      }
-    }
-    out += ch;
-  }
-  return out;
-}
-
-/** 生成文件里每张卡是一行对象字面量，解析成对象后逐张校验。 */
+/** 读出每张卡（解析交给 scripts/lib/deck-cards.mjs，与打包器共用同一套）。 */
 function parseCards(rel) {
   const src = read(rel);
   const declared = src.match(/\((\d+) cards\)/);
-  const cards = [];
-  for (const line of src.split('\n')) {
-    const t = line.trim();
-    if (!t.startsWith('{ id: ')) continue;
-    try {
-      cards.push(JSON.parse(toJson(t)));
-    } catch (e) {
-      problems.push(`${rel}: 卡片行解析失败（${e.message}）: ${t.slice(0, 90)}`);
-    }
-  }
+  const cards = readCards(path.join(root, rel));
   if (!declared) problems.push(`${rel}: 文件头缺少 "(N cards)" 声明`);
   else if (Number(declared[1]) !== cards.length) {
     problems.push(`${rel}: 文件头声明 ${declared[1]} 张，实际 ${cards.length} 张`);
@@ -197,6 +151,33 @@ function checkSourceUnion() {
  * 来源必须正确；verified 必须等于"台账里的哈希与当前正文对得上"，
  * 这样手改 verified、或者改了正文忘了复核，都会被抓出来。
  */
+/**
+ * bundle 里只该有压缩块：一旦有人把明文卡组模块 import 回 app，
+ * 体积优势与"不再是可 grep 的明文"这两个收益就都没了。
+ */
+function checkNoPlainDeckImport() {
+  const pattern = /from '(?:@\/data\/(?:amc10-flashcards|subject-decks)|(?:\.\.?\/)+(?:amc10-flashcards|subject-decks))'/;
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      const rel = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(rel);
+      else if (/\.tsx?$/.test(entry.name) && pattern.test(read(rel))) offenders.push(rel);
+    }
+  };
+  for (const dir of ['src/app', 'src/components', 'src/hooks', 'src/lib', 'src/contexts']) {
+    try {
+      walk(dir);
+    } catch {
+      // 目录不存在就跳过
+    }
+  }
+  if (pattern.test(read('src/data/flashcards.ts'))) offenders.push('src/data/flashcards.ts');
+  if (offenders.length) {
+    problems.push(`这些文件 import 了明文卡组模块（bundle 应当只用压缩块）: ${offenders.join(', ')}`);
+  }
+}
+
 function checkProvenance(rel, card, expected) {
   if (card.source !== expected) {
     problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
@@ -247,6 +228,13 @@ for (const deck of SUBJECT_DECKS) {
 
 checkSourceUnion();
 
+// 卡组数据与 bundle 里的压缩块必须同步：改过卡片就要重跑打包
+if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {
+  problems.push('src/data/deck-pack.ts 与卡组数据不同步 → 运行 npm run pack:decks');
+}
+
+checkNoPlainDeckImport();
+
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
 {
   const unknown = Object.keys(VERIFIED_HASHES).filter((id) => !seenIds.has(id));
@@ -268,5 +256,7 @@ if (problems.length) {
 console.log(
   `✅ 闪卡数据校验通过: ${Object.entries(counts)
     .map(([k, v]) => `${k}=${v}`)
-    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张）`,
+    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张；bundle 压缩块 ${
+    (read('src/data/deck-pack.ts').length / 1024).toFixed(0)
+  } KB 已同步）`,
 );

@@ -9,6 +9,7 @@
  *   baseDir defaults to content/subject-banks (committed in this repo).
  */
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const BASE = process.argv[2] || path.join(__dirname, '..', 'content', 'subject-banks');
@@ -277,3 +278,6 @@ export const SUBJECT_FLASHCARDS = [
 `,
 );
 console.log(`wrote index.ts total=${generated.reduce((a, g) => a + g.count, 0)} cards`);
+
+// 卡组数据变了就顺手刷新 bundle 里的压缩块，别让它悄悄过期
+execFileSync(process.execPath, [path.join(__dirname, 'pack-decks.mjs')], { stdio: 'inherit' });

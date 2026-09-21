@@ -8,6 +8,7 @@
  *   pass a path to build from an external material pack instead.
  */
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -134,3 +135,6 @@ const levels = cards.reduce((a, c) => ((a[c.level] = (a[c.level] || 0) + 1), a),
 const decks = cards.reduce((a, c) => ((a[c.deck] = (a[c.deck] || 0) + 1), a), {});
 console.log('levels=', JSON.stringify(levels));
 console.log('decks=', JSON.stringify(decks));
+
+// 卡组数据变了就顺手刷新 bundle 里的压缩块，别让它悄悄过期
+execFileSync(process.execPath, [path.join(__dirname, 'pack-decks.mjs')], { stdio: 'inherit' });

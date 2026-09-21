@@ -1,5 +1,5 @@
-import { AMC10_DECKS, AMC10_FLASHCARDS } from './amc10-flashcards';
-import { SUBJECT_DECKS, SUBJECT_FLASHCARDS } from './subject-decks';
+// 卡片数据在 bundle 里是 gzip+base64 块（scripts/pack-decks.mjs 打包），这里只做解开。
+import { AMC10_DECKS, AMC10_FLASHCARDS, SUBJECT_DECKS, SUBJECT_FLASHCARDS } from './deck-pack-loader';
 
 export type FlashcardLevel = 'core' | 'advance' | 'boundary';
 

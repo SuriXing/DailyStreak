@@ -56,6 +56,7 @@
     "typecheck": "tsc --noEmit",
     "i18n:check": "node scripts/check-i18n.mjs",
     "check:flashcards": "node scripts/check-flashcards.mjs",
+    "pack:decks": "node scripts/pack-decks.mjs",
     "precheck": "npm run i18n:check && npm run check:flashcards && npm run lint:py && npm run typecheck && expo lint && npm run uxe:check",
     "uxe:check": "python3 .uxe/scripts/check.py --project-root .",
     "uxe:component": "python3 .uxe/scripts/component.py --project-root .",

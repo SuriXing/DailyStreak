@@ -148,6 +148,48 @@ function hashOf(front, back) {
   return crypto.createHash('sha1').update(`${front}\u0000${back}`).digest('hex').slice(0, 12);
 }
 
+/**
+ * 答案位置轮转。
+ *
+ * 真实出题人会把正确答案打散在 A/B/C/D 上；这批批量生成的题里 B 占 50%、D 只占 2.8%，
+ * 学生"永远选 B"就能拿 50 分（Stats 卡组 73%）。所以生成时按固定序列重排每题选项，
+ * 让正确项落位均匀。
+ *
+ * 只换选项挂在哪个字母下：选项文本与正确答案内容一个字都不改。
+ * 选项引用其它选项字母（如"A 和 B"）、或解析里用字母指代的题保持原样。
+ */
+const LETTER_REFERENCE = /(^|[^A-Za-z])([A-D])\s*(和|与|、|或|,)\s*([A-D])([^A-Za-z]|$)|以上都|以上均|都不对|都正确|无正确/;
+const ANALYSIS_LETTER = /(^|[^A-Za-z])([A-D])(?![A-Za-z])/;
+
+/** 均衡的目标字母序列（固定种子洗牌，避免 AABBCCDD 这种机械排列）。 */
+function positionPlan(count) {
+  const letters = [];
+  const perLetter = Math.floor(count / 4);
+  for (const l of ['A', 'B', 'C', 'D']) for (let i = 0; i < perLetter; i += 1) letters.push(l);
+  for (let i = letters.length; i < count; i += 1) letters.push('ABCD'[i % 4]);
+  let seed = 20260921;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  for (let i = letters.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    [letters[i], letters[j]] = [letters[j], letters[i]];
+  }
+  return letters;
+}
+
+/** 把正确项挪到 targetIdx，其余选项按原相对顺序填满剩下的字母。 */
+function rotateOptions(options, correctIdx, targetIdx) {
+  const others = options.filter((_, i) => i !== correctIdx);
+  const out = [];
+  let o = 0;
+  for (let i = 0; i < options.length; i += 1) {
+    out.push(i === targetIdx ? options[correctIdx] : others[o++]);
+  }
+  return out;
+}
+
 function buildDeck(cfg) {
   const hashes = verifiedHashes();
   const answerMap = {};
@@ -156,10 +198,9 @@ function buildDeck(cfg) {
     Object.assign(answerMap, cfg.style === 'dot' ? parseDotAnswer(text) : parseSpaceAnswer(text));
   }
   const parse = cfg.style === 'dot' ? parseDotMcq : parseSpaceMcq;
-  const cards = [];
+  const items = [];
   const unanswered = [];
   const unparsed = [];
-  let n = 0;
   let prevStem = '';
   for (const mf of cfg.mcq) {
     prevStem = '';   // 承接只看同一份文件内的上一题
@@ -178,26 +219,34 @@ function buildDeck(cfg) {
         unanswered.push(q.num);
         continue;
       }
-      n += 1;
-      const letterIdx = ans.letter.charCodeAt(0) - 65;
-      const front = `${context}${rawStem}\nA. ${q.options[0] || ''}\nB. ${q.options[1] || ''}\nC. ${q.options[2] || ''}\nD. ${q.options[3] || ''}`;
-      const correct = q.options[letterIdx] || ans.letter;
-      const back = `答案：${ans.letter}\n${ans.brief ? '简析：' + ans.brief : ''}\n\n正确选项：${correct}`;
-      const cardId = `${cfg.key}-${String(q.num).padStart(3, '0')}`;
-      const frontClean = clean(front);
-      const backClean = clean(back).replace(/\n{3,}/g, '\n\n');
-      cards.push({
-        // id 用源题号：卡号与题库题号一一对应，将来补回缺题也不会让后面的卡片整体改号。
-        id: cardId,
-        deck: cfg.key,
-        category: cfg.label.replace(' · 选择题', ''),
-        front: frontClean,
-        back: backClean,
-        source: 'ai-mcq',
-        verified: hashes[cardId] === hashOf(frontClean, backClean),
-      });
+      items.push({ num: q.num, rawStem, context, options: q.options, letter: ans.letter, brief: ans.brief });
     }
   }
+
+  // 第二次遍历：按均衡序列轮转选项后再组装卡片
+  const plan = positionPlan(items.length);
+  let planIndex = 0;
+  const cards = items.map((it) => {
+    const letterIdx = it.letter.charCodeAt(0) - 65;
+    const rotatable = !LETTER_REFERENCE.test(it.options.join(' ')) && !ANALYSIS_LETTER.test(it.brief || '');
+    const targetIdx = rotatable ? 'ABCD'.indexOf(plan[planIndex++]) : letterIdx;
+    const options = rotateOptions(it.options, letterIdx, targetIdx);
+    const front = `${it.context}${it.rawStem}\nA. ${options[0] || ''}\nB. ${options[1] || ''}\nC. ${options[2] || ''}\nD. ${options[3] || ''}`;
+    const back = `答案：${'ABCD'[targetIdx]}\n${it.brief ? '简析：' + it.brief : ''}\n\n正确选项：${options[targetIdx] || ''}`;
+    const cardId = `${cfg.key}-${String(it.num).padStart(3, '0')}`;
+    const frontClean = clean(front);
+    const backClean = clean(back).replace(/\n{3,}/g, '\n\n');
+    return {
+      // id 用源题号：卡号与题库题号一一对应，将来补回缺题也不会让后面的卡片整体改号。
+      id: cardId,
+      deck: cfg.key,
+      category: cfg.label.replace(' · 选择题', ''),
+      front: frontClean,
+      back: backClean,
+      source: 'ai-mcq',
+      verified: hashes[cardId] === hashOf(frontClean, backClean),
+    };
+  });
   // 源题必须一道不落地变成卡片：缺答案或编号行解析不出来就直接失败。
   // 静默跳过正是“18 道题从未进入 app”的成因，这里不给它留后门。
   const dropped = [

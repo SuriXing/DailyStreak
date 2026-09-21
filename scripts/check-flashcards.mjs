@@ -32,6 +32,7 @@ const LABEL_RE = /^[A-D]\.\s/;
 
 const problems = [];
 const counts = {};
+const ALL_CARDS = [];
 
 /** 复核台账：id → 复核时正文的短哈希。 */
 const LEDGER = JSON.parse(readFileSync(path.join(root, 'scripts/flashcard-verification.json'), 'utf8'));
@@ -178,6 +179,33 @@ function checkNoPlainDeckImport() {
   }
 }
 
+/**
+ * 答案位置分布必须均衡：真实出题人会打散，而批量生成的题库很容易挤在一个字母上，
+ * 那样学生不解题也能拿高分（曾出现 B=50%、D=2.8%）。每个卡组每个字母 25%±10%。
+ */
+function checkAnswerPositions() {
+  const perDeck = {};
+  for (const card of ALL_CARDS) {
+    const m = card.back.match(/答案：([A-D])/);
+    if (!m) continue;
+    const deck = card.id.replace(/-\d+$/, '');
+    perDeck[deck] = perDeck[deck] || { A: 0, B: 0, C: 0, D: 0, total: 0 };
+    perDeck[deck][m[1]] += 1;
+    perDeck[deck].total += 1;
+  }
+  for (const [deck, c] of Object.entries(perDeck)) {
+    if (c.total < 40) continue;
+    for (const letter of ['A', 'B', 'C', 'D']) {
+      const pct = (c[letter] / c.total) * 100;
+      if (Math.abs(pct - 25) > 10) {
+        problems.push(
+          `${deck}: 答案 ${letter} 占 ${pct.toFixed(0)}%（应接近 25%）→ 需要重新轮转选项`,
+        );
+      }
+    }
+  }
+}
+
 function checkProvenance(rel, card, expected) {
   if (card.source !== expected) {
     problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
@@ -216,6 +244,7 @@ for (const deck of SUBJECT_DECKS) {
   const rel = `src/data/subject-decks/${deck}.ts`;
   const cards = parseCards(rel);
   counts[deck] = cards.length;
+  ALL_CARDS.push(...cards);
   checkIdSequence(rel, deck, cards);
   for (const card of cards) {
     checkIdAndCategory(rel, card);
@@ -227,6 +256,7 @@ for (const deck of SUBJECT_DECKS) {
 }
 
 checkSourceUnion();
+checkAnswerPositions();
 
 // 卡组数据与 bundle 里的压缩块必须同步：改过卡片就要重跑打包
 if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {

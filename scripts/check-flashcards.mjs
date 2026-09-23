@@ -206,6 +206,47 @@ function checkAnswerPositions() {
   }
 }
 
+/**
+ * 选项长度不能泄露答案：改前全库 41% 的题里正确项就是最长的那一项（CSP 55%、Stats 49%），
+ * 学生不看题、只挑最长就能拿 41 分（随机是 25%）。现在 33%，理想是 25–30%。
+ */
+function checkOptionLengthBias() {
+  const perDeck = {};
+  let hit = 0;
+  let total = 0;
+  for (const card of ALL_CARDS) {
+    const opts = card.front
+      .split('\n')
+      .filter((l) => /^[A-D]\.\s/.test(l))
+      .map((l) => l.replace(/^[A-D]\.\s*/, ''));
+    const m = card.back.match(/答案：([A-D])/);
+    if (opts.length !== 4 || !m) continue;
+    const idx = m[1].charCodeAt(0) - 65;
+    const lens = opts.map((o) => o.length);
+    const deck = card.id.replace(/-\d+$/, '');
+    perDeck[deck] = perDeck[deck] || { hit: 0, total: 0 };
+    perDeck[deck].total += 1;
+    total += 1;
+    if (lens.indexOf(Math.max(...lens)) === idx) {
+      perDeck[deck].hit += 1;
+      hit += 1;
+    }
+  }
+  for (const [deck, c] of Object.entries(perDeck)) {
+    if (c.total < 40) continue;
+    const pct = (c.hit / c.total) * 100;
+    if (pct > 45) {
+      problems.push(`${deck}: 正确项是最长选项的比例 ${pct.toFixed(0)}%（上限 45%）→ 长度在泄露答案`);
+    }
+  }
+  if (total) {
+    const overall = (hit / total) * 100;
+    if (overall > 35) {
+      problems.push(`全库"正确项=最长"比例 ${overall.toFixed(1)}%（上限 35%）→ 继续均衡选项长度`);
+    }
+  }
+}
+
 function checkProvenance(rel, card, expected) {
   if (card.source !== expected) {
     problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
@@ -257,6 +298,7 @@ for (const deck of SUBJECT_DECKS) {
 
 checkSourceUnion();
 checkAnswerPositions();
+checkOptionLengthBias();
 
 // 卡组数据与 bundle 里的压缩块必须同步：改过卡片就要重跑打包
 if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {

@@ -159,12 +159,13 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 
 ## Flashcard Question Bank
 
-The 1164 practice cards are generated data, not copy typed into the app:
+The 1289 practice cards are generated data, not copy typed into the app:
 
 | Decks | Cards | Source material | Generator |
 |---|---|---|---|
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
 | AP CSA, CSP, Precalculus, Calculus BC, Statistics | 600 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
+| 五科情境题（`*-scenario`） | 125 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
 
 Both builders read the sources committed under `content/` — the AMC 10 flashcard decks and the five
 subject question banks with their answer keys, and nothing else from the material pack (the PDFs and the
@@ -229,6 +230,12 @@ The check exists because all 240 CSA and CSP cards once shipped with their first
 `A. A. 3`: the builder split the option line and left the label inside the first option's text, which
 the UI then prefixed a second time. It also pinned the runtime parser down — a stem may span several
 lines, so the option block is located by the first `A. ` line instead of assuming line two.
+
+The deck check also keeps the two gaming holes closed: every deck has to keep each answer letter near
+25% so guessing "always B" scores like random, and the correct option may not be the longest more than
+45% of the time per deck (35% overall) so option length does not signal the answer. Scenario decks have
+their own gate: at least 20 items, and at least 75% of stems at least 30 characters, so a single-step
+drill cannot be relabelled as a scenario item.
 
 Two more failure modes are guarded now. The answer key parser used to join the whole key file into one
 line and anchor its regex at the start, so every `## 1–20` heading swallowed the first answer of its

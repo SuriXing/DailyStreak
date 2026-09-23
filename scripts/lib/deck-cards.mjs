@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** 五个选择题卡组的 key，与 scripts/build-subject-decks.js 的 SUBJECTS 对应。 */
-export const SUBJECT_DECKS = ['csa', 'csp', 'precalc', 'calcbc', 'stats'];
+export const SUBJECT_DECKS = ['csa', 'csp', 'precalc', 'calcbc', 'stats', 'csa-scenario', 'csp-scenario', 'precalc-scenario', 'calcbc-scenario', 'stats-scenario'];
 
 function atKeyStart(out) {
   for (let i = out.length - 1; i >= 0; i -= 1) {

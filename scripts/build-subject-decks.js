@@ -52,6 +52,41 @@ const SUBJECTS = [
     mcq: ['stats/24-Statistics原创选择题-1.md', 'stats/25-Statistics原创选择题-2.md'],
     ans: ['stats/26-Statistics选择题答案.md'],
   },
+  {
+    key: 'csa-scenario',
+    label: 'AP CSA · 情境题',
+    style: 'dot',
+    mcq: ['csa/scenario.md'],
+    ans: ['csa/scenario-answers.md'],
+  },
+  {
+    key: 'csp-scenario',
+    label: 'AP CSP · 情境题',
+    style: 'dot',
+    mcq: ['csp/scenario.md'],
+    ans: ['csp/scenario-answers.md'],
+  },
+  {
+    key: 'precalc-scenario',
+    label: 'AP Precalc · 情境题',
+    style: 'space',
+    mcq: ['precalc/scenario.md'],
+    ans: ['precalc/scenario-answers.md'],
+  },
+  {
+    key: 'calcbc-scenario',
+    label: 'AP Calc BC · 情境题',
+    style: 'space',
+    mcq: ['calcbc/scenario.md'],
+    ans: ['calcbc/scenario-answers.md'],
+  },
+  {
+    key: 'stats-scenario',
+    label: 'AP Stats · 情境题',
+    style: 'space',
+    mcq: ['stats/scenario.md'],
+    ans: ['stats/scenario-answers.md'],
+  },
 ];
 
 function clean(s) {
@@ -62,6 +97,7 @@ function clean(s) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/gi, ' ')
     .replace(/`/g, '')
     .replace(/[ \t]+/g, ' ')
     .replace(/ ?\n ?/g, '\n')
@@ -190,6 +226,12 @@ function rotateOptions(options, correctIdx, targetIdx) {
   return out;
 }
 
+/**
+ * 生成文件里的导出名必须先是合法 JS 标识符：卡组 key 可能带连字符（如 csa-scenario），
+ * 直接 toUpperCase() 会产出 SUBJECT_DECKS_CSA-SCENARIO 这种非法标识符，tsc 直接报错。
+ */
+const ident = (key) => key.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+
 function buildDeck(cfg) {
   const hashes = verifiedHashes();
   const answerMap = {};
@@ -294,11 +336,11 @@ export interface SubjectFlashcard {
   verified: boolean;
 }
 
-export const SUBJECT_DECKS_${key.toUpperCase()}: { key: SubjectDeckKey; label: string }[] = [
+export const SUBJECT_DECKS_${ident(key)}: { key: SubjectDeckKey; label: string }[] = [
   { key: ${q(key)}, label: ${q(label)} },
 ];
 
-export const SUBJECT_FLASHCARDS_${key.toUpperCase()}: SubjectFlashcard[] = [
+export const SUBJECT_FLASHCARDS_${ident(key)}: SubjectFlashcard[] = [
 ${cardLines}
 ];
 `;
@@ -309,10 +351,10 @@ ${cardLines}
 
 /* index aggregator */
 const imports = generated
-  .map((g) => `import { SUBJECT_DECKS_${g.key.toUpperCase()}, SUBJECT_FLASHCARDS_${g.key.toUpperCase()} } from './${g.key}';`)
+  .map((g) => `import { SUBJECT_DECKS_${ident(g.key)}, SUBJECT_FLASHCARDS_${ident(g.key)} } from './${g.key}';`)
   .join('\n');
-const decksAgg = generated.map((g) => `...SUBJECT_DECKS_${g.key.toUpperCase()}`).join(',\n  ');
-const cardsAgg = generated.map((g) => `...SUBJECT_FLASHCARDS_${g.key.toUpperCase()}`).join(',\n  ');
+const decksAgg = generated.map((g) => `...SUBJECT_DECKS_${ident(g.key)}`).join(',\n  ');
+const cardsAgg = generated.map((g) => `...SUBJECT_FLASHCARDS_${ident(g.key)}`).join(',\n  ');
 fs.writeFileSync(
   path.join(OUTDIR, 'index.ts'),
   `// AUTO-GENERATED aggregator. Do not hand-edit.

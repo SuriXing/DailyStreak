@@ -21,11 +21,11 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { readCards } from './lib/deck-cards.mjs';
+import { SUBJECT_DECKS as SCENARIO_DECKS, readCards } from './lib/deck-cards.mjs';
 import { buildPack, renderPackModule } from './pack-decks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SUBJECT_DECKS = ['csa', 'csp', 'precalc', 'calcbc', 'stats'];
+const SUBJECT_DECKS = SCENARIO_DECKS;
 const LEVELS = new Set(['core', 'advance', 'boundary']);
 const LABELS = ['A', 'B', 'C', 'D'];
 const LABEL_RE = /^[A-D]\.\s/;
@@ -247,6 +247,41 @@ function checkOptionLengthBias() {
   }
 }
 
+/**
+ * 情境题卡组不能是"换了个标签的单步题"：题量要够，而且绝大多数题干必须带刺激材料
+ * （多行，或足够长的情境描述）。真正的难度爬坡需要逐题难度标签，这里只挡住最粗的退化。
+ */
+const SCENARIO_MIN_ITEMS = 20;
+// 阈值按真实数据校准：现有练习册的题干中位数 11–28 字（56%–97% 短于 30 字），
+// 而情境题是 43–170 字（0%–20% 短于 30 字）。所以这条门禁能挡住"用单步题充数"。
+const SCENARIO_MIN_STIMULUS_RATIO = 0.75;
+const SCENARIO_STEM_CHARS = 30;
+
+function checkScenarioDecks() {
+  for (const card of ALL_CARDS) {
+    const deck = card.id.replace(/-\d+$/, '');
+    if (!deck.endsWith('-scenario')) continue;
+    const stem = stemOf(card);
+    const hasStimulus = stem.includes('\n') || stem.length >= SCENARIO_STEM_CHARS;
+    checkScenarioDecks.acc = checkScenarioDecks.acc || {};
+    const acc = (checkScenarioDecks.acc[deck] = checkScenarioDecks.acc[deck] || { n: 0, stim: 0 });
+    acc.n += 1;
+    if (hasStimulus) acc.stim += 1;
+  }
+  for (const [deck, acc] of Object.entries(checkScenarioDecks.acc || {})) {
+    if (acc.n < SCENARIO_MIN_ITEMS) {
+      problems.push(`${deck}: 情境题只有 ${acc.n} 道（至少 ${SCENARIO_MIN_ITEMS} 道）`);
+    }
+    const ratio = acc.stim / acc.n;
+    if (ratio < SCENARIO_MIN_STIMULUS_RATIO) {
+      problems.push(
+        `${deck}: 只有 ${(ratio * 100).toFixed(0)}% 的题干带刺激材料（要求 ≥${SCENARIO_MIN_STIMULUS_RATIO * 100}%）→ ` +
+          `情境卡组不该塞单步题`,
+      );
+    }
+  }
+}
+
 function checkProvenance(rel, card, expected) {
   if (card.source !== expected) {
     problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
@@ -299,6 +334,7 @@ for (const deck of SUBJECT_DECKS) {
 checkSourceUnion();
 checkAnswerPositions();
 checkOptionLengthBias();
+checkScenarioDecks();
 
 // 卡组数据与 bundle 里的压缩块必须同步：改过卡片就要重跑打包
 if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {

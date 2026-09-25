@@ -16,7 +16,9 @@
  *
  * 用法：npm run check:flashcards（退出码非 0 表示数据坏了）。
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -210,6 +212,15 @@ function checkAnswerPositions() {
  * 选项长度不能泄露答案：改前全库 41% 的题里正确项就是最长的那一项（CSP 55%、Stats 49%），
  * 学生不看题、只挑最长就能拿 41 分（随机是 25%）。现在 33%，理想是 25–30%。
  */
+/**
+ * "正确项=最长"的比例上限。这里的"最长"按 indexOf(max) 判定，即并列时算在
+ * 最靠前的那一项头上，所以数值比"严格最长"口径更高：清理后实测每卡组 28–36%、
+ * 全库 26%，换成严格口径则是每卡组 13–28%、全库 20%；情境卡组两种口径都是 0%。
+ * 阈值收紧到 40%/30% 是为了在重新生成或批量改题时更早发现长度又变成信号。
+ */
+const MAX_LONGEST_RATE_PER_DECK = 0.4;
+const MAX_LONGEST_RATE_OVERALL = 0.3;
+
 function checkOptionLengthBias() {
   const perDeck = {};
   let hit = 0;
@@ -235,14 +246,18 @@ function checkOptionLengthBias() {
   for (const [deck, c] of Object.entries(perDeck)) {
     if (c.total < 40) continue;
     const pct = (c.hit / c.total) * 100;
-    if (pct > 45) {
-      problems.push(`${deck}: 正确项是最长选项的比例 ${pct.toFixed(0)}%（上限 45%）→ 长度在泄露答案`);
+    if (pct > MAX_LONGEST_RATE_PER_DECK * 100) {
+      problems.push(
+        `${deck}: 正确项是最长选项的比例 ${pct.toFixed(0)}%（上限 ${MAX_LONGEST_RATE_PER_DECK * 100}%）→ 长度在泄露答案`,
+      );
     }
   }
   if (total) {
     const overall = (hit / total) * 100;
-    if (overall > 35) {
-      problems.push(`全库"正确项=最长"比例 ${overall.toFixed(1)}%（上限 35%）→ 继续均衡选项长度`);
+    if (overall > MAX_LONGEST_RATE_OVERALL * 100) {
+      problems.push(
+        `全库"正确项=最长"比例 ${overall.toFixed(1)}%（上限 ${MAX_LONGEST_RATE_OVERALL * 100}%）→ 继续均衡选项长度`,
+      );
     }
   }
 }
@@ -342,6 +357,38 @@ if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {
 }
 
 checkNoPlainDeckImport();
+checkDeckSourceSync();
+
+/**
+ * content/ 是源、src/data/*.ts 是产物：只在源里改题、忘了重跑生成脚本，
+ * 仓库会同时存在两份互相矛盾的题目（UI 用的是产物），而所有形状检查都照样通过。
+ * 所以这里把两个生成器重建到临时目录，与提交的产物逐字比对。
+ */
+function checkDeckSourceSync() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'deck-sync-'));
+  try {
+    execFileSync(process.execPath, [path.join(root, 'scripts/build-subject-decks.js')], {
+      env: { ...process.env, SUBJECT_DECKS_OUT: dir },
+      stdio: 'pipe',
+    });
+    execFileSync(process.execPath, [path.join(root, 'scripts/build-amc10-flashcards.js')], {
+      env: { ...process.env, AMC10_CARDS_OUT: path.join(dir, 'amc10-flashcards.ts') },
+      stdio: 'pipe',
+    });
+    const pairs = [
+      ['src/data/amc10-flashcards.ts', path.join(dir, 'amc10-flashcards.ts')],
+      ...SUBJECT_DECKS.map((d) => [`src/data/subject-decks/${d}.ts`, path.join(dir, `${d}.ts`)]),
+    ];
+    const stale = pairs.filter(([rel, tmp]) => read(rel) !== readFileSync(tmp, 'utf8'));
+    if (stale.length) {
+      problems.push(
+        `${stale.length} 个卡组文件与 content/ 源不同步（${stale.map(([r]) => r).join(', ')}）→ 改过源资料就要重跑生成脚本`,
+      );
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
 {

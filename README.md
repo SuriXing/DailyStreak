@@ -186,24 +186,14 @@ somebody reworks them.
 
 ### Which cards exist in English
 
-The Chinese text is the base and the English overlay is built in three layers, one per card family, because the
-three families move for different reasons and a translation round on one should not be able to disturb the
-other two:
-
-| Layer | File | Cards | Status |
-|---|---|---|---|
-| AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 520 of 564 | the geometry tail is still Chinese |
-| Drill banks | `src/data/flashcard-i18n-drill.ts` | 480 of 600 | Calculus BC still to come |
-| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 125 of 125 | required by the gate |
-
-`localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a
-half-translated deck degrades card by card rather than breaking, and every missing entry is visible on screen as
-Chinese text rather than as an empty card. The gate enforces full coverage only for the scenario decks, reports
-the fraction everywhere else, and holds every entry that does exist to a structural standard: four option lines
-with the same letters, the same keyed answer letter as the Chinese, an English `Correct option` matching the
-option it names character for character, no Chinese characters left, and no entry pointing at a card id that
-does not exist. Translating the rest is additive: adding an entry cannot invalidate an existing one, and the
-gate fails if an English entry drifts out of step with the Chinese card it belongs to.
+The Chinese text is the base and the English overlay is incomplete on purpose, so the coverage is stated
+rather than implied: **460 of 1289 cards have an English version** — all 564 AMC 10 concept cards minus the
+229 that are still untranslated (the geometry tail and the counting/strategy decks), plus all 125 scenario
+items, which the gate requires to be complete. The 600 drill items are Chinese-only. An English reader
+therefore sees the concept cards and the exam-style scenario decks in English, and the drill decks in
+Chinese, and the practice screen falls back per card. Translating the rest is additive work: adding an
+entry cannot invalidate an existing one, and the gate fails if an English entry drifts out of step with
+the Chinese card it belongs to.
 
 ### Provenance, and what this bank is not
 

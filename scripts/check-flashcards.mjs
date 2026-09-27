@@ -11,6 +11,9 @@
  *      没有残留标签（历史上的 "A. A. 3"），back 里的"答案：X"在范围内，
  *      且"正确选项：…"与该字母指向的选项文本一致。
  *   4. 概念卡（AMC10）：level 属于 core/advance/boundary，且不应出现选项行。
+ *   5. 来源同步：把两个生成器重建到临时目录，与提交的产物逐字比对（改源忘重建会被抓出）。
+ *   6. 英文覆盖层：条目必须与中文卡结构等价（选项字母、答案字母、Correct option 文本、无残留中文、无孤立 id）。
+ *   7. 题干重复：归一化后同一题干出现在两张卡上即失败（复制粘贴式重复）。
  *
  * 运行时的 toQuiz() 解析行为由 scripts/smoke-test.js 端到端覆盖，这里只管数据形状。
  *
@@ -363,7 +366,11 @@ checkNoPlainDeckImport();
  * 同样的答案字母，back 结尾声明的正确选项要与该字母的选项文本逐字一致。
  * 覆盖层腐烂的典型方式是中文改了选项、英文没改，UI 里就会出现自相矛盾的卡片。
  */
-const OVERLAY_FILES = ['src/data/flashcard-i18n.ts', 'src/data/flashcard-i18n-scenario.ts'];
+const OVERLAY_FILES = [
+  'src/data/flashcard-i18n.ts',
+  'src/data/flashcard-i18n-drill.ts',
+  'src/data/flashcard-i18n-scenario.ts',
+];
 
 /** 覆盖层条目都是单行对象字面量；仓库里两种引号风格都存在，这里都接受。 */
 function parseOverlay(rel) {
@@ -382,6 +389,34 @@ function parseOverlay(rel) {
     }
   }
   return out;
+}
+
+
+/**
+ * 同一道题不该在两个卡组里各出现一次。复制粘贴、或把情境题改写后忘了删原件，
+ * 都会让题库看起来更大而实际更小；只比较题干（选项之前的正文），
+ * 因为同一题干配不同选项同样属于重复题。
+ */
+function checkDuplicateItems() {
+  const byStem = new Map();
+  for (const card of [...amc10, ...ALL_CARDS]) {
+    const stemOnly = card.front.split('\n').filter((l) => !/^[A-D]\. /.test(l)).join('\n');
+    const norm = stemOnly
+      .replace(/【承接上题】[^\n]*/, '')
+      .replace(/\s+/g, '')
+      .replace(/[，。、？；：（）()【】「」《》,.?!:;'"`]/g, '')
+      .toLowerCase();
+    if (norm.length < 8) continue;
+    const key = norm.slice(0, 80);
+    const list = byStem.get(key) || [];
+    list.push(card.id);
+    byStem.set(key, list);
+  }
+  for (const [key, ids] of byStem) {
+    if (ids.length > 1) {
+      problems.push(`题干重复：${ids.join(' / ')}（归一化后前 40 字：${key.slice(0, 40)}）`);
+    }
+  }
 }
 
 function checkFlashcardOverlay() {
@@ -447,6 +482,7 @@ function checkFlashcardOverlay() {
 let overlayStats = { covered: 0, total: 0, scenario: 0 };
 
 checkFlashcardOverlay();
+checkDuplicateItems();
 checkDeckSourceSync();
 
 /**

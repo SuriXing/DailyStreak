@@ -420,6 +420,37 @@ function checkDuplicateItems() {
   }
 }
 
+
+/**
+ * 选项本身的形状：四行之外还会有别的毛病——两个选项文字一样、选项是空的、
+ * 或者给出"以上都对/都不对/无法判断"这种不需要知识就能选中的逃生口。
+ */
+const BANNED_OPTION = /以上都|都不对|都正确|无法判断|无法确定/;
+function checkOptionShape() {
+  for (const card of ALL_CARDS) {
+    const opts = card.front
+      .split('\n')
+      .filter((l) => /^[A-D]\. /.test(l))
+      .map((l) => l.replace(/^[A-D]\.\s*/, '').trim());
+    if (opts.length !== 4) continue;
+    const answer = (card.back.match(/答案：([A-D])/) || [])[1];
+    opts.forEach((o, i) => {
+      const letter = 'ABCD'[i];
+      if (!o) problems.push(`${card.id}: 选项 ${letter} 是空的`);
+      // 只在"选项本身就是逃生口"且它还是干扰项时才拦：正确答案写成"以上都不能"是正常题型
+      const escape = o.length <= 12 && BANNED_OPTION.test(o);
+      if (escape && answer && letter !== answer) {
+        problems.push(`${card.id}: 干扰项 ${letter} 是"${o}"这类逃生口——不需要知识就能排除`);
+      }
+    });
+    const seen = new Map();
+    opts.forEach((o, i) => {
+      if (seen.has(o)) problems.push(`${card.id}: 选项 ${'ABCD'[seen.get(o)]} 与 ${'ABCD'[i]} 文字完全相同`);
+      else seen.set(o, i);
+    });
+  }
+}
+
 function checkFlashcardOverlay() {
   const overlay = new Map();
   for (const rel of OVERLAY_FILES) {
@@ -492,6 +523,7 @@ let overlayStats = { covered: 0, total: 0, scenario: 0 };
 
 checkFlashcardOverlay();
 checkDuplicateItems();
+checkOptionShape();
 checkDeckSourceSync();
 
 /**

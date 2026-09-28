@@ -194,16 +194,26 @@ other two:
 |---|---|---|---|
 | AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 520 of 564 | the geometry tail is still Chinese |
 | Drill banks | `src/data/flashcard-i18n-drill.ts` | 480 of 600 | Calculus BC still to come |
-| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 125 of 125 | required by the gate |
+| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 225 of 225 | required by the gate |
 
 `localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a
-half-translated deck degrades card by card rather than breaking, and every missing entry is visible on screen as
-Chinese text rather than as an empty card. The gate enforces full coverage only for the scenario decks, reports
-the fraction everywhere else, and holds every entry that does exist to a structural standard: four option lines
-with the same letters, the same keyed answer letter as the Chinese, an English `Correct option` matching the
-option it names character for character, no Chinese characters left, and no entry pointing at a card id that
-does not exist. Translating the rest is additive: adding an entry cannot invalidate an existing one, and the
-gate fails if an English entry drifts out of step with the Chinese card it belongs to.
+half-translated deck degrades card by card rather than breaking. The gate enforces full coverage only for the
+scenario decks, reports the fraction everywhere else, and holds every entry that does exist to a structural
+standard: four option lines with the same letters, the same keyed answer letter as the Chinese, an English
+`Correct option` matching the option it names character for character, no Chinese characters left, and no entry
+pointing at a card id that does not exist.
+
+### How the overlay stays in step with the Chinese
+
+Every entry also records `src`, a hash of the Chinese card's front at the moment it was translated, and the gate
+fails when that hash stops matching. Without it there are two silent failures: a reordering of options whose
+answer letter happens not to move leaves the English options in the old order, and a rewording of a distractor
+leaves the English describing something the Chinese no longer says. Both look fine to every other check.
+
+The rotation that balances answer letters is frozen in `content/subject-banks/rotation-plan.json` for the same
+reason. It used to be derived from the deck's item count, so appending a batch of items reshuffled the answer
+letters of the items already in the deck - which invalidated their translations, and did it to sixteen cards
+before anyone noticed. The plan is now a committed per-deck letter list that only ever grows at the end.
 
 ### Provenance, and what this bank is not
 

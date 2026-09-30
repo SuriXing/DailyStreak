@@ -184,6 +184,30 @@ Regenerating leaves the committed data untouched unless the markdown changed, an
 ledger keys on a hash of each card's text, a real edit drops those cards back to `verified: false` until
 somebody reworks them.
 
+### How this bank is checked, and what is still weak
+
+Every commit runs the same gate, which has grown to cover: card shape (id sequence, four options with the right
+letters, no empty or duplicated options, no escape-hatch distractors), provenance fields, the answer letter
+distribution, the length of the correct option, duplicated stems across decks, source-versus-generated sync for
+both builders, an English overlay that must match the Chinese card it was translated from, and a difficulty level
+on every item. Two builders cannot write a deck that drops a source question or leaves an item untagged.
+
+Beyond the gates, the content has been through three adversarial passes, in which a reviewer solved every item
+from the stimulus before reading the key and then reported every defect it could find. They found and this
+repository fixed: a wrong tangent-secant application, a false Java claim inside a keyed explanation, two items
+whose stated misconception could not produce the number it showed, a chi-square explanation whose terms summed
+to 10.33 while claiming 8.67, an option that asserted the true conclusion with an invalid reason, a distractor
+that was a technically valid error bound, eleven distractors that were filler or absurd, two options copied
+verbatim from an earlier item, and one stem that pre-emptively falsified its own option. The passes also disagreed
+with each other once, about whether the second batch of scenario items was weak as a whole or only in clusters,
+and the item-level grading settled it in favour of the narrower reading.
+
+What is still weak, stated plainly: the drill banks have no hard tier (see above, and it needs new items rather
+than better labels); the second batch of CSP scenario items leans on a handful of clusters that resolve to one
+concept despite a multi-clause stem; the difficulty levels are rubric judgements with no student data behind them;
+and the browser smoke test cannot run in every environment, so its assertions are checked by inspection rather
+than by execution when the network to Supabase is unavailable.
+
 ### Difficulty, and what tagging it revealed
 
 All 850 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into

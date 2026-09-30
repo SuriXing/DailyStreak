@@ -88,7 +88,9 @@ DailyStreak ships three locales: **中文 (zh, base)**, **English (en)**, and **
 - `src/i18n/content/{en,es}.ts` — translations of course content (lesson bodies, questions, options, explanations, skills, course descriptions). The Chinese text in `courses.ts` is the fallback whenever an overlay entry is missing.
 - `src/i18n/context.tsx` — `I18nProvider` + `useI18n()` (`t`, `locale`, `setLocale`, `formatDate`). Device language is detected via `expo-localization` on first launch; the manual choice from **Profile → Language** is persisted to AsyncStorage.
 - `src/i18n/core.ts` — `t()` with `{param}` interpolation, `Intl.PluralRules` plural forms (e.g. `study.remaining`), `Intl.DateTimeFormat` dates, and the course-content localizer.
+- `src/data/flashcard-i18n.ts`, `src/data/flashcard-i18n-scenario.ts` — per-card translations keyed by card id: the AMC 10 concept cards in the first file, the 125 scenario items in the second, kept apart so the two card families never move each other's text. `localizeFlashcard()` returns the Chinese card whenever the entry is missing, so a half-translated deck degrades card by card instead of breaking.
 - `npm run i18n:check` — CI-friendly completeness audit: dictionary key parity across locales and full course-content coverage.
+- `npm run check:flashcards` — the deck gate; it also holds the overlay to a structural standard: an entry for every scenario card, the same four option letters, the same keyed answer letter as the Chinese, an English `Correct option` matching the option it names, no Chinese characters left, and no entry pointing at a card that does not exist.
 
 ## Adding a Course
 
@@ -181,6 +183,17 @@ node scripts/build-subject-decks.js [baseDir]     # default: content/subject-ban
 Regenerating leaves the committed data untouched unless the markdown changed, and because the verification
 ledger keys on a hash of each card's text, a real edit drops those cards back to `verified: false` until
 somebody reworks them.
+
+### Which cards exist in English
+
+The Chinese text is the base and the English overlay is incomplete on purpose, so the coverage is stated
+rather than implied: **460 of 1289 cards have an English version** — all 564 AMC 10 concept cards minus the
+229 that are still untranslated (the geometry tail and the counting/strategy decks), plus all 125 scenario
+items, which the gate requires to be complete. The 600 drill items are Chinese-only. An English reader
+therefore sees the concept cards and the exam-style scenario decks in English, and the drill decks in
+Chinese, and the practice screen falls back per card. Translating the rest is additive work: adding an
+entry cannot invalidate an existing one, and the gate fails if an English entry drifts out of step with
+the Chinese card it belongs to.
 
 ### Provenance, and what this bank is not
 

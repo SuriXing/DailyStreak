@@ -357,6 +357,96 @@ if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {
 }
 
 checkNoPlainDeckImport();
+
+/**
+ * 英文覆盖层不能只"有"条目，还必须与中文版结构等价：同样的四个选项字母、
+ * 同样的答案字母，back 结尾声明的正确选项要与该字母的选项文本逐字一致。
+ * 覆盖层腐烂的典型方式是中文改了选项、英文没改，UI 里就会出现自相矛盾的卡片。
+ */
+const OVERLAY_FILES = ['src/data/flashcard-i18n.ts', 'src/data/flashcard-i18n-scenario.ts'];
+
+/** 覆盖层条目都是单行对象字面量；仓库里两种引号风格都存在，这里都接受。 */
+function parseOverlay(rel) {
+  const out = new Map();
+  const patterns = [
+    /^\s*'([^']+)':\s*\{\s*front:\s*'((?:\\.|[^'\\])*)',\s*back:\s*'((?:\\.|[^'\\])*)'\s*\},?\s*$/,
+    /^\s*"([^"]+)":\s*\{\s*front:\s*"((?:\\.|[^"\\])*)",\s*back:\s*"((?:\\.|[^"\\])*)"\s*\},?\s*$/,
+  ];
+  for (const raw of read(rel).split('\n')) {
+    for (const line of patterns) {
+      const m = raw.match(line);
+      if (!m) continue;
+      const un = (t) => t.replace(/\\n/g, '\n').replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+      out.set(m[1], { front: un(m[2]), back: un(m[3]) });
+      break;
+    }
+  }
+  return out;
+}
+
+function checkFlashcardOverlay() {
+  const overlay = new Map();
+  for (const rel of OVERLAY_FILES) {
+    for (const [id, entry] of parseOverlay(rel)) {
+      if (overlay.has(id)) problems.push(`${rel}/${id}: 覆盖层里重复定义`);
+      overlay.set(id, entry);
+    }
+  }
+  const optionLines = (s) => s.split('\n').filter((l) => /^[A-D]\. /.test(l));
+  let covered = 0;
+  void covered;
+  for (const card of ALL_CARDS) {
+    const en = overlay.get(card.id);
+    const isScenario = card.deck.endsWith('-scenario');
+    if (!en) {
+      if (isScenario) problems.push(`${card.id}: 情境题缺少英文覆盖（情境卡组要求全英文）`);
+      continue;
+    }
+    covered += 1;
+    const zhOpts = optionLines(card.front);
+    const enOpts = optionLines(en.front);
+    if (zhOpts.length === 4) {
+      if (enOpts.length !== 4) {
+        problems.push(`${card.id}: 英文覆盖有 ${enOpts.length} 个选项（中文有 4 个）`);
+      } else if (enOpts.map((l) => l[0]).join('') !== 'ABCD') {
+        problems.push(`${card.id}: 英文选项字母不是 A/B/C/D`);
+      } else {
+        const ans = card.back.match(/答案：([A-D])/);
+        const enAns = en.back.match(/^Answer:\s*([A-D])/m);
+        if (!ans) {
+          problems.push(`${card.id}: 中文卡里没有"答案：X"`);
+        } else if (!enAns || enAns[1] !== ans[1]) {
+          problems.push(`${card.id}: 英文答案 ${enAns ? enAns[1] : '缺失'} 与中文 ${ans[1]} 不一致`);
+        } else {
+          const declared = en.back.match(/\n\nCorrect option:\s*([\s\S]+)$/);
+          const want = enOpts[ans[1].charCodeAt(0) - 65].replace(/^[A-D]\. /, '').trim();
+          if (!declared) problems.push(`${card.id}: 英文覆盖缺少 "Correct option:" 结尾`);
+          else if (declared[1].trim() !== want) {
+            problems.push(
+              `${card.id}: 英文 "Correct option" 与选项文本不一致\n      选项: ${want}\n      声明: ${declared[1].trim()}`,
+            );
+          }
+        }
+      }
+    }
+    if (/[\u4e00-\u9fff]/.test(en.front) || /[\u4e00-\u9fff]/.test(en.back)) {
+      problems.push(`${card.id}: 英文覆盖里还有中文`);
+    }
+  }
+  for (const id of overlay.keys()) {
+    if (!seenIds.has(id)) problems.push(`${OVERLAY_FILES.join('/')}: ${id} 不是任何卡片的 id（孤立条目）`);
+  }
+  const everyCard = [...amc10, ...ALL_CARDS];
+  const coveredEvery = everyCard.filter((c) => overlay.has(c.id)).length;
+  overlayStats = {
+    covered: coveredEvery,
+    total: everyCard.length,
+    scenario: ALL_CARDS.filter((c) => c.deck.endsWith('-scenario')).length,
+  };
+}
+let overlayStats = { covered: 0, total: 0, scenario: 0 };
+
+checkFlashcardOverlay();
 checkDeckSourceSync();
 
 /**
@@ -411,7 +501,9 @@ if (problems.length) {
 console.log(
   `✅ 闪卡数据校验通过: ${Object.entries(counts)
     .map(([k, v]) => `${k}=${v}`)
-    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张；bundle 压缩块 ${
+    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张；英文覆盖 ${
+    overlayStats.covered
+  }/${overlayStats.total}（情境题 ${overlayStats.scenario} 张要求全覆盖）；bundle 压缩块 ${
     (read('src/data/deck-pack.ts').length / 1024).toFixed(0)
   } KB 已同步）`,
 );

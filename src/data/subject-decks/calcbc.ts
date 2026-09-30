@@ -25,7 +25,7 @@ export const SUBJECT_FLASHCARDS_CALCBC: SubjectFlashcard[] = [
   { id: "calcbc-004", deck: "calcbc", category: "AP Calc BC", front: "f(x)=(x²-1)/(x-1)（x≠1），令 f(1)=k 可连续，则 k=?\nA. 0\nB. 1\nC. 不存在\nD. 2", back: "答案：D\n\n正确选项：2", source: "ai-mcq", verified: true },
   { id: "calcbc-005", deck: "calcbc", category: "AP Calc BC", front: "lim(x→∞)(3x²-x)/(2x²+7)=?\nA. 0\nB. 2/3\nC. 3/2\nD. ∞", back: "答案：C\n\n正确选项：3/2", source: "ai-mcq", verified: true },
   { id: "calcbc-006", deck: "calcbc", category: "AP Calc BC", front: "lim(x→∞)(2x+1)/(x²+1)=?\nA. 1\nB. 0\nC. 2\nD. ∞", back: "答案：B\n\n正确选项：0", source: "ai-mcq", verified: true },
-  { id: "calcbc-007", deck: "calcbc", category: "AP Calc BC", front: "若 f 在[1,4]连续且 f(1)=-2,f(4)=3，则必可保证？\nA. 存在c使f(c)=0\nB. 根唯一\nC. f可导\nD. f递增", back: "答案：A\n\n正确选项：存在c使f(c)=0", source: "ai-mcq", verified: true },
+  { id: "calcbc-007", deck: "calcbc", category: "AP Calc BC", front: "若 f 在[1,4]连续且 f(1)=-2,f(4)=3，则必可保证？\nA. 存在c使f(c)=0\nB. 在(1,4)内恰有一个根\nC. f 在(1,4)上必定可导\nD. f 在[1,4]上单调递增", back: "答案：A\n\n正确选项：存在c使f(c)=0", source: "ai-mcq", verified: true },
   { id: "calcbc-008", deck: "calcbc", category: "AP Calc BC", front: "f(x)=|x| 在x=0？\nA. 连续但不可导\nB. 可导\nC. 不连续\nD. 二阶可导", back: "答案：A\n\n正确选项：连续但不可导", source: "ai-mcq", verified: true },
   { id: "calcbc-009", deck: "calcbc", category: "AP Calc BC", front: "d/dx(x^5-3x²)=?\nA. 5x⁴-3x\nB. 5x⁴-6x\nC. x⁴-6x\nD. 5x⁶-6x", back: "答案：B\n\n正确选项：5x⁴-6x", source: "ai-mcq", verified: true },
   { id: "calcbc-010", deck: "calcbc", category: "AP Calc BC", front: "d/dx[(x²+1)e^x]=?\nA. (x²+2x+1)e^x\nB. 2xe^x\nC. (x²+1)e^x\nD. (2x+1)e^x", back: "答案：A\n\n正确选项：(x²+2x+1)e^x", source: "ai-mcq", verified: true },

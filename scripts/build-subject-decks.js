@@ -13,7 +13,8 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const BASE = process.argv[2] || path.join(__dirname, '..', 'content', 'subject-banks');
-const OUTDIR = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
+// 允许覆盖输出目录：同步门禁会把卡组重建到临时目录再与仓库里的产物逐字比对。
+const OUTDIR = process.env.SUBJECT_DECKS_OUT || path.join(__dirname, '..', 'src', 'data', 'subject-decks');
 const VERIFICATION = path.join(__dirname, 'flashcard-verification.json');
 
 const SUBJECTS = [

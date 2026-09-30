@@ -13,7 +13,8 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = process.argv[2] || path.join(__dirname, '..', 'content', 'amc10-flashcards');
-const OUT = path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
+// 允许覆盖输出路径：同步门禁重建到临时文件比对，且此时不重新打包 bundle。
+const OUT = process.env.AMC10_CARDS_OUT || path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
 const VERIFICATION = path.join(__dirname, 'flashcard-verification.json');
 
 const FILES = [
@@ -137,4 +138,6 @@ console.log('levels=', JSON.stringify(levels));
 console.log('decks=', JSON.stringify(decks));
 
 // 卡组数据变了就顺手刷新 bundle 里的压缩块，别让它悄悄过期
-execFileSync(process.execPath, [path.join(__dirname, 'pack-decks.mjs')], { stdio: 'inherit' });
+if (!process.env.AMC10_CARDS_OUT) {
+  execFileSync(process.execPath, [path.join(__dirname, 'pack-decks.mjs')], { stdio: 'inherit' });
+}

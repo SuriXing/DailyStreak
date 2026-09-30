@@ -217,8 +217,8 @@ npm run check:flashcards   # 声明张数 / id 连续且等于源题号 / 四个
 
 The app does not import the generated deck modules directly. `scripts/pack-decks.mjs` packs them into
 `src/data/deck-pack.ts` — a gzip+base64 blob that `src/data/deck-pack-loader.ts` unpacks at startup — and
-`src/data/flashcards.ts` imports only that loader. The packed form is 79 KB instead of 325 KB of plain
-object literals, which takes about 256 KB off the web bundle and keeps the card text out of a
+`src/data/flashcards.ts` imports only that loader. The packed form is 132 KB instead of 321 KB of plain
+object literals, which takes about 190 KB off the web bundle and keeps the card text out of a
 straightforward grep of the shipped JS. That is obfuscation, not protection: the app has to unpack it, so
 anybody can. The plain modules stay in the repo because the deck check reads them.
 
@@ -233,9 +233,20 @@ lines, so the option block is located by the first `A. ` line instead of assumin
 
 The deck check also keeps the two gaming holes closed: every deck has to keep each answer letter near
 25% so guessing "always B" scores like random, and the correct option may not be the longest more than
-45% of the time per deck (35% overall) so option length does not signal the answer. Scenario decks have
-their own gate: at least 20 items, and at least 75% of stems at least 30 characters, so a single-step
-drill cannot be relabelled as a scenario item.
+40% of the time per deck (30% overall) so option length does not signal the answer. That metric counts a
+tie as the longest option and charges it to the first of the tied ones, which reads higher than "uniquely
+longest"; the decks currently sit at 28–36% and the bank at 26%, or 13–28% and 20% on the stricter
+reading. Scenario decks have their own gate: at least 20 items, and at least 75% of stems at least 30
+characters, so a single-step drill cannot be relabelled as a scenario item; none of them ever has the
+correct option as the longest under either reading.
+
+`content/` is the source and `src/data/*.ts` is the product, and the two are now compared on every check:
+the gate rebuilds both deck builders into a temporary directory and diffs the result against the committed
+modules. Without it, editing a question in `content/` and forgetting to regenerate left the repo holding
+two contradictory versions of the same card — the app serves the generated one — while every shape check
+passed, because each copy was individually well formed. That is not hypothetical: five rounds of option
+rewrites committed on 2026-09-25 sat in `content/` without reaching the app until the builders were rerun
+by hand, which is why the gate exists.
 
 Two more failure modes are guarded now. The answer key parser used to join the whole key file into one
 line and anchor its regex at the start, so every `## 1–20` heading swallowed the first answer of its

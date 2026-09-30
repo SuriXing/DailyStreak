@@ -1,5 +1,6 @@
 import type { Locale } from '@/i18n/types';
 import type { Flashcard } from './flashcards';
+import { DRILL_EN } from './flashcard-i18n-drill';
 import { SCENARIO_EN } from './flashcard-i18n-scenario';
 
 /**
@@ -531,6 +532,6 @@ export const FLASHCARD_EN: Record<string, { front: string; back: string }> = {
 /** 按当前语言本地化一张卡：en 走覆盖层，其它语言（或缺失条目）回退中文基底。 */
 export function localizeFlashcard(card: Flashcard, locale: Locale): Flashcard {
   if (locale !== 'en') return card;
-  const overlay = FLASHCARD_EN[card.id] ?? SCENARIO_EN[card.id];
+  const overlay = FLASHCARD_EN[card.id] ?? DRILL_EN[card.id] ?? SCENARIO_EN[card.id];
   return overlay ? { ...card, front: overlay.front, back: overlay.back } : card;
 }

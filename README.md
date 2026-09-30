@@ -186,30 +186,24 @@ somebody reworks them.
 
 ### Difficulty, and what tagging it revealed
 
-The 600 drill items carry a `difficulty` from 1 to 4, assigned against the rubric written into
-`content/subject-banks/difficulty.json` and enforced by the gate (a drill deck with any untagged item
-fails). The levels are a rubric judgement, not an empirical calibration: nobody has answered these items and
-had their score recorded, so treat them as "how much work this asks for", not as "how often students get it
-wrong". The scenario decks are deliberately untagged and the field is optional for them - inventing levels
-for items nobody graded would be worse than admitting the gap.
+All 850 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
+`content/subject-banks/difficulty.json` and enforced by the gate. The levels are a rubric judgement, not an
+empirical calibration: nobody has answered these items and had their score recorded, so read them as "how much
+work this asks for", not as "how often students get it wrong". Two independent sets of reviewers graded the two
+families without seeing each other's work, which is what makes the comparison below worth anything.
 
-The useful part is the distribution, because it measures something the earlier qualitative complaints could
-only assert. Five reviewers graded all 600 items independently and reported the same shape:
-
-| Deck | Level 1 | Level 2 | Level 3 | Level 4 |
+| Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
-| CSA | 55 | 50 | 13 | 2 |
-| CSP | 90 | 19 | 9 | 2 |
-| Precalculus | 61 | 42 | 16 | 1 |
-| Calculus BC | 68 | 43 | 8 | 1 |
-| Statistics | 91 | 22 | 5 | 2 |
+| Drill banks (600 items, five subjects) | 46–76% | 16–42% | 4–13% | <2% |
+| Scenario decks (250 items, five subjects) | 0–16% | 30–56% | 28–64% | 0–8% |
 
-Level 1 is between 46% and 76% everywhere, and levels 3 and 4 together are 4% to 12%. A "hard practice"
-filter over the statistics bank would have seven items to draw on. The cause is the item format rather than
-harsh grading: roughly half of each bank is a one-line question answerable from a single fact, and the items
-that are genuinely hard are hard by trap - an overload that resolves differently than it looks, an index that
-shifts under a deletion - which is exactly what level 3 covers. Building a real three- or four-step tier means
-writing new items, not relabelling these.
+The drill banks are overwhelmingly level 1 and have almost nothing at the top; the scenario decks have almost
+nothing at the bottom and half their items at level 3. So the format difference is now measured rather than
+asserted: the content written to require two to four steps really does require them, and the material generated
+in bulk as one-line questions really is one-line. The hardest drill item in the statistics bank is one of seven
+that reach level 3 or 4, and a "hard practice" filter over that bank would draw on those seven. Closing that gap
+needs new items - a condition that must be checked before the routine applies, a method the student must choose,
+several interacting facts held at once - not a relabelling of what is there.
 
 ### Which cards exist in English
 
@@ -219,8 +213,8 @@ other two:
 
 | Layer | File | Cards | Status |
 |---|---|---|---|
-| AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 520 of 564 | the geometry tail is still Chinese |
-| Drill banks | `src/data/flashcard-i18n-drill.ts` | 480 of 600 | Calculus BC still to come |
+| AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 564 of 564 | complete |
+| Drill banks | `src/data/flashcard-i18n-drill.ts` | 600 of 600 | complete |
 | Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 225 of 225 | required by the gate |
 
 `localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a

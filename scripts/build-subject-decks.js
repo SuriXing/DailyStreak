@@ -198,6 +198,38 @@ function hashOf(front, back) {
 const LETTER_REFERENCE = /(^|[^A-Za-z])([A-D])\s*(和|与|、|或|,)\s*([A-D])([^A-Za-z]|$)|以上都|以上均|都不对|都正确|无正确/;
 const ANALYSIS_LETTER = /(^|[^A-Za-z])([A-D])(?![A-Za-z])/;
 
+/**
+ * 旋转方案按卡组冻结在 content/subject-banks/rotation-plan.json：
+ * 方案原来由"卡组条数"决定，于是给卡组追加新题会把已有题目的正确项挪到别的字母，
+ * 已经翻译好的英文覆盖层会因此和中文对不上（字母、选项顺序都可能变）。
+ * 冻结之后，追加新题只会在方案末尾补字母，已有题目的字母永远不变。
+ */
+const PLAN_FILE = path.join(__dirname, '..', 'content', 'subject-banks', 'rotation-plan.json');
+function readPlans() {
+  try {
+    return JSON.parse(fs.readFileSync(PLAN_FILE, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+function writePlans(plans) {
+  fs.writeFileSync(PLAN_FILE, `${JSON.stringify(plans, null, 1)}\n`);
+}
+/** 延长方案：每次补当前最少的字母，保证各字母长期均衡。 */
+function extendPlan(plan, need) {
+  const out = plan.slice();
+  let seed = 20260921 + out.length;
+  while (out.length < need) {
+    const counts = { A: 0, B: 0, C: 0, D: 0 };
+    for (const l of out) counts[l] += 1;
+    const min = Math.min(...Object.values(counts));
+    const cands = ['A', 'B', 'C', 'D'].filter((l) => counts[l] === min);
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    out.push(cands[seed % cands.length]);
+  }
+  return out;
+}
+
 /** 均衡的目标字母序列（固定种子洗牌，避免 AABBCCDD 这种机械排列）。 */
 function positionPlan(count) {
   const letters = [];
@@ -266,8 +298,18 @@ function buildDeck(cfg) {
     }
   }
 
-  // 第二次遍历：按均衡序列轮转选项后再组装卡片
-  const plan = positionPlan(items.length);
+  // 第二次遍历：按冻结的均衡序列轮转选项后再组装卡片
+  const plans = readPlans();
+  const rotatableCount = items.filter(
+    (it) => !LETTER_REFERENCE.test(it.options.join(' ')) && !ANALYSIS_LETTER.test(it.brief || ''),
+  ).length;
+  let plan = plans[cfg.key];
+  if (!plan || plan.length < rotatableCount) {
+    plan = extendPlan(plan || positionPlan(rotatableCount), rotatableCount);
+    plans[cfg.key] = plan;
+    writePlans(plans);
+    console.log(`  旋转方案：${cfg.key} 冻结为 ${plan.length} 个字母`);
+  }
   let planIndex = 0;
   const cards = items.map((it) => {
     const letterIdx = it.letter.charCodeAt(0) - 65;

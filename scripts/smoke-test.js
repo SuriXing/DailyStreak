@@ -10,6 +10,8 @@
  *
  * 退出码 0 = 全部通过；非 0 = 失败（会打印关键断言点）。
  */
+const fs = require('fs');
+const path = require('path');
 const { chromium } = require('playwright');
 
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:8081';
@@ -29,6 +31,22 @@ function assertI18n(text, zh, en, msg) {
 /** 行标签在 UI 里带 text-transform: uppercase，innerText 拿到的是大写，断言时忽略大小写 */
 function assertLabel(text, zh, en, msg) {
   assert(text.includes(zh) || text.toLowerCase().includes(en.toLowerCase()), `${msg}（${zh} / ${en}）`);
+}
+
+/**
+ * 练习池大小 = 有选项的卡片（练习册 + 情境题）。从生成数据里数出来，
+ * 这样每加一批题都不用回来改这个数字——它曾经硬编码成 725，加了 125 道情境题后就过期了。
+ */
+function expectedPracticePool() {
+  const dir = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
+  let n = 0;
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith('.ts') || f === 'index.ts') continue;
+    for (const line of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
+      if (/\{ id: "/.test(line) && /\\nA\. /.test(line)) n += 1;
+    }
+  }
+  return n;
 }
 
 function clickI18n(page, zh, en) {
@@ -112,7 +130,8 @@ function clickI18n(page, zh, en) {
   await clickI18n(page, '下一张', 'Next');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();
-  assert(/2 \/ 725/.test(text), '下一张后进度为 2 / 725（600 道练习册 + 125 道情境题）');
+  const pool = expectedPracticePool();
+  assert(new RegExp(`2 / ${pool}`).test(text), `下一张后进度为 2 / ${pool}（练习册 + 情境题的题量，从生成数据算出）`);
   await clickI18n(page, '概念卡', 'Concept cards');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();

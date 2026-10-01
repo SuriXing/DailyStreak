@@ -184,6 +184,33 @@ Regenerating leaves the committed data untouched unless the markdown changed, an
 ledger keys on a hash of each card's text, a real edit drops those cards back to `verified: false` until
 somebody reworks them.
 
+### Difficulty, and what tagging it revealed
+
+The 600 drill items carry a `difficulty` from 1 to 4, assigned against the rubric written into
+`content/subject-banks/difficulty.json` and enforced by the gate (a drill deck with any untagged item
+fails). The levels are a rubric judgement, not an empirical calibration: nobody has answered these items and
+had their score recorded, so treat them as "how much work this asks for", not as "how often students get it
+wrong". The scenario decks are deliberately untagged and the field is optional for them - inventing levels
+for items nobody graded would be worse than admitting the gap.
+
+The useful part is the distribution, because it measures something the earlier qualitative complaints could
+only assert. Five reviewers graded all 600 items independently and reported the same shape:
+
+| Deck | Level 1 | Level 2 | Level 3 | Level 4 |
+|---|---|---|---|---|
+| CSA | 55 | 50 | 13 | 2 |
+| CSP | 90 | 19 | 9 | 2 |
+| Precalculus | 61 | 42 | 16 | 1 |
+| Calculus BC | 68 | 43 | 8 | 1 |
+| Statistics | 91 | 22 | 5 | 2 |
+
+Level 1 is between 46% and 76% everywhere, and levels 3 and 4 together are 4% to 12%. A "hard practice"
+filter over the statistics bank would have seven items to draw on. The cause is the item format rather than
+harsh grading: roughly half of each bank is a one-line question answerable from a single fact, and the items
+that are genuinely hard are hard by trap - an overload that resolves differently than it looks, an index that
+shifts under a deletion - which is exactly what level 3 covers. Building a real three- or four-step tier means
+writing new items, not relabelling these.
+
 ### Which cards exist in English
 
 The Chinese text is the base and the English overlay is built in three layers, one per card family, because the

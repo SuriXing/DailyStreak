@@ -21,7 +21,7 @@ export const SUBJECT_DECKS_PRECALC: { key: SubjectDeckKey; label: string }[] = [
 export const SUBJECT_FLASHCARDS_PRECALC: SubjectFlashcard[] = [
   { id: "precalc-001", deck: "precalc", category: "AP Precalc", front: "若 f(2)=5,f(8)=23，f 在 [2,8] 的平均变化率是？\nA. 6\nB. 3\nC. 18\nD. 28", back: "答案：B\n简析：18/6\n\n正确选项：3", source: "ai-mcq", verified: true },
   { id: "precalc-002", deck: "precalc", category: "AP Precalc", front: "g(x)=-2f(3(x-4))+1 相比 f 的水平压缩因子是？\nA. 3\nB. 1/2\nC. 2\nD. 1/3", back: "答案：D\n\n正确选项：1/3", source: "ai-mcq", verified: true },
-  { id: "precalc-003", deck: "precalc", category: "AP Precalc", front: "p(x)=-(x+2)^2(x-1)^3 的右端行为是？\nA. 向上\nB. 趋近0\nC. 无法判断\nD. 向下", back: "答案：D\n简析：五次负首项\n\n正确选项：向下", source: "ai-mcq", verified: true },
+  { id: "precalc-003", deck: "precalc", category: "AP Precalc", front: "p(x)=-(x+2)^2(x-1)^3 的右端行为是？\nA. 向上\nB. 趋近0\nC. 先升后降\nD. 向下", back: "答案：D\n简析：五次负首项\n\n正确选项：向下", source: "ai-mcq", verified: true },
   { id: "precalc-004", deck: "precalc", category: "AP Precalc", front: "p 是四次多项式且等距数据的一至三阶差分不恒定，哪一阶应为非零常数？\nA. 一\nB. 二\nC. 三\nD. 四", back: "答案：D\n\n正确选项：四", source: "ai-mcq", verified: true },
   { id: "precalc-005", deck: "precalc", category: "AP Precalc", front: "P(x)=a(x-2)^2(x+1) 且 P(0)=8，a=?\nA. -4\nB. -2\nC. 2\nD. 4", back: "答案：C\n\n正确选项：2", source: "ai-mcq", verified: true },
   { id: "precalc-006", deck: "precalc", category: "AP Precalc", front: "实系数三次多项式有零点 2+i 与 -1，另一零点是？\nA. -2+i\nB. 2-i\nC. 1-2i\nD. 不存在", back: "答案：B\n\n正确选项：2-i", source: "ai-mcq", verified: true },

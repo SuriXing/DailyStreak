@@ -250,7 +250,7 @@ export const DRILL_EN: Record<string, { front: string; back: string; src: string
   // ---- precalc (120 张) ----
   "precalc-001": { front: "If f(2)=5,f(8)=23, what is the average rate of change of f on [2,8]?\nA. 6\nB. 3\nC. 18\nD. 28", back: "Answer: B\nExplanation: 18/6\n\nCorrect option: 3", src: "825bf297b32a" },
   "precalc-002": { front: "Relative to f, what is the horizontal compression factor of g(x)=-2f(3(x-4))+1?\nA. 3\nB. 1/2\nC. 2\nD. 1/3", back: "Answer: D\n\nCorrect option: 1/3", src: "e4d2eb463c16" },
-  "precalc-003": { front: "What is the right end behaviour of p(x)=-(x+2)^2(x-1)^3?\nA. Up\nB. Approaches 0\nC. Cannot be determined\nD. Down", back: "Answer: D\nExplanation: degree five, negative leading coefficient\n\nCorrect option: Down", src: "ca1aec2e5768" },
+  "precalc-003": { front: "What is the right end behaviour of p(x)=-(x+2)^2(x-1)^3?\nA. Up\nB. Approaches 0\nC. rises then falls\nD. Down", back: "Answer: D\nExplanation: degree five, negative leading coefficient\n\nCorrect option: Down", src: "41d4de2652ef" },
   "precalc-004": { front: "p is a quartic polynomial and the first through third differences of equally spaced data are not constant; which order of difference should be a nonzero constant?\nA. First\nB. Second\nC. Third\nD. Fourth", back: "Answer: D\n\nCorrect option: Fourth", src: "92dbe0dbd035" },
   "precalc-005": { front: "P(x)=a(x-2)^2(x+1) and P(0)=8, a=?\nA. -4\nB. -2\nC. 2\nD. 4", back: "Answer: C\n\nCorrect option: 2", src: "b710d0f98590" },
   "precalc-006": { front: "A cubic polynomial with real coefficients has zeros 2+i and -1; what is the other zero?\nA. -2+i\nB. 2-i\nC. 1-2i\nD. Does not exist", back: "Answer: B\n\nCorrect option: 2-i", src: "2d952e088ac9" },

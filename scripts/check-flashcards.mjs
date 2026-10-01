@@ -428,6 +428,31 @@ function checkDuplicateItems() {
  * 或者给出"以上都对/都不对/无法判断"这种不需要知识就能选中的逃生口。
  */
 const BANNED_OPTION = /以上都|都不对|都正确|无法判断|无法确定/;
+/** 难度标注：练习册卡组必须 1-4 齐全，情境题卡组暂未标注（字段缺省）。 */
+let difficultyStats = {};
+function checkDifficulty() {
+  for (const card of ALL_CARDS) {
+    const isDrill = !card.deck.endsWith('-scenario');
+    if (card.difficulty === undefined) {
+      if (isDrill) problems.push(`${card.id}: 练习册卡片缺少难度标注`);
+      continue;
+    }
+    if (![1, 2, 3, 4].includes(card.difficulty)) {
+      problems.push(`${card.id}: 难度 ${card.difficulty} 不在 1-4 之间`);
+      continue;
+    }
+    difficultyStats[card.deck] = difficultyStats[card.deck] || [0, 0, 0, 0];
+    difficultyStats[card.deck][card.difficulty - 1] += 1;
+  }
+  // 单一级别占九成以上的卡组等于没有分级
+  for (const [deck, counts] of Object.entries(difficultyStats)) {
+    const total = counts.reduce((a, b) => a + b, 0);
+    if (total >= 40 && Math.max(...counts) / total > 0.9) {
+      problems.push(`${deck}: 难度几乎全是同一个级别（${counts.join('/')}）→ 分级没有区分度`);
+    }
+  }
+}
+
 function checkOptionShape() {
   for (const card of ALL_CARDS) {
     const opts = card.front
@@ -526,6 +551,7 @@ let overlayStats = { covered: 0, total: 0, scenario: 0 };
 checkFlashcardOverlay();
 checkDuplicateItems();
 checkOptionShape();
+checkDifficulty();
 checkDeckSourceSync();
 
 /**
@@ -580,7 +606,11 @@ if (problems.length) {
 console.log(
   `✅ 闪卡数据校验通过: ${Object.entries(counts)
     .map(([k, v]) => `${k}=${v}`)
-    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张；英文覆盖 ${
+    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张；难度 ${
+    Object.entries(difficultyStats)
+      .map(([d, c]) => `${d} ${c.join('/')}`)
+      .join('、')
+  }；英文覆盖 ${
     overlayStats.covered
   }/${overlayStats.total}（情境题 ${overlayStats.scenario} 张要求全覆盖）；bundle 压缩块 ${
     (read('src/data/deck-pack.ts').length / 1024).toFixed(0)

@@ -265,6 +265,12 @@ function rotateOptions(options, correctIdx, targetIdx) {
  */
 const ident = (key) => key.toUpperCase().replace(/[^A-Z0-9]/g, '_');
 
+/**
+ * 难度标注：content/subject-banks/difficulty.json（rubric 也写在同一文件里）。
+ * 标注是 rubric 判定，不是实测校准；缺任何一题就报错，避免半套标注悄悄进仓库。
+ */
+const DIFFICULTY = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'content', 'subject-banks', 'difficulty.json'), 'utf8'));
+
 function buildDeck(cfg) {
   const hashes = verifiedHashes();
   const answerMap = {};
@@ -328,6 +334,16 @@ function buildDeck(cfg) {
       category: cfg.label.replace(' · 选择题', ''),
       front: frontClean,
       back: backClean,
+      // 难度：drill 卡组必须整组标注齐全；情境题卡组暂未标注（字段缺省）
+      difficulty: (() => {
+        const table = DIFFICULTY[cfg.key];
+        if (!table) return undefined;
+        const lv = table[String(it.num)] ?? table[String(it.num).padStart(3, '0')];
+        if (![1, 2, 3, 4].includes(lv)) {
+          throw new Error(`${cfg.key} 第 ${it.num} 题缺少难度标注（difficulty.json）`);
+        }
+        return lv;
+      })(),
       source: 'ai-mcq',
       verified: hashes[cardId] === hashOf(frontClean, backClean),
     };
@@ -361,7 +377,7 @@ const generated = [];
 for (const cfg of SUBJECTS) {
   const { key, label, cards } = buildDeck(cfg);
   const cardLines = cards
-    .map((c) => `  { id: ${q(c.id)}, deck: ${q(c.deck)}, category: ${q(c.category)}, front: ${q(c.front)}, back: ${q(c.back)}, source: ${q(c.source)}, verified: ${c.verified} },`)
+    .map((c) => `  { id: ${q(c.id)}, deck: ${q(c.deck)}, category: ${q(c.category)}${c.difficulty ? `, difficulty: ${c.difficulty}` : ''}, front: ${q(c.front)}, back: ${q(c.back)}, source: ${q(c.source)}, verified: ${c.verified} },`)
     .join('\n');
   const ts = `// AUTO-GENERATED from the ${label} materials (${cards.length} cards). Do not hand-edit.
 // Regenerate: node scripts/build-subject-decks.js
@@ -373,6 +389,11 @@ export interface SubjectFlashcard {
   category: string;
   front: string;
   back: string;
+  /**
+   * 难度 1-4：按"学生实际要做多少工作"判定的 rubric 分级。
+   * 目前只覆盖练习册卡组；情境题卡组尚未标注，所以是可选的。
+   */
+  difficulty?: number;
   /** 文本来源：ai-mcq = AI 生成的原创选择题，不是 College Board 真题 */
   source: 'ai-mcq';
   /** 是否经过逐题独立验算/事实核查 */

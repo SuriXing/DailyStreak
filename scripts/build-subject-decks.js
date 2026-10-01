@@ -304,23 +304,28 @@ function buildDeck(cfg) {
     }
   }
 
-  // 第二次遍历：按冻结的均衡序列轮转选项后再组装卡片
+  // 第二次遍历：按冻结的方案（按题号记录字母）轮转选项后再组装卡片。
+  // 按题号而不是按位置记录，是为了让某一题"是否可旋转"变化时不牵动其它题目。
   const plans = readPlans();
-  const rotatableCount = items.filter(
-    (it) => !LETTER_REFERENCE.test(it.options.join(' ')) && !ANALYSIS_LETTER.test(it.brief || ''),
-  ).length;
-  let plan = plans[cfg.key];
-  if (!plan || plan.length < rotatableCount) {
-    plan = extendPlan(plan || positionPlan(rotatableCount), rotatableCount);
+  const plan = plans[cfg.key] || {};
+  const counts = { A: 0, B: 0, C: 0, D: 0 };
+  for (const l of Object.values(plan)) if (counts[l] !== undefined) counts[l] += 1;
+  const takeLetter = (num) => {
+    const key = String(num);
+    if (plan[key]) return plan[key];
+    if (plan[key.padStart(3, '0')]) return plan[key.padStart(3, '0')];
+    const min = Math.min(...Object.values(counts));
+    const letter = ['A', 'B', 'C', 'D'].filter((l) => counts[l] === min)[0];
+    plan[key] = letter;
+    counts[letter] += 1;
     plans[cfg.key] = plan;
     writePlans(plans);
-    console.log(`  旋转方案：${cfg.key} 冻结为 ${plan.length} 个字母`);
-  }
-  let planIndex = 0;
+    return letter;
+  };
   const cards = items.map((it) => {
     const letterIdx = it.letter.charCodeAt(0) - 65;
     const rotatable = !LETTER_REFERENCE.test(it.options.join(' ')) && !ANALYSIS_LETTER.test(it.brief || '');
-    const targetIdx = rotatable ? 'ABCD'.indexOf(plan[planIndex++]) : letterIdx;
+    const targetIdx = rotatable ? 'ABCD'.indexOf(takeLetter(it.num)) : letterIdx;
     const options = rotateOptions(it.options, letterIdx, targetIdx);
     const front = `${it.context}${it.rawStem}\nA. ${options[0] || ''}\nB. ${options[1] || ''}\nC. ${options[2] || ''}\nD. ${options[3] || ''}`;
     const back = `答案：${'ABCD'[targetIdx]}\n${it.brief ? '简析：' + it.brief : ''}\n\n正确选项：${options[targetIdx] || ''}`;

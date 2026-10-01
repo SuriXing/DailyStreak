@@ -42,6 +42,7 @@ const ALL_CARDS = [];
 /** 复核台账：id → 复核时正文的短哈希。 */
 const LEDGER = JSON.parse(readFileSync(path.join(root, 'scripts/flashcard-verification.json'), 'utf8'));
 const VERIFIED_HASHES = LEDGER.cards || {};
+const sha1Text = (t) => createHash('sha1').update(t).digest('hex').slice(0, 12);
 const hashOf = (front, back) =>
   createHash('sha1').update(`${front}\u0000${back}`).digest('hex').slice(0, 12);
 
@@ -376,15 +377,15 @@ const OVERLAY_FILES = [
 function parseOverlay(rel) {
   const out = new Map();
   const patterns = [
-    /^\s*'([^']+)':\s*\{\s*front:\s*'((?:\\.|[^'\\])*)',\s*back:\s*'((?:\\.|[^'\\])*)'\s*\},?\s*$/,
-    /^\s*"([^"]+)":\s*\{\s*front:\s*"((?:\\.|[^"\\])*)",\s*back:\s*"((?:\\.|[^"\\])*)"\s*\},?\s*$/,
+    /^\s*'([^']+)':\s*\{\s*front:\s*'((?:\\.|[^'\\])*)',\s*back:\s*'((?:\\.|[^'\\])*)'(?:,\s*src:\s*'([0-9a-f]*)')?\s*\},?\s*$/,
+    /^\s*"([^"]+)":\s*\{\s*front:\s*"((?:\\.|[^"\\])*)",\s*back:\s*"((?:\\.|[^"\\])*)"(?:,\s*src:\s*"([0-9a-f]*)")?\s*\},?\s*$/,
   ];
   for (const raw of read(rel).split('\n')) {
     for (const line of patterns) {
       const m = raw.match(line);
       if (!m) continue;
       const un = (t) => t.replace(/\\n/g, '\n').replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-      out.set(m[1], { front: un(m[2]), back: un(m[3]) });
+      out.set(m[1], { front: un(m[2]), back: un(m[3]), src: m[4] || '' });
       break;
     }
   }
@@ -466,6 +467,14 @@ function checkFlashcardOverlay() {
     }
     if (/[\u4e00-\u9fff]/.test(en.front) || /[\u4e00-\u9fff]/.test(en.back)) {
       problems.push(`${card.id}: 英文覆盖里还有中文`);
+    }
+    if (!en.src) {
+      problems.push(`${card.id}: 英文覆盖缺少 src（中文正文的哈希）→ 无法判断它对应哪一版中文`);
+    } else if (en.src !== sha1Text(card.front)) {
+      problems.push(
+        `${card.id}: 英文覆盖层与中文卡不同步（src=${en.src}，当前中文=${sha1Text(card.front)}）→ ` +
+          '中文改过（选项顺序/答案/文字）而英文没跟着更新',
+      );
     }
   }
   for (const id of overlay.keys()) {

@@ -43,6 +43,8 @@ const ALL_CARDS = [];
 const LEDGER = JSON.parse(readFileSync(path.join(root, 'scripts/flashcard-verification.json'), 'utf8'));
 const VERIFIED_HASHES = LEDGER.cards || {};
 const sha1Text = (t) => createHash('sha1').update(t).digest('hex').slice(0, 12);
+/** 覆盖层条目要对齐的是整张中文卡：front 与 back 任何一个改了都算漂移。 */
+const overlaySourceHash = (card) => sha1Text(`${card.front}\u0000${card.back}`);
 const hashOf = (front, back) =>
   createHash('sha1').update(`${front}\u0000${back}`).digest('hex').slice(0, 12);
 
@@ -500,10 +502,10 @@ function checkFlashcardOverlay() {
       problems.push(`${card.id}: 英文覆盖里还有中文`);
     }
     if (!en.src) {
-      problems.push(`${card.id}: 英文覆盖缺少 src（中文正文的哈希）→ 无法判断它对应哪一版中文`);
-    } else if (en.src !== sha1Text(card.front)) {
+      problems.push(`${card.id}: 英文覆盖缺少 src（中文正文 front+back 的哈希）→ 无法判断它对应哪一版中文`);
+    } else if (en.src !== overlaySourceHash(card)) {
       problems.push(
-        `${card.id}: 英文覆盖层与中文卡不同步（src=${en.src}，当前中文=${sha1Text(card.front)}）→ ` +
+        `${card.id}: 英文覆盖层与中文卡不同步（src=${en.src}，当前中文=${overlaySourceHash(card)}）→ ` +
           '中文改过（选项顺序/答案/文字）而英文没跟着更新',
       );
     }

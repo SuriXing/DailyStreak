@@ -8,11 +8,8 @@ export interface SubjectFlashcard {
   category: string;
   front: string;
   back: string;
-  /**
-   * 难度 1-4：按"学生实际要做多少工作"判定的 rubric 分级。
-   * 目前只覆盖练习册卡组；情境题卡组尚未标注，所以是可选的。
-   */
-  difficulty?: number;
+  /** 难度 1-4：按"学生实际要做多少工作"判定的 rubric 分级（rubric 见 content/subject-banks/difficulty.json） */
+  difficulty: number;
   /** 文本来源：ai-mcq = AI 生成的原创选择题，不是 College Board 真题 */
   source: 'ai-mcq';
   /** 是否经过逐题独立验算/事实核查 */

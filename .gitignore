@@ -51,3 +51,7 @@ example
 
 expo-env.d.ts
 # @end expo-cli
+
+# 本地题库：用户自己放的题（通常是真题），只在本机运行时加载，不进仓库也不进部署
+content/local/
+public/local-deck.json

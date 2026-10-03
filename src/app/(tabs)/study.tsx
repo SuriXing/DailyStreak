@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,7 @@ import {
 } from '@/data/flashcards';
 import { localizeFlashcard } from '@/data/flashcard-i18n';
 import { availableKinds, filterCards, shuffleCards, type CardKind } from '@/lib/flashcard-session';
+import { loadLocalDeck, type LocalDeck } from '@/data/local-bank';
 
 /** 自由练：一场闪卡会话 —— 卡组 + 题型（+ AMC10 才有的难度），选择题点选、概念卡翻面。 */
 
@@ -34,8 +35,30 @@ export default function StudyScreen() {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  // 本地题库：运行时从 /local-deck.json 拉取一次；拉不到（部署站点上就是 404）就当作没有
+  const [localDeck, setLocalDeck] = useState<LocalDeck | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadLocalDeck().then((d) => {
+      if (alive && d) setLocalDeck(d);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-  const selectedDeck = FLASHCARD_DECKS.find((d) => d.key === deck) ?? null;
+  const decks: FlashcardDeck[] = useMemo(
+    () =>
+      localDeck
+        ? [...FLASHCARD_DECKS, { key: 'local', label: localDeck.label, hasLevels: false }]
+        : FLASHCARD_DECKS,
+    [localDeck],
+  );
+  const pool = useMemo(
+    () => (localDeck ? [...ALL_FLASHCARDS, ...localDeck.cards] : ALL_FLASHCARDS),
+    [localDeck],
+  );
+  const selectedDeck = decks.find((d) => d.key === deck) ?? null;
   const showLevels = selectedDeck ? selectedDeck.hasLevels : false;
   // AMC10 卡组整组都是概念卡，题型筛选在那里没有意义，这种情况直接不显示这一行
   const kinds = useMemo(() => availableKinds(deck), [deck]);
@@ -43,9 +66,9 @@ export default function StudyScreen() {
   const activeKind = showKinds ? kind : null;
 
   const cards = useMemo(() => {
-    const list = filterCards({ deck, level, kind: activeKind }, ALL_FLASHCARDS);
+    const list = filterCards({ deck, level, kind: activeKind }, pool);
     return shuffled ? shuffleCards(list, seed) : list;
-  }, [deck, level, activeKind, shuffled, seed]);
+  }, [pool, deck, level, activeKind, shuffled, seed]);
 
   const current = cards[index] ? localizeFlashcard(cards[index], locale) : cards[index];
   const quiz = current ? toQuiz(current) : null;
@@ -82,7 +105,10 @@ export default function StudyScreen() {
 
   /** 来源 + 核验状态：verified 由 scripts/flashcard-verification.json 的正文哈希决定。 */
   const sourceLine = (card: Flashcard) => {
-    const label = t(card.source === 'ai-mcq' ? 'flashcards.sourceAiMcq' : 'flashcards.sourceAmc10');
+    const label =
+      card.source === 'local-exam'
+        ? t('flashcards.sourceLocalExam')
+        : t(card.source === 'ai-mcq' ? 'flashcards.sourceAiMcq' : 'flashcards.sourceAmc10');
     const state = card.verified ? t('flashcards.verified') : t('flashcards.unverified');
     return `${label} · ${state}`;
   };
@@ -120,7 +146,7 @@ export default function StudyScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}>
             {chip(t('flashcards.all'), deck == null, () => pickDeck(null))}
-            {FLASHCARD_DECKS.map((d: FlashcardDeck) => chip(d.label, deck === d.key, () => pickDeck(d.key)))}
+            {decks.map((d: FlashcardDeck) => chip(d.label, deck === d.key, () => pickDeck(d.key)))}
           </ScrollView>
           {showKinds && (
             <>

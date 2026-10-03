@@ -7,8 +7,10 @@ export type FlashcardLevel = 'core' | 'advance' | 'boundary';
  * 卡片文本来源，与生成脚本写进数据模块的字面量类型一一对应：
  * - amc10-concept：依据考点审计把 AMC10 知识点拆成的问答卡，不是真题；
  * - ai-mcq：AI 生成的 AP 原创选择题，不是 College Board 真题。
+ * - local-exam：用户自己放进 content/local/ 的题（通常是真题），只在本地运行时加载，
+ *   既不在仓库里，也不进部署包；未经过本仓库的复核，所以界面按未核验标注。
  */
-export type FlashcardSource = 'amc10-concept' | 'ai-mcq';
+export type FlashcardSource = 'amc10-concept' | 'ai-mcq' | 'local-exam';
 
 export interface Flashcard {
   id: string;

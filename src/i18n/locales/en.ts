@@ -138,6 +138,7 @@ export const en: UiStrings = {
   'flashcards.shuffle': 'Shuffle',
   'flashcards.sourceAmc10': 'AMC10 notes · AI-compiled',
   'flashcards.sourceAiMcq': 'AI-written item',
+  'flashcards.sourceLocalExam': 'Local bank (not published)',
   'flashcards.unverified': 'answer unchecked',
   'flashcards.verified': 'answer independently checked',
   'flashcards.provenanceNote': 'These cards come from AI-generated study material, not official exams; the answers were never checked one by one, so treat them as review prompts.',

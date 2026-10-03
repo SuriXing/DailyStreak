@@ -21,6 +21,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -357,8 +358,19 @@ checkAnswerPositions();
 checkOptionLengthBias();
 checkScenarioDecks();
 
-// 卡组数据与 bundle 里的压缩块必须同步：改过卡片就要重跑打包
-if (read('src/data/deck-pack.ts') !== renderPackModule(buildPack(root))) {
+// 卡组数据与 bundle 里的压缩块必须同步：改过卡片就要重跑打包。
+// 只比较解压后的 JSON，不比压缩字节：gzip 输出取决于跑它的 zlib 版本，
+// 逐字比对压缩结果会把"本地通过、CI 失败"变成常态（CI 的 Node 版本与开发者本机通常不同）。
+const packPayload = JSON.stringify(buildPack(root).payload);
+const committedB64 = (read('src/data/deck-pack.ts').match(/DECK_PACK_BASE64\s*=\s*'([A-Za-z0-9+/=]+)'/) || [])[1];
+let committedPayload = null;
+try {
+  committedPayload = committedB64 ? gunzipSync(Buffer.from(committedB64, 'base64')).toString('utf8') : null;
+} catch {
+  problems.push('src/data/deck-pack.ts 的压缩块无法解开（文件损坏？）');
+}
+if (!committedB64) problems.push('src/data/deck-pack.ts 里找不到 DECK_PACK_BASE64 → 运行 npm run pack:decks');
+else if (committedPayload !== packPayload) {
   problems.push('src/data/deck-pack.ts 与卡组数据不同步 → 运行 npm run pack:decks');
 }
 

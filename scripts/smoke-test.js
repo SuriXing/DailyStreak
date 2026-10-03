@@ -112,17 +112,30 @@ function clickI18n(page, zh, en) {
   );
 
   // 3. 打卡（学+做：选择题卡先点一个选项 / 概念卡先翻面，然后打卡）
-  const hasTap = await page.getByText(/点击卡片|Tap the card/).count();
-  if (hasTap > 0) {
-    await page.getByText(/点击卡片|Tap the card/).first().click();
-  } else {
-    await page.getByText(/^A\./).first().click();
-  }
-  await page.waitForTimeout(900);
+  // 先等作答区真的渲染出来，再点：CI 上注册后页面可能还在加载，固定 sleep 会点空
+  const flipCard = page.getByText(/点击卡片|Tap the card/).first();
+  const optionA = page.getByText(/^A\./).first();
+  await Promise.race([
+    flipCard.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {}),
+    optionA.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {}),
+  ]);
+  if ((await flipCard.count()) > 0) await flipCard.click();
+  else if ((await optionA.count()) > 0) await optionA.click();
+  await page.waitForTimeout(600);
+
+  // 打卡：点完轮询等状态变化，而不是睡一个固定时长
   await clickI18n(page, '今日打卡', 'Check in today');
-  await page.waitForTimeout(2500);
+  let checkedIn = false;
+  for (let i = 0; i < 20; i += 1) {
+    await page.waitForTimeout(1000);
+    const t = await page.locator('body').innerText();
+    if (t.includes('今日已打卡') || t.includes('Checked in today')) {
+      checkedIn = true;
+      break;
+    }
+  }
+  assert(checkedIn, '打卡成功（先作答今日一课），按钮变为已打卡（今日已打卡 / Checked in today）');
   text = await page.locator('body').innerText();
-  assertI18n(text, '今日已打卡', 'Checked in today', '打卡成功（先作答今日一课），按钮变为已打卡');
   assertI18n(text, '今日练习', "Today's practice", '今日练习进度卡渲染');
 
   // 4. 自由练（Practice）：默认应为选择题卡（默认只练选择题，不再一进来就是概念词条）

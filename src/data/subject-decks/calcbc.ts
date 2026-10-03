@@ -1,4 +1,4 @@
-// AUTO-GENERATED from the AP Calc BC · 选择题 materials (120 cards). Do not hand-edit.
+// AUTO-GENERATED from the AP Calc BC · 选择题 materials (126 cards). Do not hand-edit.
 // Regenerate: node scripts/build-subject-decks.js
 export type SubjectDeckKey = 'calcbc';
 
@@ -141,4 +141,10 @@ export const SUBJECT_FLASHCARDS_CALCBC: SubjectFlashcard[] = [
   { id: "calcbc-118", deck: "calcbc", category: "AP Calc BC", difficulty: 3, front: "若 v(t)=t-2，在[0,4]总路程？\nA. 0\nB. 2\nC. 4\nD. 8", back: "答案：C\n\n正确选项：4", source: "ai-mcq", verified: true },
   { id: "calcbc-119", deck: "calcbc", category: "AP Calc BC", difficulty: 2, front: "f(x)=lnx 在x=1的二次Taylor多项式？\nA. (x-1)+(x-1)²/2\nB. 1+(x-1)-(x-1)²/2\nC. (x-1)-(x-1)²/2\nD. x-(x²/2)+(x³/3)", back: "答案：C\n\n正确选项：(x-1)-(x-1)²/2", source: "ai-mcq", verified: true },
   { id: "calcbc-120", deck: "calcbc", category: "AP Calc BC", difficulty: 1, front: "若正项级数a_n≤b_n且Σb_n收敛，则？\nA. Σa_n发散\nB. 无结论\nC. a_n不趋0\nD. Σa_n收敛", back: "答案：D\n\n正确选项：Σa_n收敛", source: "ai-mcq", verified: true },
+  { id: "calcbc-121", deck: "calcbc", category: "AP Calc BC", difficulty: 3, front: "f(x) = x^2 * e^(3x)，则 f'(1) 等于\nA. 2e^3\nB. 3e^3\nC. 5e^3\nD. e^3", back: "答案：C\n\n正确选项：5e^3", source: "ai-mcq", verified: true },
+  { id: "calcbc-122", deck: "calcbc", category: "AP Calc BC", difficulty: 4, front: "曲线 x^2 + xy + y^2 = 7 在点 (1, 2) 处的切线斜率是\nA. -4/5\nB. 4/5\nC. -5/4\nD. -1/2", back: "答案：A\n\n正确选项：-4/5", source: "ai-mcq", verified: true },
+  { id: "calcbc-123", deck: "calcbc", category: "AP Calc BC", difficulty: 3, front: "一个球的半径以 0.02 cm/s 增长。当半径是 5 cm 时，体积的增长率约为\nA. 0.4pi cm^3/s\nB. 2pi cm^3/s\nC. 10pi cm^3/s\nD. 4pi cm^3/s", back: "答案：B\n\n正确选项：2pi cm^3/s", source: "ai-mcq", verified: true },
+  { id: "calcbc-124", deck: "calcbc", category: "AP Calc BC", difficulty: 3, front: "反常积分 ∫_1^∞ 1/x^3 dx 的值是\nA. 1\nB. 1/4\nC. 1/2\nD. 发散", back: "答案：C\n\n正确选项：1/2", source: "ai-mcq", verified: true },
+  { id: "calcbc-125", deck: "calcbc", category: "AP Calc BC", difficulty: 4, front: "用 e^x 在 x = 0 处的三阶泰勒多项式估计 e^0.5，由拉格朗日余项给出的误差上界约为（e^0.5 < 1.65）\nA. 0.0043\nB. 0.0026\nC. 0.104\nD. 0.0002", back: "答案：A\n\n正确选项：0.0043", source: "ai-mcq", verified: true },
+  { id: "calcbc-126", deck: "calcbc", category: "AP Calc BC", difficulty: 3, front: "级数 sum_{n=1}^∞ n! / n^n 的收敛性是\nA. 收敛，用比较判别法与 sum 1/n^2 比较\nB. 收敛，比值判别法给出极限 1/e < 1\nC. 发散，通项不趋于 0\nD. 比值判别法极限为 1，无法判定", back: "答案：B\n\n正确选项：收敛，比值判别法给出极限 1/e < 1", source: "ai-mcq", verified: true },
 ];

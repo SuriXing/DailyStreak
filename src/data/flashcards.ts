@@ -94,6 +94,8 @@ export const ALL_FLASHCARDS: Flashcard[] = [
     category: c.category,
     front: c.front,
     back: c.back,
+    // 难度要一路带到这里：练习页的难度筛选读的就是这个列表
+    difficulty: c.difficulty,
     source: c.source,
     verified: c.verified,
   })),

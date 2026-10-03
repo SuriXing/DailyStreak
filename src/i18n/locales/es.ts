@@ -134,6 +134,7 @@ export const es: UiStrings = {
   'flashcards.kindQuiz': 'Opción múltiple',
   'flashcards.kindConcept': 'Tarjetas de concepto',
   'flashcards.level': 'Nivel',
+  'flashcards.difficulty': 'Nivel',
   'flashcards.order': 'Orden',
   'flashcards.shuffle': 'Mezclar',
   'flashcards.sourceAmc10': 'Notas AMC10 · recopilado por IA',

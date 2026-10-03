@@ -134,6 +134,7 @@ export const zh: UiStrings = {
   'flashcards.kindQuiz': '选择题',
   'flashcards.kindConcept': '概念卡',
   'flashcards.level': '难度',
+  'flashcards.difficulty': '难度分级',
   'flashcards.order': '顺序',
   'flashcards.shuffle': '乱序',
   'flashcards.sourceAmc10': 'AMC10 知识卡 · AI 整理',

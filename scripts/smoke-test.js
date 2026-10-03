@@ -46,6 +46,16 @@ function expectedPracticePool() {
       if (/\{ id: "/.test(line) && /\\nA\. /.test(line)) n += 1;
     }
   }
+  // 本机若生成了本地题库（content/local/ + npm run bank:local），它也会出现在练习池里
+  const local = path.join(__dirname, '..', 'public', 'local-deck.json');
+  if (fs.existsSync(local)) {
+    try {
+      const cards = JSON.parse(fs.readFileSync(local, 'utf8')).cards;
+      if (Array.isArray(cards)) n += cards.length;
+    } catch {
+      // 读不动就按没有处理
+    }
+  }
   return n;
 }
 

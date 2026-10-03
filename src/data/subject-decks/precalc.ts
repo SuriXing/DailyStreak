@@ -1,4 +1,4 @@
-// AUTO-GENERATED from the AP Precalc · 选择题 materials (120 cards). Do not hand-edit.
+// AUTO-GENERATED from the AP Precalc · 选择题 materials (126 cards). Do not hand-edit.
 // Regenerate: node scripts/build-subject-decks.js
 export type SubjectDeckKey = 'precalc';
 
@@ -141,4 +141,10 @@ export const SUBJECT_FLASHCARDS_PRECALC: SubjectFlashcard[] = [
   { id: "precalc-118", deck: "precalc", category: "AP Precalc", difficulty: 1, front: "r=2+2cosθ 最可能是？\nA. 圆\nB. 四叶玫瑰\nC. 心形线\nD. 直线", back: "答案：C\n\n正确选项：心形线", source: "ai-mcq", verified: true },
   { id: "precalc-119", deck: "precalc", category: "AP Precalc", difficulty: 1, front: "轮半径0.4 m，以5 rad/s转动，边缘速率？\nA. 0.08\nB. 5.4\nC. 12.5\nD. 2", back: "答案：D\n\n正确选项：2", source: "ai-mcq", verified: true },
   { id: "precalc-120", deck: "precalc", category: "AP Precalc", difficulty: 1, front: "arccos(-1) 的主值是？\nA. -π\nB. -π/2\nC. π\nD. π/2", back: "答案：C\n\n正确选项：π", source: "ai-mcq", verified: true },
+  { id: "precalc-121", deck: "precalc", category: "AP Precalc", difficulty: 3, front: "f(x) = sqrt(x+2)，g(x) = 1/(x-1)。f(g(x)) 的定义域是\nA. x > 1\nB. x >= -2\nC. x != 1\nD. x > -2 且 x != 1", back: "答案：A\n\n正确选项：x > 1", source: "ai-mcq", verified: true },
+  { id: "precalc-122", deck: "precalc", category: "AP Precalc", difficulty: 3, front: "某物质按每年 12% 衰减，多少年后剩余量首次低于原来的三分之一（ln3 约 1.10，ln0.88 约 -0.128）\nA. 8 年\nB. 9 年\nC. 3 年\nD. 10 年", back: "答案：B\n\n正确选项：9 年", source: "ai-mcq", verified: true },
+  { id: "precalc-123", deck: "precalc", category: "AP Precalc", difficulty: 3, front: "方程 log_2(x) + log_2(x-6) = 4 的解是\nA. 8 或 -2\nB. -2\nC. 8\nD. 无解", back: "答案：C\n\n正确选项：8", source: "ai-mcq", verified: true },
+  { id: "precalc-124", deck: "precalc", category: "AP Precalc", difficulty: 3, front: "h(t) = 3 + 2cos(pi(t-1)/3)。当 t = 4 时 h 的值是\nA. 5\nB. 3\nC. 4\nD. 1", back: "答案：D\n\n正确选项：1", source: "ai-mcq", verified: true },
+  { id: "precalc-125", deck: "precalc", category: "AP Precalc", difficulty: 3, front: "u = (3, -4)，v = (-1, 2)，则 |2u - v| 等于\nA. sqrt(149)\nB. sqrt(145)\nC. sqrt(53)\nD. 10 - sqrt(5)", back: "答案：A\n\n正确选项：sqrt(149)", source: "ai-mcq", verified: true },
+  { id: "precalc-126", deck: "precalc", category: "AP Precalc", difficulty: 4, front: "p(x) = (x^2 - 9)/(x^2 - 2x - 3) 的垂直渐近线与可去间断点分别是\nA. x = 3 与 x = -1\nB. x = -1 与 x = 3\nC. x = -1 与没有\nD. x = 3 与没有", back: "答案：B\n\n正确选项：x = -1 与 x = 3", source: "ai-mcq", verified: true },
 ];

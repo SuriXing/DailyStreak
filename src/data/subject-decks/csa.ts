@@ -1,4 +1,4 @@
-// AUTO-GENERATED from the AP CSA · 选择题 materials (120 cards). Do not hand-edit.
+// AUTO-GENERATED from the AP CSA · 选择题 materials (126 cards). Do not hand-edit.
 // Regenerate: node scripts/build-subject-decks.js
 export type SubjectDeckKey = 'csa';
 
@@ -141,4 +141,10 @@ export const SUBJECT_FLASHCARDS_CSA: SubjectFlashcard[] = [
   { id: "csa-118", deck: "csa", category: "AP CSA", difficulty: 3, front: "数组右移一位时，为防覆盖，通常应？\nA. 从左向右复制\nB. 只复制首项\nC. 从右向左复制\nD. 使用增强 for", back: "答案：C\n简析：先复制右端避免覆盖源数据。\n\n正确选项：从右向左复制", source: "ai-mcq", verified: true },
   { id: "csa-119", deck: "csa", category: "AP CSA", difficulty: 4, front: "原地计算每格“原值+左邻居”且从左到右更新，主要风险？\nA. 数组自动清空\nB. 无法访问索引\nC. 读到已修改左邻居\nD. Java 自动回滚", back: "答案：C\n简析：后续计算使用的左邻居已不是原值。\n\n正确选项：读到已修改左邻居", source: "ai-mcq", verified: true },
   { id: "csa-120", deck: "csa", category: "AP CSA", difficulty: 1, front: "当前 CSA 选择题占考试成绩？\nA. 30%\nB. 45%\nC. 70%\nD. 55%", back: "答案：D\n简析：当前选择题占 55%。\n\n正确选项：55%", source: "ai-mcq", verified: true },
+  { id: "csa-121", deck: "csa", category: "AP CSA", difficulty: 3, front: "int[][] g = new int[3][]; g[0] = new int[]{1,2}; g[1] = g[0]; g[2] = new int[]{3}; g[1][0] = 9; 之后 g[0][0] 与 g[2].length 分别是\nA. 1 与 1\nB. 9 与 0\nC. 9 与 1\nD. 1 与 3", back: "答案：C\n简析：g[1] = g[0] 复制的是引用，两行指向同一个数组，改 g[1][0] 等于改 g[0][0]，故为 9；g[2] 指向 new int[]{3}，长度是 1 而不是 3，也不是 0。\n\n正确选项：9 与 1", source: "ai-mcq", verified: true },
+  { id: "csa-122", deck: "csa", category: "AP CSA", difficulty: 4, front: "ArrayList<Integer> a = new ArrayList<>(); for (int v : new int[]{2,4,6,8}) a.add(v); for (int i = 0; i < a.size(); i++) if (a.get(i) % 2 == 0) a.remove(i); 输出是\nA. [4, 8]\nB. []\nC. [2, 4, 6, 8]\nD. [8]", back: "答案：A\n简析：删除后后面的元素整体左移，而 i 仍然自增，会跳过紧跟在被删元素之后的那个偶数：删掉 2 后 4 移到下标 0 而被跳过，删掉 6 后 8 移到下标 1 也被跳过，故剩 [4, 8]；要删干净需从后往前遍历。\n\n正确选项：[4, 8]", source: "ai-mcq", verified: true },
+  { id: "csa-123", deck: "csa", category: "AP CSA", difficulty: 4, front: "int f(int n) { return n <= 1 ? 1 : f(n-1) + f(n-2); } 则 f(5) 的值与 f 被调用的总次数分别是\nA. 8 与 15\nB. 8 与 9\nC. 5 与 15\nD. 13 与 25", back: "答案：A\n简析：前几项为 1、1、2、3、5、8，故 f(5)=8；调用次数满足 C(0)=C(1)=1、C(n)=1+C(n-1)+C(n-2)，得 1、1、3、5、9、15，故共 15 次。\n\n正确选项：8 与 15", source: "ai-mcq", verified: true },
+  { id: "csa-124", deck: "csa", category: "AP CSA", difficulty: 4, front: "class A { static int c = 0; A() { c++; } } class B extends A { B() { super(); c += 2; } } 执行 new B(); new B(); 之后 A.c 的值是\nA. 6\nB. 4\nC. 2\nD. 8", back: "答案：A\n简析：每次 new B() 先调用 A() 让 c 加 1，再在 B() 里让 c 加 2，净增 3；执行两次得 6，漏掉子类那次 +2 会得到 4。\n\n正确选项：6", source: "ai-mcq", verified: true },
+  { id: "csa-125", deck: "csa", category: "AP CSA", difficulty: 3, front: "String s = \"ab\"; String t = s; s = s + \"c\"; System.out.println(t + \" \" + (t == \"ab\")); 输出是\nA. abc true\nB. ab true\nC. ab false\nD. abc false", back: "答案：B\n简析：String 不可变，s + \"c\" 生成新对象，t 仍指向原来的字面量 \"ab\"；字面量被驻留，所以 t == \"ab\" 为 true（这里恰好与 equals 一致），输出 ab true。\n\n正确选项：ab true", source: "ai-mcq", verified: true },
+  { id: "csa-126", deck: "csa", category: "AP CSA", difficulty: 3, front: "int c = 0; for (int i = 0; i < 5; i++) { if (i == 2) continue; if (i == 4) break; c += i; } 之后 c 的值是\nA. 6\nB. 10\nC. 4\nD. 0", back: "答案：C\n简析：i 为 0、1、3 时累加（continue 跳过 2，break 提前结束），即 0+1+3=4；把 continue 当 break 会得到 1 或 0，忽略 break 会得到 6。\n\n正确选项：4", source: "ai-mcq", verified: true },
 ];

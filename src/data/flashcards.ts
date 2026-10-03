@@ -20,6 +20,8 @@ export interface Flashcard {
   back: string;
   /** AMC10-only: 难度分层 */
   level?: FlashcardLevel;
+  /** 练习册与情境题的难度 1-4（rubric 判定，见 content/subject-banks/difficulty.json） */
+  difficulty?: number;
   /** 文本来源，界面据此标注这是哪一种"AI 生成" */
   source: FlashcardSource;
   /** 是否经过逐题独立验算/事实核查；当前全部为 false */

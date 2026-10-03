@@ -138,6 +138,7 @@ export const zh: UiStrings = {
   'flashcards.shuffle': '乱序',
   'flashcards.sourceAmc10': 'AMC10 知识卡 · AI 整理',
   'flashcards.sourceAiMcq': 'AI 原创题',
+  'flashcards.sourceLocalExam': '本地题库（未公开）',
   'flashcards.unverified': '答案未核验',
   'flashcards.verified': '答案已独立核验',
   'flashcards.provenanceNote': '题库由 AI 生成的复习资料整理而来，不是官方真题；答案未经逐题独立核验，只作复习提示。',

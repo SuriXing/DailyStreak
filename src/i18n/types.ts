@@ -161,6 +161,7 @@ export interface UiStrings {
   'flashcards.shuffle': DictValue;
   'flashcards.sourceAmc10': DictValue;
   'flashcards.sourceAiMcq': DictValue;
+  'flashcards.sourceLocalExam': string;
   'flashcards.unverified': DictValue;
   'flashcards.verified': DictValue;
   'flashcards.provenanceNote': DictValue;

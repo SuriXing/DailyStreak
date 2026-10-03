@@ -36,6 +36,8 @@ export interface SubjectFlashcard {
   back: string;
   source: CardSource;
   verified: boolean;
+  /** 难度 1-4：按"学生实际要做多少工作"判定的 rubric 分级（rubric 见 content/subject-banks/difficulty.json） */
+  difficulty: number;
 }
 
 /** 打包时每张卡压成的一个数组：[id, level, deck, category, front, back, source, verified, difficulty] */
@@ -113,7 +115,8 @@ const unpack = (c: PackedCard) => ({
   back: c[5],
   source: c[6] as CardSource,
   verified: c[7] === 1,
-  difficulty: c[8] || undefined,
+  /** 0 = 打包时这张卡没有难度分级（目前只有 AMC10 概念卡，它们改用 core/advance/boundary 分层） */
+  difficulty: c[8],
 });
 
 export const AMC10_DECKS: { key: AMC10Deck; label: string }[] = payload.amc10Decks.map(([key, label]) => ({
@@ -137,7 +140,6 @@ export const AMC10_FLASHCARDS: AMC10Flashcard[] = payload.amc10Cards.map((c) => 
     back: card.back,
     source: card.source,
     verified: card.verified,
-    difficulty: card.difficulty,
   };
 });
 
@@ -151,5 +153,6 @@ export const SUBJECT_FLASHCARDS: SubjectFlashcard[] = payload.subjectCards.map((
     back: card.back,
     source: card.source,
     verified: card.verified,
+    difficulty: card.difficulty,
   };
 });

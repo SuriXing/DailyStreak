@@ -1,5 +1,4 @@
 # CSP 选择题答案与简析
-
 |题|答案|简析|
 |---:|:---:|---|
 |1|B|迭代开发通过多个循环测试和改进。|
@@ -122,3 +121,11 @@
 |118|D|当前 Section I 占 70%。|
 |119|A|8 道多选题各选两个答案。|
 |120|B|不单独计入选择题技能权重，但内容贯穿课程。|
+|121|A|For the 8-bit binary number 1011 0110, the hexadecimal form and the decimal value are|
+|122|A|A 640×480 24-bit colour image is saved with 8:1 lossy compression. The file size is about|
+|123|A|A 15 MB file is sent over a 20 Mbps link whose actual throughput is 75% of the bandwidth. Ignoring latency, the minimum time is about|
+|124|A|A binary search over 64 sorted items needs at most how many comparisons in the worst case?|
+|125|A|Three independent replicas each have 99% availability. The probability that all three fail at the same time is about|
+|126|A|To estimate the sampling distribution of the median of a data set with 5000 records, the most appropriate approach is|
+|127|A|A music file is halved with lossy compression and a text document is halved with lossless compression. Which statement is correct?|
+|128|A|A model scores 98% accuracy on its training data but only 62% on the test set. The most reasonable explanation is|

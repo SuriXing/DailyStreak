@@ -371,4 +371,12 @@ The repo also carries a UXE design contract (`.uxe/`) that audits surfaces, toke
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — covering the source code and the content written for this project.
+
+Content provenance is documented in [NOTICE](NOTICE): which parts of the question bank came from a
+third-party study pack, which were written here, and why no MAA or College Board material is included.
+The MIT licence covers this repository's own work and cannot cover anyone else's.
+
+If you want to practise with your own copies of real exam questions, put them in `content/local/`. That
+directory and the file generated from it are gitignored, and the app loads them at runtime on your
+machine only, so they never reach a commit or a deployment — see [docs/local-bank.md](docs/local-bank.md).

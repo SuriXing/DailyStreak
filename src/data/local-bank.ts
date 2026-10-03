@@ -25,10 +25,19 @@ const isCard = (c: unknown): c is Flashcard => {
   );
 };
 
-/** 本地题库的 URL：部署在站点根目录下的静态文件；不存在时返回 null。 */
+/** 本地题库的 URL：站点根目录下的静态文件；不存在时返回 null。 */
 export const LOCAL_DECK_URL = '/local-deck.json';
 
+/**
+ * 本地题库默认关闭：只有显式打开时才去请求。
+ * 原因是"文件不存在"本身会在浏览器控制台留下一条 404，而冒烟测试断言零控制台错误——
+ * 让每次加载都去试一个多半不存在的文件，等于给所有环境加了一条噪声。开关写在 .env.local
+ * （已被 .gitignore 排除），本机打开、部署环境不打开，正好符合"只在本地练"的意图。
+ */
+export const LOCAL_DECK_ENABLED = process.env.EXPO_PUBLIC_LOCAL_DECK === '1';
+
 export async function loadLocalDeck(): Promise<LocalDeck | null> {
+  if (!LOCAL_DECK_ENABLED) return null;
   try {
     const res = await fetch(LOCAL_DECK_URL, { cache: 'no-store' });
     if (!res.ok) return null;

@@ -15,7 +15,7 @@ import {
   type FlashcardLevel,
 } from '@/data/flashcards';
 import { localizeFlashcard } from '@/data/flashcard-i18n';
-import { availableKinds, filterCards, shuffleCards, type CardKind } from '@/lib/flashcard-session';
+import { availableDifficulties, availableKinds, filterCards, shuffleCards, type CardKind } from '@/lib/flashcard-session';
 import { loadLocalDeck, type LocalDeck } from '@/data/local-bank';
 
 /** 自由练：一场闪卡会话 —— 卡组 + 题型（+ AMC10 才有的难度），选择题点选、概念卡翻面。 */
@@ -27,6 +27,7 @@ export default function StudyScreen() {
   const { t, locale } = useI18n();
   const [deck, setDeck] = useState<string | null>(null);
   const [level, setLevel] = useState<FlashcardLevel | null>(null);
+  const [difficulty, setDifficulty] = useState<number | null>(null);
   // 默认只练选择题：AMC10 概念卡是"XX 是什么？"式词条，一进自由练就翻词条不像在练题
   const [kind, setKind] = useState<CardKind | null>('quiz');
   // 默认乱序：否则每次进来都从同一张卡开始
@@ -65,10 +66,20 @@ export default function StudyScreen() {
   const showKinds = kinds.length > 1;
   const activeKind = showKinds ? kind : null;
 
+  // 难度分级：练习册与情境题卡上带 1-4；AMC10 概念卡没有，所以那一行不显示
+  const difficulties = useMemo(
+    () => availableDifficulties(deck == null ? pool : pool.filter((c) => c.deck === deck)),
+    [pool, deck],
+  );
+  const showDifficulty = difficulties.length > 1;
+
   const cards = useMemo(() => {
-    const list = filterCards({ deck, level, kind: activeKind }, pool);
+    const list = filterCards(
+      { deck, level, difficulty: showDifficulty ? difficulty : null, kind: activeKind },
+      pool,
+    );
     return shuffled ? shuffleCards(list, seed) : list;
-  }, [pool, deck, level, activeKind, shuffled, seed]);
+  }, [pool, deck, level, difficulty, showDifficulty, activeKind, shuffled, seed]);
 
   const current = cards[index] ? localizeFlashcard(cards[index], locale) : cards[index];
   const quiz = current ? toQuiz(current) : null;
@@ -93,6 +104,7 @@ export default function StudyScreen() {
   };
 
   const pickDeck = (d: string | null) => {
+    setDifficulty(null);
     setDeck(d);
     setLevel(null);
     resetSession();
@@ -160,6 +172,17 @@ export default function StudyScreen() {
                     () => pickKind(k),
                   ),
                 )}
+              </View>
+            </>
+          )}
+          {showDifficulty && (
+            <>
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
+                {t('flashcards.difficulty')}
+              </Text>
+              <View style={styles.chipRow}>
+                {chip(t('flashcards.all'), difficulty == null, () => setDifficulty(null))}
+                {difficulties.map((d) => chip(String(d), difficulty === d, () => setDifficulty(d)))}
               </View>
             </>
           )}

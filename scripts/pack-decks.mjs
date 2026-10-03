@@ -19,8 +19,18 @@ import { readAllDecks } from './lib/deck-cards.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(root, 'src', 'data', 'deck-pack.ts');
 
-/** 紧凑数组形式：[id, level, deck, category, front, back, source, verified] */
-const packCard = (c) => [c.id, c.level || '', c.deck, c.category, c.front, c.back, c.source, c.verified ? 1 : 0];
+/** 紧凑数组形式：[id, level, deck, category, front, back, source, verified, difficulty] */
+const packCard = (c) => [
+  c.id,
+  c.level || '',
+  c.deck,
+  c.category,
+  c.front,
+  c.back,
+  c.source,
+  c.verified ? 1 : 0,
+  c.difficulty || 0,
+];
 
 export function buildPack(root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')) {
   const { amc10, subject } = readAllDecks(root);

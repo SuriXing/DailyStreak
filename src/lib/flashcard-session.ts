@@ -7,6 +7,8 @@ export type CardKind = 'quiz' | 'concept';
 export interface SessionFilter {
   deck: string | null;
   level: FlashcardLevel | null;
+  /** 练习册与情境题的难度 1-4；AMC10 概念卡用 level 而不是这个 */
+  difficulty?: number | null;
   kind: CardKind | null;
 }
 
@@ -23,8 +25,17 @@ export function filterCards(
     (card) =>
       (filter.deck == null || card.deck === filter.deck) &&
       (filter.level == null || card.level === filter.level) &&
+      (filter.difficulty == null || card.difficulty === filter.difficulty) &&
       (filter.kind == null || cardKind(card) === filter.kind),
   );
+}
+
+/** 当前卡池里出现过的难度级别（升序），供筛选行渲染。 */
+export function availableDifficulties(cards: readonly Flashcard[]): number[] {
+  const seen = new Set<number>();
+  // 0 是"这张卡没有分级"的占位，不该变成界面上的一个筛选项
+  for (const card of cards) if (typeof card.difficulty === 'number' && card.difficulty > 0) seen.add(card.difficulty);
+  return [...seen].sort((a, b) => a - b);
 }
 
 /**

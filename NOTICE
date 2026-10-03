@@ -1,0 +1,36 @@
+DailyStreak — content provenance and licence scope
+==================================================
+
+Licence scope
+-------------
+The MIT licence in LICENSE covers the source code of this project and the content written for it: the
+question text of the scenario decks and of the drill items added since, the English translations, the
+difficulty rubric and the documentation.
+
+Question-bank provenance
+------------------------
+1. AMC 10 concept cards (564) — a rewrite of the knowledge-map section of a third-party study pack
+   ("AP-AMC 学习资料"), restructured into question/answer cards for this app. They are study cards, not
+   exam questions, and no MAA material is reproduced.
+2. AP drill items (600, plus 16 written later) — taken from the same pack, whose own documentation
+   states that the files it labels 原创 are AI-generated. They are not College Board questions.
+3. Scenario decks (250 items) — written for this repository.
+4. English overlay (every card) — translations written for this repository.
+5. Verification ledger, difficulty levels, gates and documentation — written for this repository.
+
+What is not in this repository: the study pack itself. Its PDFs, scoring guidelines, score
+distributions and study guides stay outside the repository; only the markdown derived from it is
+committed, under content/.
+
+Third-party exam material
+-------------------------
+AMC 10/12 problems are copyright MAA. AP questions are copyright College Board. Neither is included
+here, and the MIT licence cannot cover them. If you keep your own copies for personal practice, put
+them in `content/local/`: that directory and the file generated from it are gitignored, loaded only at
+runtime on your machine, and never published. See docs/local-bank.md.
+
+AI-generated content
+--------------------
+The app labels provenance on every card and repeats it on the practice screen. Items are marked as
+"verified" only when their answer went through an independent recomputation pass; local items are
+marked unverified because this repository has not checked them.

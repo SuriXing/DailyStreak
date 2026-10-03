@@ -38,8 +38,8 @@ export interface SubjectFlashcard {
   verified: boolean;
 }
 
-/** 打包时每张卡压成的一个数组：[id, level, deck, category, front, back, source, verified] */
-type PackedCard = [string, string, string, string, string, string, string, number];
+/** 打包时每张卡压成的一个数组：[id, level, deck, category, front, back, source, verified, difficulty] */
+type PackedCard = [string, string, string, string, string, string, string, number, number];
 
 interface PackedPayload {
   amc10Decks: [string, string][];
@@ -113,6 +113,7 @@ const unpack = (c: PackedCard) => ({
   back: c[5],
   source: c[6] as CardSource,
   verified: c[7] === 1,
+  difficulty: c[8] || undefined,
 });
 
 export const AMC10_DECKS: { key: AMC10Deck; label: string }[] = payload.amc10Decks.map(([key, label]) => ({
@@ -136,6 +137,7 @@ export const AMC10_FLASHCARDS: AMC10Flashcard[] = payload.amc10Cards.map((c) => 
     back: card.back,
     source: card.source,
     verified: card.verified,
+    difficulty: card.difficulty,
   };
 });
 

@@ -19,12 +19,19 @@ App 在运行时请求 `/local-deck.json`：**本机开发服务器能取到，�
 # 1. 把题目写成 markdown，放进 content/local/
 mkdir -p content/local
 
-# 2. 生成 JSON
+# 2. 打开开关（写在 .env.local，该文件已被 .gitignore 排除）
+echo 'EXPO_PUBLIC_LOCAL_DECK=1' >> .env.local
+
+# 3. 生成 JSON
 npm run bank:local
 
-# 3. 起本地服务，练习页的卡组筛选里会多出「本地题库」
+# 4. 起本地服务，练习页的卡组筛选里会多出「本地题库」
 npm run web
 ```
+
+**为什么要有这个开关**：App 默认不去请求这个文件。因为"文件不存在"本身会在浏览器控制台留下
+一条 404，而仓库的冒烟测试断言零控制台错误——默认去试一个多半不存在的文件，等于给所有环境
+（包括线上）加噪声。开关只写在本机、不进部署，正好和"只在本地练"是一件事。
 
 ## 文件格式
 

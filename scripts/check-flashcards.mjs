@@ -39,6 +39,9 @@ const LABEL_RE = /^[A-D]\.\s/;
 const problems = [];
 const counts = {};
 const ALL_CARDS = [];
+/** 真正核验过的卡片数（卡片上 verified=true 的数量），以及台账已过期（正文改过）的 id。 */
+let actuallyVerified = 0;
+const staleLedger = [];
 
 /** 复核台账：id → 复核时正文的短哈希。 */
 const LEDGER = JSON.parse(readFileSync(path.join(root, 'scripts/flashcard-verification.json'), 'utf8'));
@@ -309,6 +312,12 @@ function checkProvenance(rel, card, expected) {
     problems.push(`${rel}/${card.id}: source 应为 "${expected}"，实际 ${JSON.stringify(card.source)}`);
   }
   const shouldBeVerified = VERIFIED_HASHES[card.id] === hashOf(card.front, card.back);
+  if (card.verified) actuallyVerified += 1;
+  // 台账里有登记却对不上：正文改过没重新复核。这是"已核验"这个说法开始骗人的地方，
+  // 所以在这里直接失败，而不是安静地把卡片降级成未核验、让摘要继续报旧数字。
+  if (VERIFIED_HASHES[card.id] !== undefined && !shouldBeVerified) {
+    staleLedger.push(`${card.id}（台账 ${VERIFIED_HASHES[card.id]} → 现在 ${hashOf(card.front, card.back)}）`);
+  }
   if (card.verified !== shouldBeVerified) {
     problems.push(
       `${rel}/${card.id}: verified=${JSON.stringify(card.verified)}，` +
@@ -608,6 +617,15 @@ const total = Object.values(counts).reduce((a, b) => a + b, 0);
 }
 const verifiedCount = Object.keys(VERIFIED_HASHES).length;
 
+// 台账条目数 != 已核验卡片数：正文改过之后条目还在，卡片却已经退回未核验。
+if (staleLedger.length) {
+  problems.push(
+    `scripts/flashcard-verification.json: ${staleLedger.length} 张卡正文改过但台账没更新` +
+      `（重新复核后把哈希改成新值）→ ${staleLedger.slice(0, 8).join('、')}` +
+      (staleLedger.length > 8 ? ` …另有 ${staleLedger.length - 8} 张` : ''),
+  );
+}
+
 if (problems.length) {
   console.error(`❌ 闪卡数据校验失败（${problems.length} 处）:`);
   for (const p of problems.slice(0, 40)) console.error(`  - ${p}`);
@@ -618,7 +636,7 @@ if (problems.length) {
 console.log(
   `✅ 闪卡数据校验通过: ${Object.entries(counts)
     .map(([k, v]) => `${k}=${v}`)
-    .join(' ')}（共 ${total} 张，形状自洽；台账登记已复核 ${verifiedCount} 张；难度 ${
+    .join(' ')}（共 ${total} 张，形状自洽；台账登记 ${verifiedCount} 张、当前实际核验 ${actuallyVerified} 张；难度 ${
     Object.entries(difficultyStats)
       .map(([d, c]) => `${d} ${c.join('/')}`)
       .join('、')

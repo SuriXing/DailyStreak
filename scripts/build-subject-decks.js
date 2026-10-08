@@ -308,6 +308,8 @@ function buildDeck(cfg) {
   // 按题号而不是按位置记录，是为了让某一题"是否可旋转"变化时不牵动其它题目。
   const plans = readPlans();
   const plan = plans[cfg.key] || {};
+  /** 台账里有登记、但当前正文哈希已经对不上的卡：正文改过而没重新复核 */
+  const stale = [];
   const counts = { A: 0, B: 0, C: 0, D: 0 };
   for (const l of Object.values(plan)) if (counts[l] !== undefined) counts[l] += 1;
   const takeLetter = (num) => {
@@ -350,7 +352,12 @@ function buildDeck(cfg) {
         return lv;
       })(),
       source: 'ai-mcq',
-      verified: hashes[cardId] === hashOf(frontClean, backClean),
+      verified: (() => {
+        const now = hashOf(frontClean, backClean);
+        const was = hashes[cardId];
+        if (was !== undefined && was !== now) stale.push({ id: cardId, was, now });
+        return was === now;
+      })(),
     };
   });
   // 源题必须一道不落地变成卡片：缺答案或编号行解析不出来就直接失败。
@@ -363,7 +370,7 @@ function buildDeck(cfg) {
     throw new Error(`${cfg.key}: ${dropped.length} 处源题会被丢弃 —— ${dropped.join('；')}`);
   }
 
-  return { key: cfg.key, label: cfg.label, cards };
+  return { key: cfg.key, label: cfg.label, cards, stale };
 }
 
 // 台账里写错的 id 不能静默失效
@@ -380,7 +387,10 @@ fs.mkdirSync(OUTDIR, { recursive: true });
 const q = JSON.stringify.bind(JSON);
 const generated = [];
 for (const cfg of SUBJECTS) {
-  const { key, label, cards } = buildDeck(cfg);
+  const { key, label, cards, stale } = buildDeck(cfg);
+  for (const s of stale) {
+    console.warn(`⚠️ ${s.id} 正文改过、台账未更新：台账 ${s.was} → 现在 ${s.now}（重新复核后把台账里的哈希改成新值）`);
+  }
   const cardLines = cards
     .map((c) => `  { id: ${q(c.id)}, deck: ${q(c.deck)}, category: ${q(c.category)}, difficulty: ${c.difficulty}, front: ${q(c.front)}, back: ${q(c.back)}, source: ${q(c.source)}, verified: ${c.verified} },`)
     .join('\n');

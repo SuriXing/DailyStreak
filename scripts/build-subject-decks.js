@@ -154,10 +154,43 @@ function parseSpaceAnswer(text) {
   // 块标题（## 1–20）会和该块第一个答案黏成同一条 entry，从头匹配失败后整条被丢，
   // 于是每 20 题的第一题答案消失（18 道题因此从未进入 app）。
   // 现在允许 entry 前带非数字前缀，块标题再也吞不掉答案。
+  //
+  // 说明部分必须按括号配对取完整内容，不能用 [^）]*：
+  //  - 说明里凡出现一个括号（如"（f(x)=x²+2x+2）"），第一个"）"之后的内容就被吃掉，
+  //    24 条说明因此只剩前半句；这还顺带废掉了"简析里有独立字母就不轮转选项"的保护——
+  //    字母引用都在被吃掉的后半句里，于是选项被轮转，说明里的 A/B/C/D 指到了别的选项上（5 张卡）。
+  //  - 分隔符只能是 ";"："。" 曾被当成分隔符，42 条说明因此整段消失，而"。"只是句末标点。
   for (const line of text.split('\n')) {
-    for (const entry of line.split(/[;。]/)) {
-      const m = entry.trim().match(/(?:^|[^\d])(\d+)\s*([A-D])(?:（([^）]*)）)?/);
-      if (m) map[parseInt(m[1], 10)] = { letter: m[2], brief: (m[3] || '').trim() };
+    for (const entry of line.split(';')) {
+      const trimmed = entry.trim();
+      const head = trimmed.match(/(?:^|[^\d])(\d+)\s*([A-D])/);
+      if (!head) continue;
+      const after = trimmed.slice(head.index + head[0].length).trim();
+      let brief = '';
+      let leftover = after;
+      if (after.startsWith('（')) {
+        let depth = 0;
+        let i = 0;
+        for (; i < after.length; i += 1) {
+          if (after[i] === '（') depth += 1;
+          else if (after[i] === '）') {
+            depth -= 1;
+            if (depth === 0) {
+              i += 1;
+              break;
+            }
+          }
+        }
+        if (depth !== 0) throw new Error(`答案条目括号不配对：${entry.trim()}`);
+        brief = after.slice(1, i - 1).trim();
+        leftover = after.slice(i);
+      }
+      // 说明（或字母）之后只允许出现句末标点。任何多余内容都说明解析器正在吃掉原文，
+      // 直接失败，而不是让一张缺了半句解释的卡悄悄进 app。
+      if (!/^\s*[;。]?\s*$/.test(leftover)) {
+        throw new Error(`答案条目里说明之后还有内容，会被丢弃：${entry.trim()}`);
+      }
+      map[parseInt(head[1], 10)] = { letter: head[2], brief };
     }
   }
   return map;
@@ -334,6 +367,11 @@ function buildDeck(cfg) {
     const cardId = `${cfg.key}-${String(it.num).padStart(3, '0')}`;
     const frontClean = clean(front);
     const backClean = clean(back).replace(/\n{3,}/g, '\n\n');
+    // 说明必须原样出现在卡片上。解析器曾经把说明里第一个句号之后的内容吃掉，
+    // 42 张卡因此只剩答案、没有解释，而且没有任何一步报错；现在这里直接失败。
+    if (it.brief && !backClean.includes(clean(it.brief))) {
+      throw new Error(`${cfg.key} 第 ${it.num} 题：源答案里的说明没有原样进入卡片（被解析器吃掉了？）`);
+    }
     return {
       // id 用源题号：卡号与题库题号一一对应，将来补回缺题也不会让后面的卡片整体改号。
       id: cardId,

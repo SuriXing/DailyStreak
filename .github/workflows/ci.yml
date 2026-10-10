@@ -22,8 +22,11 @@ jobs:
       - name: Flashcard data integrity
         run: npm run check:flashcards
       - name: Ruff（Python 工具脚本）
+        # 版本必须与 pyproject.toml 的 required-version 对齐：action 默认装最新版，
+        # ruff 一旦升到 0.17 就会因为不满足 required-version 直接拒绝运行（CI 因此红过一次）。
         uses: astral-sh/ruff-action@v4.1.0
         with:
+          version: '0.16.5'
           args: check .uxe/scripts
       - name: Type check
         run: npx tsc --noEmit

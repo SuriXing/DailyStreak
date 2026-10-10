@@ -14,6 +14,9 @@
  *   5. 来源同步：把两个生成器重建到临时目录，与提交的产物逐字比对（改源忘重建会被抓出）。
  *   6. 英文覆盖层：条目必须与中文卡结构等价（选项字母、答案字母、Correct option 文本、无残留中文、无孤立 id）。
  *   7. 题干重复：归一化后同一题干出现在两张卡上即失败（复制粘贴式重复）。
+ *   8. README 里的题库计数（按族题数表、英文覆盖表、难度区间表、以及几处正文里的总数）
+ *      必须与 scripts/bank-stats.mjs 现算的结果一致——手写的计数每次加题都会漂移一次，
+ *      而漂移后的数字读起来和真的一样。
  *
  * 运行时的 toQuiz() 解析行为由 scripts/smoke-test.js 端到端覆盖，这里只管数据形状。
  *
@@ -29,6 +32,7 @@ import path from 'node:path';
 
 import { SUBJECT_DECKS as SCENARIO_DECKS, readCards } from './lib/deck-cards.mjs';
 import { buildPack, renderPackModule } from './pack-decks.mjs';
+import { computeBankStats, difficultyRanges } from './bank-stats.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SUBJECT_DECKS = SCENARIO_DECKS;
@@ -645,6 +649,242 @@ const total = Object.values(counts).reduce((a, b) => a + b, 0);
 }
 const verifiedCount = Object.keys(VERIFIED_HASHES).length;
 
+/**
+ * README 里的题库计数必须与数据一致。
+ *
+ * 这条检查来得很具体：README 手写的计数已经漂移过两次——"the 125 scenario items"（当时已
+ * 254）、"The 1289 practice cards"（当时已 1454）、"All 888 drill and scenario items"（当时已
+ * 890）——而漂移后的数字和真的一样读得通，所以只有机器能发现。这里把 README 里所有由题库
+ * 数据推导出来的数字都挂到 scripts/bank-stats.mjs 的现算结果上：
+ *   1. 「按族题数」表（| Decks | Cards | Source material | Generator |）的 Cards 列；
+ *   2. 「哪些卡存在英文」表的 `N of M` 列；
+ *   3. 难度区间表的题数与四列百分比区间；
+ *   4. 正文里点名总数的四句话（the N scenario items / The N practice cards /
+ *      All N drill and scenario items / N level-4 items across N）。
+ *
+ * 解析不到就当失败，不静默放过：表格改结构、正文改措辞都会让这条检查失去对象，而"检查失去
+ * 对象"正是漂移能重新发生的地方。
+ */
+const README_REL = 'README.md';
+const README_ADVICE =
+  ' → 跑 `npm run bank:stats` 看当前数字（`node scripts/bank-stats.mjs --md` 可直接粘进 README）';
+
+const README_TABLE_HEADERS = {
+  family: /^\|\s*Decks\s*\|\s*Cards\s*\|\s*Source material\s*\|\s*Generator\s*\|\s*$/,
+  coverage: /^\|\s*Layer\s*\|\s*File\s*\|\s*Cards\s*\|\s*Status\s*\|\s*$/,
+  difficulty: /^\|\s*Deck family\s*\|\s*Level 1\s*\|\s*Level 2\s*\|\s*Level 3\s*\|\s*Level 4\s*\|\s*$/,
+};
+
+/** 从表头行往下读出整张 markdown 表（返回每行的单元格数组）。表头找不到就返回 null。 */
+function readmeTable(lines, headerRe) {
+  const start = lines.findIndex((l) => headerRe.test(l.trim()));
+  if (start < 0) return null;
+  const rows = [];
+  for (let i = start + 2; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (!line.startsWith('|')) break;
+    rows.push(
+      line
+        .replace(/^\|/, '')
+        .replace(/\|$/, '')
+        .split('|')
+        .map((c) => c.trim()),
+    );
+  }
+  return rows;
+}
+
+/** README 正文里点名了题库总数的句子：措辞固定，抓到的每个数字都要对得上。 */
+const README_PROSE_PATTERNS = [
+  {
+    name: 'the N scenario items',
+    re: /the (\d+) scenario items/g,
+    expected: (stats) => [stats.families.find((f) => f.key === 'scenario').cards],
+  },
+  {
+    name: 'The N practice cards',
+    re: /[Tt]he (\d+) practice cards/g,
+    expected: (stats) => [stats.total],
+  },
+  {
+    name: 'All N drill and scenario items',
+    re: /All (\d+) drill and scenario items/g,
+    expected: (stats) => [stats.optionCards],
+  },
+  {
+    name: 'N level-4 items across N',
+    re: /\((\d+) level-4 items across\s+(\d+)/g,
+    expected: (stats) => {
+      const drill = stats.decks.filter((d) => d.family === 'drill');
+      return [
+        drill.reduce((a, d) => a + d.difficulties[3], 0),
+        stats.families.find((f) => f.key === 'drill').cards,
+      ];
+    },
+  },
+];
+
+/** 英文破折号在 README 里是 U+2013；手滑写成 "-" 不该让比较失败。 */
+const normalizeDash = (s) => s.replace(/[–—]/g, '-');
+
+function checkReadmeBankCounts() {
+  const lines = read(README_REL).split('\n');
+  const stats = computeBankStats(root);
+  const familyOf = (key) => stats.families.find((f) => f.key === key);
+
+  // 这条检查与上面的 counts 是两套独立读取（一套走 parseCards、一套走 bank-stats），
+  // 两边总数不一致说明有人的解析坏了——比 README 写错数字更值得先失败。
+  if (stats.total !== total) {
+    problems.push(
+      `scripts/bank-stats.mjs 统计 ${stats.total} 张，门禁自己统计 ${total} 张 → 两个脚本读到的不是同一批卡片`,
+    );
+  }
+
+  // 1) 按族题数表
+  const familyTable = readmeTable(lines, README_TABLE_HEADERS.family);
+  if (!familyTable) {
+    problems.push(
+      `${README_REL}: 解析不到题库按族题数表（表头应为 "| Decks | Cards | Source material | Generator |"）` +
+        `${README_ADVICE}`,
+    );
+  } else if (!familyTable.length) {
+    problems.push(`${README_REL}: 按族题数表只有表头、没有数据行${README_ADVICE}`);
+  } else {
+    for (const fam of stats.families) {
+      const matched = familyTable.filter((cells) => cells[0] && cells[0].includes(fam.readmeMatch));
+      if (matched.length !== 1) {
+        problems.push(
+          `${README_REL}: 解析不到按族题数表里「${fam.readmeMatch}」那一行（匹配到 ${matched.length} 行）` +
+            `→ 表格结构或行标题改过了？${README_ADVICE}`,
+        );
+        continue;
+      }
+      const got = Number(matched[0][1]);
+      if (!Number.isInteger(got)) {
+        problems.push(
+          `${README_REL}: 「${fam.label}」那行的 Cards 单元格是 "${matched[0][1]}"，不是整数${README_ADVICE}`,
+        );
+      } else if (got !== fam.cards) {
+        problems.push(
+          `${README_REL}: 按族题数表写「${fam.label}」= ${got} 张，实际 ${fam.cards} 张（族 ${fam.key}）${README_ADVICE}`,
+        );
+      }
+    }
+    const unknownRows = familyTable.filter(
+      (cells) => !cells[0] || !stats.families.some((f) => cells[0].includes(f.readmeMatch)),
+    );
+    if (unknownRows.length) {
+      problems.push(
+        `${README_REL}: 按族题数表多出 ${unknownRows.length} 行不在门禁覆盖范围内（` +
+          `${unknownRows.map((c) => c[0] || '(空)').join(' / ')}）→ 新的一族也要进 scripts/bank-stats.mjs`,
+      );
+    }
+  }
+
+  // 2) 英文覆盖表（Cards 列的 "N of M"）
+  const coverageTable = readmeTable(lines, README_TABLE_HEADERS.coverage);
+  if (!coverageTable) {
+    problems.push(
+      `${README_REL}: 解析不到英文覆盖表（表头应为 "| Layer | File | Cards | Status |"）${README_ADVICE}`,
+    );
+  } else {
+    for (const fam of stats.families) {
+      const matched = coverageTable.filter(
+        (cells) => cells[0] && cells[0].toLowerCase().includes(fam.coverageLabel.toLowerCase()),
+      );
+      if (matched.length !== 1) {
+        problems.push(
+          `${README_REL}: 解析不到英文覆盖表里「${fam.coverageLabel}」那一行（匹配到 ${matched.length} 行）${README_ADVICE}`,
+        );
+        continue;
+      }
+      const m = matched[0][2].match(/^(\d+)\s+of\s+(\d+)$/);
+      if (!m) {
+        problems.push(
+          `${README_REL}: 「${fam.coverageLabel}」那行的 Cards 单元格是 "${matched[0][2]}"，不是 "N of M"${README_ADVICE}`,
+        );
+        continue;
+      }
+      if (Number(m[1]) !== fam.coverage.covered || Number(m[2]) !== fam.coverage.total) {
+        problems.push(
+          `${README_REL}: 英文覆盖表写「${fam.coverageLabel}」= ${m[1]} of ${m[2]}，` +
+            `实际 ${fam.coverage.covered} of ${fam.coverage.total}（覆盖层 ${fam.overlay}）${README_ADVICE}`,
+        );
+      }
+    }
+  }
+
+  // 3) 难度区间表（题数 + 四列百分比区间）
+  const difficultyTable = readmeTable(lines, README_TABLE_HEADERS.difficulty);
+  if (!difficultyTable) {
+    problems.push(
+      `${README_REL}: 解析不到难度区间表（表头应为 "| Deck family | Level 1 | Level 2 | Level 3 | Level 4 |"）${README_ADVICE}`,
+    );
+  } else {
+    for (const fam of stats.families.filter((f) => f.difficultyLabel)) {
+      const matched = difficultyTable.filter(
+        (cells) => cells[0] && cells[0].includes(fam.difficultyLabel),
+      );
+      if (matched.length !== 1) {
+        problems.push(
+          `${README_REL}: 解析不到难度区间表里「${fam.difficultyLabel}」那一行（匹配到 ${matched.length} 行）${README_ADVICE}`,
+        );
+        continue;
+      }
+      const cells = matched[0];
+      const items = cells[0].match(/\((\d+) items[\s,)]/);
+      if (!items) {
+        problems.push(
+          `${README_REL}: 难度区间表「${fam.difficultyLabel}」那行的题数读不出来（"${cells[0]}"）${README_ADVICE}`,
+        );
+      } else if (Number(items[1]) !== fam.cards) {
+        problems.push(
+          `${README_REL}: 难度区间表写「${fam.difficultyLabel}」= ${items[1]} items，实际 ${fam.cards} items${README_ADVICE}`,
+        );
+      }
+      const want = difficultyRanges(stats, fam.key).map(([lo, hi]) => `${lo}-${hi}%`);
+      if (cells.length < 5) {
+        problems.push(`${README_REL}: 难度区间表「${fam.difficultyLabel}」那行只有 ${cells.length} 列${README_ADVICE}`);
+      } else {
+        want.forEach((expected, i) => {
+          const got = normalizeDash(cells[i + 1]);
+          if (got !== expected) {
+            problems.push(
+              `${README_REL}: 难度区间表「${fam.difficultyLabel}」Level ${i + 1} 写 ${cells[i + 1]}，` +
+                `实际 ${expected.replace('-', '–')}（各卡组占比的 min–max）${README_ADVICE}`,
+            );
+          }
+        });
+      }
+    }
+  }
+
+  // 4) 正文里点名总数的四句话
+  const text = lines.join('\n');
+  for (const pattern of README_PROSE_PATTERNS) {
+    const matches = [...text.matchAll(pattern.re)];
+    if (matches.length !== 1) {
+      problems.push(
+        `${README_REL}: 找不到唯一的「${pattern.name}」句（匹配到 ${matches.length} 处）→ ` +
+          '措辞改过之后这条计数就不再受门禁保护；要么把措辞改回去，要么同步更新 ' +
+          'scripts/check-flashcards.mjs 里的 README_PROSE_PATTERNS',
+      );
+      continue;
+    }
+    const expected = pattern.expected(stats).map(String);
+    const snippet = matches[0][0].replace(/\s+/g, ' ');
+    matches[0].slice(1).forEach((got, i) => {
+      if (got !== expected[i]) {
+        problems.push(
+          `${README_REL}: 「${snippet}」写的是 ${got}，实际 ${expected[i]}${README_ADVICE}`,
+        );
+      }
+    });
+  }
+}
+
+checkReadmeBankCounts();
+
 // 台账条目数 != 已核验卡片数：正文改过之后条目还在，卡片却已经退回未核验。
 if (staleLedger.length) {
   problems.push(
@@ -672,5 +912,5 @@ console.log(
     overlayStats.covered
   }/${overlayStats.total}（情境题 ${overlayStats.scenario} 张要求全覆盖）；bundle 压缩块 ${
     (read('src/data/deck-pack.ts').length / 1024).toFixed(0)
-  } KB 已同步）`,
+  } KB 已同步；README 的题库计数与数据一致）`,
 );

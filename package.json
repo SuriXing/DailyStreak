@@ -52,6 +52,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "bank:local": "node scripts/build-local-bank.mjs",
+    "bank:stats": "node scripts/bank-stats.mjs",
     "lint": "expo lint",
     "lint:py": "python3 -m ruff check .uxe/scripts",
     "typecheck": "tsc --noEmit",

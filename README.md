@@ -166,7 +166,7 @@ The 1289 practice cards are generated data, not copy typed into the app:
 | Decks | Cards | Source material | Generator |
 |---|---|---|---|
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
-| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 600 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
+| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 634 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
 | 五科情境题（`*-scenario`） | 125 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
 
 Both builders read the sources committed under `content/` — the AMC 10 flashcard decks and the five
@@ -202,15 +202,18 @@ verbatim from an earlier item, and one stem that pre-emptively falsified its own
 with each other once, about whether the second batch of scenario items was weak as a whole or only in clusters,
 and the item-level grading settled it in favour of the narrower reading.
 
-What is still weak, stated plainly: the drill banks have no hard tier (see above, and it needs new items rather
-than better labels); the second batch of CSP scenario items leans on a handful of clusters that resolve to one
-concept despite a multi-clause stem; the difficulty levels are rubric judgements with no student data behind them;
-and the browser smoke test cannot run in every environment, so its assertions are checked by inspection rather
-than by execution when the network to Supabase is unavailable.
+What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (16 level-4 items across
+634, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
+batch of CSP scenario items leans on a handful of clusters that resolve to one concept despite a multi-clause
+stem; the difficulty levels are rubric judgements with no student data behind them; the English overlay's option
+order is aligned with the Chinese by a script and a fingerprint over the numbers in each option, which catches
+reorderings but cannot judge whether a translation says the right thing; and the browser smoke test cannot run in
+every environment, so its assertions are checked by inspection rather than by execution when the network to
+Supabase is unavailable.
 
 ### Difficulty, and what tagging it revealed
 
-All 850 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
+All 888 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
 `content/subject-banks/difficulty.json` and enforced by the gate. The levels are a rubric judgement, not an
 empirical calibration: nobody has answered these items and had their score recorded, so read them as "how much
 work this asks for", not as "how often students get it wrong". Two independent sets of reviewers graded the two
@@ -218,16 +221,19 @@ families without seeing each other's work, which is what makes the comparison be
 
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
-| Drill banks (600 items, five subjects) | 46–76% | 16–42% | 4–13% | <2% |
-| Scenario decks (250 items, five subjects) | 0–16% | 30–56% | 28–64% | 0–8% |
+| Drill banks (634 items, five subjects) | 44–71% | 16–40% | 8–17% | 2–4% |
+| Scenario decks (254 items, five subjects) | 0–16% | 30–52% | 28–56% | 4–8% |
 
-The drill banks are overwhelmingly level 1 and have almost nothing at the top; the scenario decks have almost
-nothing at the bottom and half their items at level 3. So the format difference is now measured rather than
-asserted: the content written to require two to four steps really does require them, and the material generated
-in bulk as one-line questions really is one-line. The hardest drill item in the statistics bank is one of seven
-that reach level 3 or 4, and a "hard practice" filter over that bank would draw on those seven. Closing that gap
-needs new items - a condition that must be checked before the routine applies, a method the student must choose,
-several interacting facts held at once - not a relabelling of what is there.
+The drill banks are still overwhelmingly level 1 and have little at the top; the scenario decks have almost
+nothing at the bottom and half their items at level 3. So the format difference is measured rather than asserted:
+the content written to require two to four steps really does require them, and the material generated in bulk as
+one-line questions really is one-line. The statistics drill bank now has fourteen items at level 3 or 4, so a
+"hard practice" filter over it draws on fourteen rather than on one. Closing the gap further needs new items - a
+condition that must be checked before the routine applies, a method the student must choose, several interacting
+facts held at once - not a relabelling of what is there. The four items added to the precalculus scenario deck
+are the first level-4 items in that deck: two exponential models that must be set equal and solved by combining
+exponents, an energy ratio from a logarithmic magnitude scale, a temperature threshold that also requires
+knowing when the model is still rising, and a geometric sum with a fixed yearly cost subtracted from it.
 
 ### Which cards exist in English
 
@@ -238,8 +244,8 @@ other two:
 | Layer | File | Cards | Status |
 |---|---|---|---|
 | AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 564 of 564 | complete |
-| Drill banks | `src/data/flashcard-i18n-drill.ts` | 600 of 600 | complete |
-| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 225 of 225 | required by the gate |
+| Drill banks | `src/data/flashcard-i18n-drill.ts` | 634 of 634 | complete |
+| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 254 of 254 | required by the gate |
 
 `localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a
 half-translated deck degrades card by card rather than breaking. The gate enforces full coverage only for the

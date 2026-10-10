@@ -205,11 +205,24 @@ and the item-level grading settled it in favour of the narrower reading.
 What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (16 level-4 items across
 634, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
 batch of CSP scenario items leans on a handful of clusters that resolve to one concept despite a multi-clause
-stem; the difficulty levels are rubric judgements with no student data behind them; the English overlay's option
-order is aligned with the Chinese by a script and a fingerprint over the numbers in each option, which catches
-reorderings but cannot judge whether a translation says the right thing; and the browser smoke test cannot run in
-every environment, so its assertions are checked by inspection rather than by execution when the network to
-Supabase is unavailable.
+stem - the clearest is three Create-task report items (48, 49, 50), and three data-quality items (30, 31, 32)
+sit next to each other without overlapping exactly; the difficulty levels are rubric judgements with no student
+data behind them; and the browser smoke test cannot run in every environment, so its assertions are checked by
+inspection rather than by execution when the network to Supabase is unavailable.
+
+The English overlay deserves its own paragraph, because this is where the corrections keep coming from. The
+script that aligns it (`scripts/sync-overlays.mjs`) matches English option lines to Chinese ones by the numbers
+inside them, which is language-neutral but only works when the numbers are distinctive: at the last count that
+fingerprint verified the order automatically for 229 of 888 option cards and could not judge the rest, so those
+were compared by eye, and three swapped answers fell out of that reading (precalculus 031, 039 and 046 - in each
+case the English `Answer:` pointed at a distractor while the Chinese was right). A further hazard is specific to
+this repository's build: an item is not option-rotated when its explanation mentions A/B/C/D, so *writing* a
+letter reference into an explanation changes how the item is built. Adding references in the wrong order is
+therefore not a documentation slip but a content error, and it happened four times in one sitting before anyone
+noticed. The gate now refuses it: a brief may not attach a mistake ("forgot", "mistook", "treated X as Y") to the
+letter that holds the correct option. Items whose stems carry a leftover line from the previous question (the
+"carrying on from the last item" cards) and one stem that merges two questions (calculus 112) are known and left
+alone; they are wording problems rather than wrong keys.
 
 ### Difficulty, and what tagging it revealed
 

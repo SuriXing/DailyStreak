@@ -121,11 +121,11 @@
 |118|D|当前 Section I 占 70%。|
 |119|A|8 道多选题各选两个答案。|
 |120|B|不单独计入选择题技能权重，但内容贯穿课程。|
-|121|A|For the 8-bit binary number 1011 0110, the hexadecimal form and the decimal value are|
-|122|A|A 640×480 24-bit colour image is saved with 8:1 lossy compression. The file size is about|
-|123|A|A 15 MB file is sent over a 20 Mbps link whose actual throughput is 75% of the bandwidth. Ignoring latency, the minimum time is about|
-|124|A|A binary search over 64 sorted items needs at most how many comparisons in the worst case?|
-|125|A|Three independent replicas each have 99% availability. The probability that all three fail at the same time is about|
-|126|A|To estimate the sampling distribution of the median of a data set with 5000 records, the most appropriate approach is|
-|127|A|A music file is halved with lossy compression and a text document is halved with lossless compression. Which statement is correct?|
-|128|A|A model scores 98% accuracy on its training data but only 62% on the test set. The most reasonable explanation is|
+|121|A|1011 0110 按权展开为 128 + 32 + 16 + 4 + 2 = 182，四位一组得 B6。B 漏掉最低几位得 176；C 把 8 位顺序读反，0110 1101 即 6D 与 109；D 把前后半字节交换得 6B（107）。|
+|122|A|未压缩大小为 640 × 480 × 3 = 921600 字节，按 8:1 压缩后约 115200 字节 ≈ 112 KB。B 忘记压缩得约 900 KB；C 把 8:1 当成 64:1 得约 14 KB；D 把位与字节混淆得约 1.8 MB。|
+|123|A|15 MB = 120 Mb，实际吞吐为 20 × 0.75 = 15 Mbps，故约 120 ÷ 15 = 8 秒。B 按满带宽 20 Mbps 算得 6 秒；C 忘记字节转位得 1 秒；D 把吞吐率误算成 2 Mbps 得 60 秒。|
+|124|A|每次比较把范围减半：64→32→16→8→4→2→1 共 6 次，且 2⁶ = 64。B 把 64 当成 2⁸ 得 8 次；C、D 把减半查找当成每次只排除一项，分别得 32 次和 64 次。|
+|125|A|三次失效相互独立，同时失效的概率为 0.01³ = 10⁻⁶。B 把三个概率相加得 3×10⁻²；C 只算了单个副本的失效率 10⁻²；D 误以为副本绝不会同时失效，忽略了联合概率虽小但非零。|
+|126|A|中位数的抽样分布没有简单的理论公式，最合适的做法是反复有放回抽样并记录每次的中位数。B 的等距抽取不是重抽样；C 的中心极限定理讲的是样本均值；D 对各组中位数再取平均估计的是另一个量。|
+|127|A|有损压缩丢弃了听觉不敏感的细节以换取更高的压缩比，解压后无法逐位还原；无损压缩保留全部信息，可完全还原。B 把两者混为一谈；C 误以为无损压缩也丢细节；D 把压缩比高低当成两类算法的固有属性，实际取决于数据本身。|
+|128|A|训练准确率远高于测试准确率是过拟合的典型表现：模型记住了训练样本而没有学到可推广的规律。B 若训练标签普遍标错，两边成绩都会变差；C 语法错误会让程序直接无法运行；D 增加数据本身并不能消除过拟合。|

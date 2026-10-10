@@ -195,6 +195,33 @@ function checkNoPlainDeckImport() {
  * 答案位置分布必须均衡：真实出题人会打散，而批量生成的题库很容易挤在一个字母上，
  * 那样学生不解题也能拿高分（曾出现 B=50%、D=2.8%）。每个卡组每个字母 25%±10%。
  */
+/**
+ * 简析里的字母引用必须指向干扰项，不能指向正确答案。
+ *
+ * 这一条来得很具体：给一道题补写简析时，我按"当时的选项顺序"写了"B 把概率相加得 3×10⁻²"，
+ * 而简析里出现独立字母会让这道题从"可轮转"变成"不可轮转"，选项因此退回源顺序，
+ * 那句引用立刻指错了选项——同一类错误一次犯了四处。
+ * 判据故意保守：只认"字母 + 紧邻的错法动词（漏/忘/误/把/当成/不看…）"，
+ * 字母与动词之间若出现"正确/成立"就不算（"故 B 正确，把连续 20 件…"是另一种句式，不是引用 B）。
+ */
+const BRIEF_MISATTRIBUTION = /([A-D])([^；。]{0,12}?)(漏|忘|误|把|当成|只看|只算|相反|反了|混|不是|并不|没有|无关|不代表|不能)/g;
+const BRIEF_PRAISE = /正确|成立|符合|对的|无误/;
+
+function checkBriefLetterReferences() {
+  for (const card of ALL_CARDS) {
+    if (!card.back.includes('简析：') || !card.back.includes('答案：')) continue;
+    const brief = card.back.split('简析：')[1].split('\n\n')[0];
+    const answer = card.back.split('答案：')[1][0];
+    for (const m of brief.matchAll(BRIEF_MISATTRIBUTION)) {
+      if (BRIEF_PRAISE.test(m[2])) continue;
+      if (m[1] !== answer) continue;
+      problems.push(
+        `${card.id}: 简析把错法挂在正确答案 ${m[1]} 上（字母引用与选项顺序对不上？）→ 「${m[0]}」`,
+      );
+    }
+  }
+}
+
 function checkAnswerPositions() {
   const perDeck = {};
   for (const card of ALL_CARDS) {
@@ -364,6 +391,7 @@ for (const deck of SUBJECT_DECKS) {
 
 checkSourceUnion();
 checkAnswerPositions();
+checkBriefLetterReferences();
 checkOptionLengthBias();
 checkScenarioDecks();
 

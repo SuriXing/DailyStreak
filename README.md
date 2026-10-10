@@ -88,7 +88,7 @@ DailyStreak ships three locales: **中文 (zh, base)**, **English (en)**, and **
 - `src/i18n/content/{en,es}.ts` — translations of course content (lesson bodies, questions, options, explanations, skills, course descriptions). The Chinese text in `courses.ts` is the fallback whenever an overlay entry is missing.
 - `src/i18n/context.tsx` — `I18nProvider` + `useI18n()` (`t`, `locale`, `setLocale`, `formatDate`). Device language is detected via `expo-localization` on first launch; the manual choice from **Profile → Language** is persisted to AsyncStorage.
 - `src/i18n/core.ts` — `t()` with `{param}` interpolation, `Intl.PluralRules` plural forms (e.g. `study.remaining`), `Intl.DateTimeFormat` dates, and the course-content localizer.
-- `src/data/flashcard-i18n.ts`, `src/data/flashcard-i18n-scenario.ts` — per-card translations keyed by card id: the AMC 10 concept cards in the first file, the 125 scenario items in the second, kept apart so the two card families never move each other's text. `localizeFlashcard()` returns the Chinese card whenever the entry is missing, so a half-translated deck degrades card by card instead of breaking.
+- `src/data/flashcard-i18n.ts`, `src/data/flashcard-i18n-scenario.ts` — per-card translations keyed by card id: the AMC 10 concept cards in the first file, the 254 scenario items in the second, kept apart so the two card families never move each other's text. `localizeFlashcard()` returns the Chinese card whenever the entry is missing, so a half-translated deck degrades card by card instead of breaking.
 - `npm run i18n:check` — CI-friendly completeness audit: dictionary key parity across locales and full course-content coverage.
 - `npm run check:flashcards` — the deck gate; it also holds the overlay to a structural standard: an entry for every scenario card, the same four option letters, the same keyed answer letter as the Chinese, an English `Correct option` matching the option it names, no Chinese characters left, and no entry pointing at a card that does not exist.
 
@@ -161,13 +161,20 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 
 ## Flashcard Question Bank
 
-The 1289 practice cards are generated data, not copy typed into the app:
+The 1454 practice cards are generated data, not copy typed into the app:
 
 | Decks | Cards | Source material | Generator |
 |---|---|---|---|
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
-| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 634 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
-| 五科情境题（`*-scenario`） | 125 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
+| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 636 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
+| 五科情境题（`*-scenario`） | 254 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
+
+Those numbers are not typed here by hand: `npm run bank:stats` computes every count in this
+section from the generated data, and `npm run check:flashcards` fails when this table, the English
+coverage table below, the difficulty ranges, or the totals quoted in the prose stop matching it.
+The tables used to be maintained by hand and drifted twice before anyone noticed (a bank of 254
+scenario items was described as 125, and 1454 cards as 1289), which is exactly the class of error
+a reader cannot see.
 
 Both builders read the sources committed under `content/` — the AMC 10 flashcard decks and the five
 subject question banks with their answer keys, and nothing else from the material pack (the PDFs and the
@@ -202,8 +209,8 @@ verbatim from an earlier item, and one stem that pre-emptively falsified its own
 with each other once, about whether the second batch of scenario items was weak as a whole or only in clusters,
 and the item-level grading settled it in favour of the narrower reading.
 
-What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (16 level-4 items across
-634, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
+What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (18 level-4 items across
+636, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
 batch of CSP scenario items leans on a handful of clusters that resolve to one concept despite a multi-clause
 stem - the clearest is three Create-task report items (48, 49, 50), and three data-quality items (30, 31, 32)
 sit next to each other without overlapping exactly; the difficulty levels are rubric judgements with no student
@@ -212,10 +219,11 @@ inspection rather than by execution when the network to Supabase is unavailable.
 
 The English overlay deserves its own paragraph, because this is where the corrections keep coming from. The
 script that aligns it (`scripts/sync-overlays.mjs`) matches English option lines to Chinese ones by the numbers
-inside them, which is language-neutral but only works when the numbers are distinctive: at the last count that
-fingerprint verified the order automatically for 229 of 888 option cards and could not judge the rest, so those
-were compared by eye, and three swapped answers fell out of that reading (precalculus 031, 039 and 046 - in each
-case the English `Answer:` pointed at a distractor while the Chinese was right). A further hazard is specific to
+inside them, which is language-neutral but only works when the numbers are distinctive: in one audit - a one-off
+measurement, not a running count - that fingerprint verified the order automatically for about 229 of the 890
+option cards and could not judge the rest, so those were compared by eye, and three swapped answers fell out of
+that reading (precalculus 031, 039 and 046 - in each case the English `Answer:` pointed at a distractor while the
+Chinese was right). A further hazard is specific to
 this repository's build: an item is not option-rotated when its explanation mentions A/B/C/D, so *writing* a
 letter reference into an explanation changes how the item is built. Adding references in the wrong order is
 therefore not a documentation slip but a content error, and it happened four times in one sitting before anyone
@@ -226,7 +234,7 @@ alone; they are wording problems rather than wrong keys.
 
 ### Difficulty, and what tagging it revealed
 
-All 888 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
+All 890 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
 `content/subject-banks/difficulty.json` and enforced by the gate. The levels are a rubric judgement, not an
 empirical calibration: nobody has answered these items and had their score recorded, so read them as "how much
 work this asks for", not as "how often students get it wrong". Two independent sets of reviewers graded the two
@@ -234,7 +242,7 @@ families without seeing each other's work, which is what makes the comparison be
 
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
-| Drill banks (634 items, five subjects) | 44–71% | 16–40% | 8–17% | 2–4% |
+| Drill banks (636 items, five subjects) | 44–71% | 16–40% | 8–16% | 2–4% |
 | Scenario decks (254 items, five subjects) | 0–16% | 30–52% | 28–56% | 4–8% |
 
 The drill banks are still overwhelmingly level 1 and have little at the top; the scenario decks have almost
@@ -257,7 +265,7 @@ other two:
 | Layer | File | Cards | Status |
 |---|---|---|---|
 | AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 564 of 564 | complete |
-| Drill banks | `src/data/flashcard-i18n-drill.ts` | 634 of 634 | complete |
+| Drill banks | `src/data/flashcard-i18n-drill.ts` | 636 of 636 | complete |
 | Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 254 of 254 | required by the gate |
 
 `localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a

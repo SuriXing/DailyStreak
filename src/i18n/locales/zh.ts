@@ -136,6 +136,7 @@ export const zh: UiStrings = {
   'flashcards.level': '难度',
   'flashcards.difficulty': '难度分级',
   'flashcards.difficultyHint': '可多选',
+  'flashcards.difficultyLabel': '难度 {level}',
   'flashcards.order': '顺序',
   'flashcards.shuffle': '乱序',
   'flashcards.sourceAmc10': 'AMC10 知识卡 · AI 整理',

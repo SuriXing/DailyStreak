@@ -7,8 +7,15 @@ export type CardKind = 'quiz' | 'concept';
 export interface SessionFilter {
   deck: string | null;
   level: FlashcardLevel | null;
-  /** 练习册与情境题的难度 1-4；AMC10 概念卡用 level 而不是这个 */
-  difficulty?: number | null;
+  /**
+   * 选中的难度集合（练习册与情境题的 1-4；AMC10 概念卡用 level 而不是这个）。
+   *
+   * 语义：**null 与空数组都表示不限**（界面上"一个档都没选"就是空数组，
+   * 不必再区分"没选"和"不限"两种状态），非空时保留 difficulty 落在集合里的卡片——
+   * 于是 [3, 4] 是"只要 3 和 4"的并集，而不是单选时代那种"最后一个点中的档"。
+   * 0 是一个真实取值（打包格式里"没有分级"的占位），但它只能靠显式选中 [0] 命中。
+   */
+  difficulty?: readonly number[] | null;
   kind: CardKind | null;
 }
 
@@ -21,13 +28,18 @@ export function filterCards(
   filter: SessionFilter,
   cards: readonly Flashcard[] = ALL_FLASHCARDS,
 ): Flashcard[] {
-  return cards.filter(
-    (card) =>
+  // null 与空数组等价：都表示"不限难度"。非空时按集合命中（多选是并集，与选中顺序无关）。
+  const wanted = filter.difficulty ?? [];
+  return cards.filter((card) => {
+    const hitDifficulty =
+      wanted.length === 0 || (card.difficulty !== undefined && wanted.includes(card.difficulty));
+    return (
       (filter.deck == null || card.deck === filter.deck) &&
       (filter.level == null || card.level === filter.level) &&
-      (filter.difficulty == null || card.difficulty === filter.difficulty) &&
-      (filter.kind == null || cardKind(card) === filter.kind),
-  );
+      hitDifficulty &&
+      (filter.kind == null || cardKind(card) === filter.kind)
+    );
+  });
 }
 
 /** 当前卡池里出现过的难度级别（升序），供筛选行渲染。 */

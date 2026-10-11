@@ -21,6 +21,10 @@ jobs:
         run: npm run i18n:check
       - name: Flashcard data integrity
         run: npm run check:flashcards
+      - name: 练习页筛选/乱序逻辑单元测试
+        # CI 的 check job 是逐条跑命令（不是 npm run precheck），所以新测试必须在这里也加一步；
+        # 需要 Node >= 22.15 的 module.registerHooks（上面的 node-version: 22 满足）。
+        run: npm run test:session
       - name: Ruff（Python 工具脚本）
         # 版本必须与 pyproject.toml 的 required-version 对齐：action 默认装最新版，
         # ruff 一旦升到 0.17 就会因为不满足 required-version 直接拒绝运行（CI 因此红过一次）。

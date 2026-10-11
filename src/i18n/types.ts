@@ -159,6 +159,7 @@ export interface UiStrings {
   'flashcards.level': DictValue;
   'flashcards.difficulty': DictValue;
   'flashcards.difficultyHint': DictValue;
+  'flashcards.difficultyLabel': DictValue;
   'flashcards.order': DictValue;
   'flashcards.shuffle': DictValue;
   'flashcards.sourceAmc10': DictValue;

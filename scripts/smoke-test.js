@@ -108,6 +108,17 @@ async function waitForTotal(page, expected, tries = 24) {
   return false;
 }
 
+/** 卡片上的难度标签（testID=card-difficulty）：只有真的带分级的卡才该有，个数按期望等。 */
+const cardDifficulty = (page) => page.locator('[data-testid="card-difficulty"]');
+
+async function waitForCardDifficulty(page, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    if ((await cardDifficulty(page).count()) === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
 function clickI18n(page, zh, en) {
   return page.getByText(new RegExp(`${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).first().click();
 }
@@ -232,6 +243,32 @@ function clickI18n(page, zh, en) {
   assert(await waitForTotal(page, pool), `点「全部」后分母回到整池 ${pool}（清空多选）`);
   assert((await chipSelected(first)) === 'false', '清空后各档都回到未选中');
   assert((await chipSelected('all')) === 'true', '清空后「全部」重新成为选中态');
+
+  // 4c. 卡片自己的难度标签：选了"3 和 4"之后，学生必须能看出当前这张是 3 还是 4，
+  // 否则没法判断自己卡在哪一档。切到带分级的卡组（练习册/情境题）时标签要出现，
+  // 切到没有分级的 AMC10 概念卡组时必须没有——那组卡连 difficulty 字段都没有。
+  await page.getByText('AP Precalc · 选择题').first().click();
+  assert(await waitForCardDifficulty(page, 1), '切到带分级的卡组后，卡片上出现难度标签（1 个）');
+  const badge = (await cardDifficulty(page).first().innerText()).trim();
+  const badgeMatch = badge.match(/^(?:难度|Level|Nivel) (\d+)$/);
+  assert(badgeMatch !== null, `标签文案是「难度 N / Level N / Nivel N」（实际：${badge}）`);
+  assert(
+    levels.includes(Number(badgeMatch[1])),
+    `标签上的档位 ${badgeMatch[1]} 是生成数据里真实存在的一档（${levels.join('/')}），不是编出来的数字`,
+  );
+
+  await page.getByText('算术与数论').first().click();
+  assert(await waitForCardDifficulty(page, 0), '切到没有分级的 AMC10 概念卡组后，卡片上不再有难度标签');
+  text = await page.locator('body').innerText();
+  assertI18n(text, '点击卡片查看答案', 'Tap the card to reveal the answer', 'AMC10 概念卡正常渲染（没标签是因为这组卡本身没有分级，不是页面没渲染出来）');
+  assert(
+    !/(?:难度|Level|Nivel)\s*(?:0|undefined)/.test(text),
+    'AMC10 概念卡上没有「难度 0 / 难度 undefined」这种卡片自己编出来的档位',
+  );
+
+  // 切回「全部卡组」，把分母还原成整池，后面的「下一张 = 2 / 整池」才成立
+  await page.getByText(/^(?:全部|All)$/).first().click();
+  assert(await waitForTotal(page, pool), `切回「全部卡组」后分母回到整池 ${pool}`);
 
   // 5. 下一张 + 切到概念卡翻面
   await clickI18n(page, '下一张', 'Next');

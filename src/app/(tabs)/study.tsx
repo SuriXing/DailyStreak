@@ -142,6 +142,24 @@ export default function StudyScreen() {
     return `${label} · ${state}`;
   };
 
+  /**
+   * 卡片自己的难度标签：学生选了"3 和 4"之后，得能看出手上这张是哪一档，否则没法判断卡在哪一级。
+   * 只在卡片真的带分级（练习册与情境题的 1-4）时渲染：AMC10 概念卡整组没有 difficulty 字段，
+   * 打包器给"没有分级"写的 0 也不是一档，所以 undefined 与 0 都返回 null，
+   * 不能出现「难度 0」或「难度 undefined」这种卡片自己编出来的档位。
+   */
+  const difficultyLabel = (card: Flashcard) =>
+    typeof card.difficulty === 'number' && card.difficulty > 0 ? (
+      <Text
+        testID="card-difficulty"
+        style={[
+          styles.difficultyBadge,
+          { backgroundColor: colors.backgroundSelected, borderColor: colors.primary, color: colors.primary },
+        ]}>
+        {t('flashcards.difficultyLabel', { level: card.difficulty })}
+      </Text>
+    ) : null;
+
   const chip = (label: string, active: boolean, onPress: () => void, testID?: string) => (
     <Pressable
       key={label}
@@ -235,7 +253,10 @@ export default function StudyScreen() {
           <>
             {quiz ? (
               <View key={current.id} style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
-                <Tag>{current.category}</Tag>
+                <View style={styles.cardHead}>
+                  <Tag>{current.category}</Tag>
+                  {difficultyLabel(current)}
+                </View>
                 <Text style={[styles.source, { color: colors.textTertiary }]}>{sourceLine(current)}</Text>
                 <Text style={[styles.question, { color: colors.text }]}>{quiz.question}</Text>
                 <View style={styles.options}>
@@ -299,7 +320,10 @@ export default function StudyScreen() {
                   Shadows.card,
                   pressed && styles.cardPressed,
                 ]}>
-                <Tag>{current.category}</Tag>
+                <View style={styles.cardHead}>
+                  <Tag>{current.category}</Tag>
+                  {difficultyLabel(current)}
+                </View>
                 <Text style={[styles.source, { color: colors.textTertiary }]}>{sourceLine(current)}</Text>
                 <Text style={[styles.front, { color: colors.text }]}>
                   {flipped ? current.back : current.front}
@@ -373,6 +397,15 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   cardPressed: { opacity: 0.92 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: Spacing.two },
+  difficultyBadge: {
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    fontSize: 11,
+    fontWeight: '700',
+  },
   badge: { borderRadius: Radius.sm, paddingHorizontal: Spacing.two, paddingVertical: 3 },
   badgeText: { fontSize: 12, fontWeight: '700' },
   front: { fontSize: 18, fontWeight: '700', lineHeight: 26, textAlign: 'center' },

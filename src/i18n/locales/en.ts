@@ -135,6 +135,7 @@ export const en: UiStrings = {
   'flashcards.kindConcept': 'Concept cards',
   'flashcards.level': 'Level',
   'flashcards.difficulty': 'Level',
+  'flashcards.difficultyHint': 'multi-select',
   'flashcards.order': 'Order',
   'flashcards.shuffle': 'Shuffle',
   'flashcards.sourceAmc10': 'AMC10 notes · AI-compiled',

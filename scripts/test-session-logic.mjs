@@ -13,6 +13,10 @@
  * 是 UI 层语义（src/app/(tabs)/study.tsx 里的 showKinds / showDifficulty = xxx.length > 1），
  * 这里只断言 availableKinds / availableDifficulties 的返回值，不测渲染，也不测点选与翻面。
  *
+ * 难度筛选的 SessionFilter.difficulty 是"集合"而不是单个档（null / 空数组 = 不限），
+ * 所以"多选是并集""空数组与 null 同义""集合里没有能命中的档就该是空池"这几条也在这里锁住：
+ * 界面上的多选 chip 与冒烟里的分母断言都建立在这些语义上。
+ *
  * 直接跑 node 就能加载 src 下的 .ts：Node 22.18+ 默认剥离类型，但它既不认 tsconfig 的 "@/*"
  * 映射、也不给无扩展名的相对导入补扩展名，所以下面注册一个解析钩子补齐这两件事
  * （用 module.registerHooks，需要 Node >= 22.15；CI 的 node-version 22 与本地 Node 26 都满足）。
@@ -189,7 +193,7 @@ test('filterCards：deck 为 null 表示不限，指定 deck 只留该卡组', (
 
 test('filterCards：未知 deck 返回空数组（不是抛错、也不是退化成"不限"）', () => {
   assert.deepEqual(filterCards({ deck: 'no-such-deck', level: null, kind: null }, POOL), []);
-  assert.deepEqual(filterCards({ deck: 'no-such-deck', level: null, difficulty: 2, kind: 'quiz' }, POOL), []);
+  assert.deepEqual(filterCards({ deck: 'no-such-deck', level: null, difficulty: [2], kind: 'quiz' }, POOL), []);
 });
 
 test('filterCards：kind 只留对应题型，null 表示不限', () => {
@@ -209,28 +213,84 @@ test('filterCards：kind 只留对应题型，null 表示不限', () => {
   );
 });
 
-test('filterCards：difficulty 精确匹配，null 与 undefined 都表示不限', () => {
+test('filterCards：难度单选（集合里一个档）只留该档，null / undefined / 空数组都表示不限', () => {
   assert.deepEqual(
-    ids(filterCards({ deck: 'precalc', level: null, difficulty: 2, kind: 'quiz' }, POOL)),
+    ids(filterCards({ deck: 'precalc', level: null, difficulty: [2], kind: 'quiz' }, POOL)),
     ['precalc-quiz-d2'],
   );
+  const unrestricted = ['precalc-quiz-d2', 'precalc-quiz-d4', 'precalc-quiz-d0', 'precalc-quiz-nodiff'];
   assert.deepEqual(
     ids(filterCards({ deck: 'precalc', level: null, difficulty: null, kind: 'quiz' }, POOL)),
-    ['precalc-quiz-d2', 'precalc-quiz-d4', 'precalc-quiz-d0', 'precalc-quiz-nodiff'],
+    unrestricted,
     'difficulty: null 不能顺手把没有分级/难度为 0 的卡滤掉',
   );
   assert.deepEqual(
     ids(filterCards({ deck: 'precalc', level: null, difficulty: undefined, kind: 'quiz' }, POOL)),
-    ['precalc-quiz-d2', 'precalc-quiz-d4', 'precalc-quiz-d0', 'precalc-quiz-nodiff'],
+    unrestricted,
     'difficulty 缺省（undefined）也按不限处理——availableKinds 就是这么调 filterCards 的',
+  );
+  assert.deepEqual(
+    ids(filterCards({ deck: 'precalc', level: null, difficulty: [], kind: 'quiz' }, POOL)),
+    unrestricted,
+    '空数组与 null 同义：界面上"一个档都没选"就是空数组',
   );
 });
 
-test('filterCards：difficulty 为 0 时只匹配"没有分级"的占位卡（UI 从不会传 0）', () => {
+test('filterCards：难度多选是并集（"只要 3 和 4"），与选中顺序无关', () => {
+  const cards = [
+    makeCard({ id: 'd1', difficulty: 1 }),
+    makeCard({ id: 'd2', difficulty: 2 }),
+    makeCard({ id: 'd3', difficulty: 3 }),
+    makeCard({ id: 'd4', difficulty: 4 }),
+  ];
   assert.deepEqual(
-    ids(filterCards({ deck: 'precalc', level: null, difficulty: 0, kind: 'quiz' }, POOL)),
+    ids(filterCards({ deck: null, level: null, difficulty: [3, 4], kind: 'quiz' }, cards)),
+    ['d3', 'd4'],
+    '两个档都要留下，不是"最后一个点中的那个"',
+  );
+  assert.deepEqual(
+    ids(filterCards({ deck: null, level: null, difficulty: [4, 3], kind: 'quiz' }, cards)),
+    ['d3', 'd4'],
+    '结果与选中顺序无关，顺序沿用卡池本身的顺序',
+  );
+  assert.deepEqual(
+    ids(filterCards({ deck: null, level: null, difficulty: [1, 2], kind: 'quiz' }, cards)),
+    ['d1', 'd2'],
+  );
+  assert.deepEqual(
+    ids(filterCards({ deck: null, level: null, difficulty: [3, 4], kind: 'quiz' }, cards)),
+    ids(filterCards({ deck: null, level: null, difficulty: [3], kind: 'quiz' }, cards)).concat(
+      ids(filterCards({ deck: null, level: null, difficulty: [4], kind: 'quiz' }, cards)),
+    ),
+    '多选的结果 = 各档单选结果之和（冒烟里"分母等于两档之和"断言的就是这条）',
+  );
+  assert.equal(
+    filterCards({ deck: null, level: null, difficulty: [2, 2], kind: 'quiz' }, cards).length,
+    filterCards({ deck: null, level: null, difficulty: [2], kind: 'quiz' }, cards).length,
+    '集合里重复同一个档不该把卡片算两次',
+  );
+});
+
+test('filterCards：多选里的档一个都不存在 → 空池（不是退化成不限）', () => {
+  const oneCard = [makeCard({ id: 'only-d2', difficulty: 2 })];
+  assert.deepEqual(filterCards({ deck: null, level: null, difficulty: [0, 9], kind: 'quiz' }, oneCard), []);
+  assert.deepEqual(
+    ids(filterCards({ deck: null, level: null, difficulty: [2, 9], kind: 'quiz' }, oneCard)),
+    ['only-d2'],
+    '集合里有一个能命中的档就够了',
+  );
+});
+
+test('filterCards：difficulty 集合里放 0 时只匹配"没有分级"的占位卡（UI 从不会传 0）', () => {
+  assert.deepEqual(
+    ids(filterCards({ deck: 'precalc', level: null, difficulty: [0], kind: 'quiz' }, POOL)),
     ['precalc-quiz-d0'],
     '0 是一个真实的筛选值，不能被当成"不限"',
+  );
+  assert.deepEqual(
+    ids(filterCards({ deck: 'precalc', level: null, difficulty: [0, 4], kind: 'quiz' }, POOL)),
+    ['precalc-quiz-d4', 'precalc-quiz-d0'],
+    '0 和正常的档可以一起选',
   );
 });
 
@@ -250,7 +310,7 @@ test('filterCards：四个维度是交集（deck + level + difficulty + kind）'
     'level 筛掉 advance、kind 筛掉同卡组的选择题',
   );
   assert.deepEqual(
-    ids(filterCards({ deck: 'precalc', level: null, difficulty: 4, kind: 'concept' }, POOL)),
+    ids(filterCards({ deck: 'precalc', level: null, difficulty: [4], kind: 'concept' }, POOL)),
     [],
     'precalc 的 d4 卡是选择题，叠上 kind: concept 之后应该是空池',
   );
@@ -258,9 +318,9 @@ test('filterCards：四个维度是交集（deck + level + difficulty + kind）'
 
 test('filterCards：难度/题型是空池时返回空数组，不抛错', () => {
   const noDifficultyCards = [makeCard({ id: 'only-concept', quiz: false })];
-  assert.deepEqual(filterCards({ deck: null, level: null, difficulty: 3, kind: null }, noDifficultyCards), []);
+  assert.deepEqual(filterCards({ deck: null, level: null, difficulty: [3], kind: null }, noDifficultyCards), []);
   assert.deepEqual(filterCards({ deck: null, level: null, difficulty: null, kind: 'quiz' }, noDifficultyCards), []);
-  assert.deepEqual(filterCards({ deck: null, level: null, difficulty: 3, kind: 'quiz' }, []), []);
+  assert.deepEqual(filterCards({ deck: null, level: null, difficulty: [3], kind: 'quiz' }, []), []);
 });
 
 test('filterCards：返回新数组，不改动入参', () => {
@@ -483,29 +543,50 @@ test('边界：五个函数在空卡池上都不抛错', () => {
 
 test('边界：单元素卡池', () => {
   const single = [makeCard({ id: 'solo', deck: 'precalc', difficulty: 1 })];
-  assert.deepEqual(ids(filterCards({ deck: 'precalc', level: null, difficulty: 1, kind: 'quiz' }, single)), ['solo']);
-  assert.deepEqual(filterCards({ deck: 'precalc', level: null, difficulty: 2, kind: 'quiz' }, single), []);
+  assert.deepEqual(ids(filterCards({ deck: 'precalc', level: null, difficulty: [1], kind: 'quiz' }, single)), ['solo']);
+  assert.deepEqual(filterCards({ deck: 'precalc', level: null, difficulty: [2], kind: 'quiz' }, single), []);
   assert.deepEqual(availableDifficulties(single), [1]);
   assert.deepEqual(availableKinds('precalc', single), ['quiz']);
   assert.deepEqual(ids(shuffleCards(single, 20261011)), ['solo']);
 });
 
 test('边界：难度筛选叠上未知 deck → 空数组（不抛错）', () => {
-  assert.deepEqual(filterCards({ deck: 'no-such-deck', level: null, difficulty: 4, kind: null }, POOL), []);
-  assert.deepEqual(filterCards({ deck: 'no-such-deck', level: 'core', difficulty: 1, kind: 'quiz' }, POOL), []);
+  assert.deepEqual(filterCards({ deck: 'no-such-deck', level: null, difficulty: [4], kind: null }, POOL), []);
+  assert.deepEqual(filterCards({ deck: 'no-such-deck', level: 'core', difficulty: [1], kind: 'quiz' }, POOL), []);
   assert.deepEqual(availableKinds('no-such-deck', POOL), []);
 });
 
 test('边界：难度筛选用在真实数据上（AMC10 概念卡没有难度，会整组被滤掉）', () => {
-  const filtered = filterCards({ deck: null, level: null, difficulty: 1, kind: null });
+  const filtered = filterCards({ deck: null, level: null, difficulty: [1], kind: null });
   assert.ok(filtered.length > 0, '真实题库里应该有难度 1 的卡');
   assert.ok(
     filtered.every((card) => card.difficulty === 1),
     '难度 1 的结果里不该混进别的难度（尤其不该混进没有难度的 AMC10 概念卡）',
   );
   assert.deepEqual(
-    ids(filterCards({ deck: 'arithmetic', level: null, difficulty: 1, kind: null })),
+    ids(filterCards({ deck: 'arithmetic', level: null, difficulty: [1], kind: null })),
     [],
     'AMC10 卡组用 level 分级、没有 difficulty，按难度筛就该是空池',
+  );
+});
+
+test('边界：真实数据上多选两档 = 两档各自题数之和（这就是冒烟里分母的来源）', () => {
+  const count = (difficulty, deck = null) =>
+    filterCards({ deck, level: null, difficulty, kind: 'quiz' }).length;
+  const d3 = count([3]);
+  const d4 = count([4]);
+  assert.ok(d3 > 0 && d4 > 0, '真实题库里 3 档和 4 档都该有题，否则冒烟没法拿它们做断言');
+  assert.equal(count([3, 4]), d3 + d4, '多选是并集：两档的题数相加，既不漏也不重复');
+  for (const deck of SUBJECT_DECKS) {
+    assert.equal(
+      count([3, 4], deck),
+      count([3], deck) + count([4], deck),
+      `${deck}：卡组内多选同样是"该卡组里这两档的题数之和"（冒烟里选卡组后看到的就是这个数）`,
+    );
+  }
+  assert.equal(
+    count([1, 2, 3, 4]),
+    count([]),
+    '四档全选与"不限"结果相同——练习册/情境题的每张卡都带 1-4 的 rubric 分级，AMC10 概念卡本来就不是选择题',
   );
 });

@@ -34,18 +34,28 @@ function assertLabel(text, zh, en, msg) {
 }
 
 /**
- * 练习池大小 = 有选项的卡片（练习册 + 情境题）。从生成数据里数出来，
- * 这样每加一批题都不用回来改这个数字——它曾经硬编码成 725，加了 125 道情境题后就过期了。
+ * 逐个遍历生成的选择题（练习册 + 情境题），把它的 difficulty 交给 fn（没写字段就给 null）。
+ * 练习池的大小与"某一档有多少题"都从生成数据里数出来，这样每加一批题都不用回来改数字——
+ * 它曾经硬编码成 725，加了 125 道情境题后就过期了。
  */
-function expectedPracticePool() {
+function forEachPracticeCard(fn) {
   const dir = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
-  let n = 0;
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith('.ts') || f === 'index.ts') continue;
     for (const line of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
-      if (/\{ id: "/.test(line) && /\\nA\. /.test(line)) n += 1;
+      if (/\{ id: "/.test(line) && /\\nA\. /.test(line)) {
+        const m = line.match(/difficulty: (\d+)/);
+        fn(m ? Number(m[1]) : null);
+      }
     }
   }
+}
+
+function expectedPracticePool() {
+  let n = 0;
+  forEachPracticeCard(() => {
+    n += 1;
+  });
   // 本机若生成了本地题库（content/local/ + npm run bank:local），它也会出现在练习池里
   const local = path.join(__dirname, '..', 'public', 'local-deck.json');
   if (fs.existsSync(local)) {
@@ -57,6 +67,45 @@ function expectedPracticePool() {
     }
   }
   return n;
+}
+
+/** UI 上会出现哪些难度档（0 是"没有分级"的占位，界面上不算一档）。 */
+function expectedDifficulties() {
+  const seen = new Set();
+  forEachPracticeCard((d) => {
+    if (d) seen.add(d);
+  });
+  return [...seen].sort((a, b) => a - b);
+}
+
+/**
+ * 难度多选后的池子大小 = 练习池里 difficulty 落在选中集合里的题数。
+ * 和 expectedPracticePool 一样从生成数据算，不写死数字；本地题库的卡没有 difficulty 字段，
+ * 所以选中任何一档时它们都会被滤掉（这点与 filterCards 的语义一致）。
+ */
+function expectedDifficultyPool(selected) {
+  let n = 0;
+  forEachPracticeCard((d) => {
+    if (d !== null && selected.includes(d)) n += 1;
+  });
+  return n;
+}
+
+/** 读练习页的进度计数（{current} / {total}）：取正文里单独成行的那个，返回 [current, total]。 */
+async function readProgress(page) {
+  const text = await page.locator('body').innerText();
+  const m = text.match(/^(\d+) \/ (\d+)$/m);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+
+/** 轮询等进度分母变成期望值（不用固定 sleep，等到了就返回 true）。 */
+async function waitForTotal(page, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    const progress = await readProgress(page);
+    if (progress && progress[1] === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
 }
 
 function clickI18n(page, zh, en) {
@@ -146,15 +195,48 @@ function clickI18n(page, zh, en) {
   assertLabel(text, '题型', 'card type', '自由练渲染题型筛选');
   assertLabel(text, '乱序', 'shuffle', '自由练渲染乱序开关');
   assertLabel(text, '难度分级', 'Level', '自由练渲染难度筛选');
+  assertLabel(text, '可多选', 'multi-select', '难度行标注了可多选');
   assertI18n(text, '答案已独立核验', 'answer independently checked', '卡片标注来源与核验状态');
   assertI18n(text, '题库由 AI 生成', 'AI-generated study material', '筛选区下方有题库来源提示');
   assert(/\nA\.\s/.test(text) && /\nB\.\s/.test(text), '默认渲染选择题选项（A/B）');
+
+  // 4b. 难度分级可多选：点一个档是"加入选择"，再点一个档是"或"（不是替换它），「全部」清空选择。
+  // 每一步的分母都从生成数据算（expectedDifficultyPool），不写死数字，也等轮询而不是睡固定时长。
+  const pool = expectedPracticePool();
+  const levels = expectedDifficulties();
+  assert(levels.length > 1, `生成数据里有多个难度档可供多选（${levels.join('/')}）`);
+  const [first, second] = levels.slice(-2); // 取最高的两档，正是"只要 3 和 4"这种诉求
+  const onlyFirst = expectedDifficultyPool([first]);
+  const onlySecond = expectedDifficultyPool([second]);
+  const both = expectedDifficultyPool([first, second]);
+  assert(
+    both === onlyFirst + onlySecond,
+    `两档的题数相加 = 多选两档的题数（${onlyFirst} + ${onlySecond} = ${both}）`,
+  );
+  const chipSel = (d) => `[data-testid="difficulty-${d}"]`;
+  const chipSelected = (d) => page.locator(chipSel(d)).getAttribute('aria-selected');
+  assert((await readProgress(page))?.[1] === pool, `默认「全部」时分母是整池 ${pool}`);
+  assert((await chipSelected(first)) === 'false', `难度 ${first} 初始未选中`);
+
+  await page.locator(chipSel(first)).click();
+  assert(await waitForTotal(page, onlyFirst), `选中难度 ${first} 后分母变成 ${onlyFirst}（该档的题数）`);
+  assert((await chipSelected(first)) === 'true', `难度 ${first} 的 chip 显示为选中（aria-selected）`);
+  assert((await chipSelected('all')) === 'false', '选中一个档后「全部」不再是选中态');
+
+  await page.locator(chipSel(second)).click();
+  assert(await waitForTotal(page, both), `再选中难度 ${second} 后分母变成 ${both}（两档题数之和 ${onlyFirst} + ${onlySecond}）`);
+  assert((await chipSelected(first)) === 'true', `多选后难度 ${first} 仍然是选中态（不是被替换掉）`);
+  assert((await chipSelected(second)) === 'true', `多选后难度 ${second} 也是选中态`);
+
+  await page.locator(chipSel('all')).click();
+  assert(await waitForTotal(page, pool), `点「全部」后分母回到整池 ${pool}（清空多选）`);
+  assert((await chipSelected(first)) === 'false', '清空后各档都回到未选中');
+  assert((await chipSelected('all')) === 'true', '清空后「全部」重新成为选中态');
 
   // 5. 下一张 + 切到概念卡翻面
   await clickI18n(page, '下一张', 'Next');
   await page.waitForTimeout(800);
   text = await page.locator('body').innerText();
-  const pool = expectedPracticePool();
   assert(new RegExp(`2 / ${pool}`).test(text), `下一张后进度为 2 / ${pool}（练习册 + 情境题的题量，从生成数据算出）`);
   await clickI18n(page, '概念卡', 'Concept cards');
   await page.waitForTimeout(800);

@@ -212,7 +212,7 @@ and the item-level grading settled it in favour of the narrower reading.
 What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (18 level-4 items across
 636, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
 batch of CSP scenario items leans on a handful of clusters that resolve to one concept despite a multi-clause
-stem - the clearest is three Create-task report items (48, 49, 50), and three data-quality items (30, 31, 32)
+stem - the clearest is two Create-task report items (48, 50), and three data-quality items (30, 31, 32)
 sit next to each other without overlapping exactly; the difficulty levels are rubric judgements with no student
 data behind them; and the browser smoke test cannot run in every environment, so its assertions are checked by
 inspection rather than by execution when the network to Supabase is unavailable.
@@ -243,7 +243,7 @@ families without seeing each other's work, which is what makes the comparison be
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
 | Drill banks (636 items, five subjects) | 44–71% | 16–40% | 8–16% | 2–4% |
-| Scenario decks (254 items, five subjects) | 0–16% | 30–52% | 28–56% | 4–8% |
+| Scenario decks (254 items, five subjects) | 0–14% | 30–52% | 28–56% | 4–8% |
 
 The drill banks are still overwhelmingly level 1 and have little at the top; the scenario decks have almost
 nothing at the bottom and half their items at level 3. So the format difference is measured rather than asserted:

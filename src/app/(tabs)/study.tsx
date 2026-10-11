@@ -27,7 +27,7 @@ export default function StudyScreen() {
   const { t, locale } = useI18n();
   const [deck, setDeck] = useState<string | null>(null);
   const [level, setLevel] = useState<FlashcardLevel | null>(null);
-  const [difficulty, setDifficulty] = useState<number | null>(null);
+  const [difficulty, setDifficulty] = useState<number[]>([]);
   // 默认只练选择题：AMC10 概念卡是"XX 是什么？"式词条，一进自由练就翻词条不像在练题
   const [kind, setKind] = useState<CardKind | null>('quiz');
   // 默认乱序：否则每次进来都从同一张卡开始
@@ -104,9 +104,26 @@ export default function StudyScreen() {
   };
 
   const pickDeck = (d: string | null) => {
-    setDifficulty(null);
+    setDifficulty([]);
     setDeck(d);
     setLevel(null);
+    resetSession();
+  };
+
+  /**
+   * 难度多选：点一下把该档加入选择，再点一下移出；空数组 = 不限（和前几行的「全部」同义）。
+   * 每次都重开会话：卡池变了，原来的下标可能已经越界，随手也把乱序重洗一遍。
+   */
+  const toggleDifficulty = (d: number) => {
+    setDifficulty((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b),
+    );
+    resetSession();
+  };
+
+  /** 「全部」= 清空难度选择（与卡组/题型的「全部」同义），也一样重开会话。 */
+  const clearDifficulty = () => {
+    setDifficulty([]);
     resetSession();
   };
 
@@ -125,9 +142,10 @@ export default function StudyScreen() {
     return `${label} · ${state}`;
   };
 
-  const chip = (label: string, active: boolean, onPress: () => void) => (
+  const chip = (label: string, active: boolean, onPress: () => void, testID?: string) => (
     <Pressable
       key={label}
+      testID={testID}
       style={({ pressed }) => [
         styles.chip,
         {
@@ -138,7 +156,7 @@ export default function StudyScreen() {
       ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}>
+      aria-selected={active}>
       <Text style={[styles.chipText, { color: active ? colors.primaryText : colors.text }]}>{label}</Text>
     </Pressable>
   );
@@ -179,10 +197,16 @@ export default function StudyScreen() {
             <>
               <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>
                 {t('flashcards.difficulty')}
+                <Text style={[styles.filterHint, { color: colors.textTertiary }]}>
+                  {' · '}
+                  {t('flashcards.difficultyHint')}
+                </Text>
               </Text>
               <View style={styles.chipRow}>
-                {chip(t('flashcards.all'), difficulty == null, () => setDifficulty(null))}
-                {difficulties.map((d) => chip(String(d), difficulty === d, () => setDifficulty(d)))}
+                {chip(t('flashcards.all'), difficulty.length === 0, clearDifficulty, 'difficulty-all')}
+                {difficulties.map((d) =>
+                  chip(String(d), difficulty.includes(d), () => toggleDifficulty(d), `difficulty-${d}`),
+                )}
               </View>
             </>
           )}
@@ -334,6 +358,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: Spacing.one,
   },
+  filterHint: { fontSize: 11, fontWeight: '400', letterSpacing: 0 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   chipRowScroll: { flexDirection: 'row', gap: Spacing.two, paddingRight: Spacing.four },
   chip: { borderRadius: Radius.md, borderWidth: 1, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one + 2 },

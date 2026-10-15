@@ -34,14 +34,25 @@ function assertLabel(text, zh, en, msg) {
 }
 
 /**
+ * 排序断言用的卡组：UI 标签 ↔ 生成文件同名（src/data/subject-decks/calcbc-scenario.ts）。
+ * 为什么挑这个卡组：它只有**一张** 1 档卡，所以"由易到难"的第 2 张就跨到 2 档——
+ * 一眼能看出排过序，而不是"前 60 张全是 1 档"的卡组（那种要点 60 次下一张才看得到档位变化）。
+ * 它同时有 4 张 4 档卡，"由难到易"的第 5 张跨到 3 档，两个方向各跨一次边界。
+ */
+const SORT_DECK_LABEL = 'AP Calc BC · 情境题';
+const SORT_DECK_FILE = 'calcbc-scenario';
+
+/**
  * 逐个遍历生成的选择题（练习册 + 情境题），把它的 difficulty 交给 fn（没写字段就给 null）。
  * 练习池的大小与"某一档有多少题"都从生成数据里数出来，这样每加一批题都不用回来改数字——
  * 它曾经硬编码成 725，加了 125 道情境题后就过期了。
+ * 传 file（不带扩展名的卡组名，如 'precalc'）时只看那一个卡组，排序断言就是这么取的。
  */
-function forEachPracticeCard(fn) {
+function forEachPracticeCard(fn, file = null) {
   const dir = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith('.ts') || f === 'index.ts') continue;
+    if (file && f !== `${file}.ts`) continue;
     for (const line of fs.readFileSync(path.join(dir, f), 'utf8').split('\n')) {
       if (/\{ id: "/.test(line) && /\\nA\. /.test(line)) {
         const m = line.match(/difficulty: (\d+)/);
@@ -91,6 +102,49 @@ function expectedDifficultyPool(selected) {
   return n;
 }
 
+/** 某个生成卡组里的题数（界面选中那个卡组后进度条的分母）。 */
+function expectedDeckPool(file) {
+  let n = 0;
+  forEachPracticeCard(() => {
+    n += 1;
+  }, file);
+  return n;
+}
+
+/**
+ * 按难度排序后的**整条**档位序列，由 orderCards 的语义从生成数据推出（不从界面读回来）：
+ * 稳定排序 → 同一档内部沿用文件顺序；没有 difficulty 的卡（含打包格式的 0）排在末尾。
+ */
+function expectedSortedDifficulties(file, direction) {
+  const items = [];
+  forEachPracticeCard((raw) => {
+    // 0 与缺字段都算"没有难度"，与 lib 里 gradedDifficulty 的口径一致
+    items.push({ d: raw === null || raw <= 0 ? null : raw, i: items.length });
+  }, file);
+  const dir = direction === 'difficulty-asc' ? 1 : -1;
+  return items
+    .sort((a, b) => {
+      if (a.d === null && b.d === null) return a.i - b.i;
+      if (a.d === null) return 1;
+      if (b.d === null) return -1;
+      if (a.d !== b.d) return (a.d - b.d) * dir;
+      return a.i - b.i;
+    })
+    .map((item) => item.d);
+}
+
+/**
+ * 冒烟要逐张比对的那一段：第 1 张 + 跨到下一档的那张（最多 max 张）。
+ * 张数跟着数据走，所以加题、改档位都不用回来动这个数字；带上一张下一档的卡，
+ * 断言才不是"前 8 张都恰好是同一个档"这种排没排都成立的空话。
+ */
+function expectedSortedSample(file, direction, max = 8) {
+  const full = expectedSortedDifficulties(file, direction);
+  const first = full[0];
+  const changeAt = full.findIndex((d) => d !== first);
+  return full.slice(0, changeAt === -1 ? max : Math.min(max, changeAt + 1));
+}
+
 /** 读练习页的进度计数（{current} / {total}）：取正文里单独成行的那个，返回 [current, total]。 */
 async function readProgress(page) {
   const text = await page.locator('body').innerText();
@@ -108,12 +162,38 @@ async function waitForTotal(page, expected, tries = 24) {
   return false;
 }
 
+/** 轮询等进度分子/分母都变成期望值（切换筛选或顺序后会话重开，等它自己到位）。 */
+async function waitForProgress(page, current, total, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    const progress = await readProgress(page);
+    if (progress && progress[0] === current && progress[1] === total) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
 /** 卡片上的难度标签（testID=card-difficulty）：只有真的带分级的卡才该有，个数按期望等。 */
 const cardDifficulty = (page) => page.locator('[data-testid="card-difficulty"]');
 
 async function waitForCardDifficulty(page, expected, tries = 24) {
   for (let i = 0; i < tries; i += 1) {
     if ((await cardDifficulty(page).count()) === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
+/** 当前这张卡上的难度档（没有标签就返回 null），文案兼容「难度 3 / Level 3 / Nivel 3」。 */
+async function currentCardDifficulty(page) {
+  if ((await cardDifficulty(page).count()) === 0) return null;
+  const m = (await cardDifficulty(page).first().innerText()).match(/(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+/** 轮询等"当前这张卡的难度"变成期望档：排序切换后卡片是重渲染出来的，不睡固定时长。 */
+async function waitForCurrentCardDifficulty(page, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    if ((await currentCardDifficulty(page)) === expected) return true;
     await page.waitForTimeout(250);
   }
   return false;
@@ -265,10 +345,94 @@ function clickI18n(page, zh, en) {
     !/(?:难度|Level|Nivel)\s*(?:0|undefined)/.test(text),
     'AMC10 概念卡上没有「难度 0 / 难度 undefined」这种卡片自己编出来的档位',
   );
+  // 排序开关读的就是 difficulty：这组卡一张都没有，所以两个排序 chip 不该出现
+  // （「乱序」与难度无关，照旧显示——否则学生连卡都没法打乱）
+  assert(
+    (await page.locator('[data-testid="order-asc"]').count()) === 0 &&
+      (await page.locator('[data-testid="order-desc"]').count()) === 0,
+    '没有 difficulty 的 AMC10 卡组不显示「由易到难 / 由难到易」开关',
+  );
+  assert(
+    (await page.locator('[data-testid="order-shuffle"]').count()) === 1,
+    'AMC10 卡组上「乱序」开关照旧显示（它不依赖 difficulty）',
+  );
 
   // 切回「全部卡组」，把分母还原成整池，后面的「下一张 = 2 / 整池」才成立
   await page.getByText(/^(?:全部|All)$/).first().click();
   assert(await waitForTotal(page, pool), `切回「全部卡组」后分母回到整池 ${pool}`);
+
+  // 4d. 按难度排序：与「乱序」互斥（选了排序，乱序自动关掉；点回乱序，排序自动关掉），
+  //     切换后重开会话（进度回到 1 / 卡组题数），首张卡与同档边界那张的档位逐张与生成数据比对。
+  //     期望的档位序列由 expectedSortedSample 从卡组文件算出（稳定排序 = 文件顺序按档分组），
+  //     不写死数字；每一步都用轮询等进度与标签到位，不睡固定时长。
+  const sortChip = (id) => page.locator(`[data-testid="${id}"]`);
+  const sortSelected = (id) => sortChip(id).getAttribute('aria-selected');
+
+  const deckChip = page.getByText(SORT_DECK_LABEL).first();
+  await deckChip.scrollIntoViewIfNeeded(); // 卡组那一行是横向滚动区，排在后面的卡组要先滚进来
+  await deckChip.click();
+  const deckPool = expectedDeckPool(SORT_DECK_FILE);
+  assert(await waitForTotal(page, deckPool), `切到「${SORT_DECK_LABEL}」后分母是该卡组的题数 ${deckPool}`);
+  const ascSeq = expectedSortedSample(SORT_DECK_FILE, 'difficulty-asc');
+  const descSeq = expectedSortedSample(SORT_DECK_FILE, 'difficulty-desc');
+  assert(
+    ascSeq.every((d) => d !== null) && descSeq.every((d) => d !== null),
+    `「${SORT_DECK_LABEL}」每张卡都带 difficulty，按难度排序才有意义（升序前 ${ascSeq.length} 张 ${ascSeq.join('/')}，降序前 ${descSeq.length} 张 ${descSeq.join('/')}）`,
+  );
+  assert(
+    ascSeq[0] !== ascSeq[ascSeq.length - 1] && descSeq[0] !== descSeq[descSeq.length - 1],
+    `采样里要跨过一个档位边界，排序才看得出效果（升序 ${ascSeq.join('/')}，降序 ${descSeq.join('/')}）`,
+  );
+
+  text = await page.locator('body').innerText();
+  assertLabel(text, '由易到难', 'Easy first', '带分级的卡组上有「由易到难」开关');
+  assertLabel(text, '由难到易', 'Hard first', '带分级的卡组上有「由难到易」开关');
+  assert(
+    (await sortChip('order-asc').count()) === 1 && (await sortChip('order-desc').count()) === 1,
+    '两个排序开关都在界面上（有各自的 testID，可点）',
+  );
+  assert((await sortSelected('order-shuffle')) === 'true', '默认仍是乱序：两个排序 chip 都没选中');
+
+  await sortChip('order-asc').click();
+  assert(await waitForProgress(page, 1, deckPool), `切到「由易到难」后重开会话，进度回到 1 / ${deckPool}`);
+  assert((await sortSelected('order-asc')) === 'true', '「由易到难」显示为选中');
+  assert((await sortSelected('order-shuffle')) === 'false', '选了排序后「乱序」自动关掉（两种顺序语义互斥）');
+  for (let i = 0; i < ascSeq.length; i += 1) {
+    if (i > 0) await clickI18n(page, '下一张', 'Next');
+    assert(await waitForProgress(page, i + 1, deckPool), `由易到难第 ${i + 1} 张：进度 ${i + 1} / ${deckPool}`);
+    assert(
+      await waitForCurrentCardDifficulty(page, ascSeq[i]),
+      `由易到难第 ${i + 1} 张卡是难度 ${ascSeq[i]}（档位由卡组文件按稳定排序算出，不是写死的）`,
+    );
+  }
+
+  await sortChip('order-desc').click();
+  assert(await waitForProgress(page, 1, deckPool), `切到「由难到易」同样重开会话，进度回到 1 / ${deckPool}`);
+  assert(
+    (await sortSelected('order-desc')) === 'true' && (await sortSelected('order-asc')) === 'false',
+    '两个方向互斥：选中降序时升序不再选中',
+  );
+  assert((await sortSelected('order-shuffle')) === 'false', '降序时乱序同样是关掉的');
+  for (let i = 0; i < descSeq.length; i += 1) {
+    if (i > 0) await clickI18n(page, '下一张', 'Next');
+    assert(await waitForProgress(page, i + 1, deckPool), `由难到易第 ${i + 1} 张：进度 ${i + 1} / ${deckPool}`);
+    assert(
+      await waitForCurrentCardDifficulty(page, descSeq[i]),
+      `由难到易第 ${i + 1} 张卡是难度 ${descSeq[i]}（降序从最高档开始，与升序不同）`,
+    );
+  }
+
+  await sortChip('order-shuffle').click();
+  assert((await sortSelected('order-shuffle')) === 'true', '点回「乱序」：乱序重新选中');
+  assert(
+    (await sortSelected('order-asc')) === 'false' && (await sortSelected('order-desc')) === 'false',
+    '开乱序时两个排序 chip 都关掉（互斥是双向的）',
+  );
+  assert(await waitForProgress(page, 1, deckPool), `换顺序后重开会话，进度回到 1 / ${deckPool}`);
+
+  // 切回「全部卡组」，让后面的「下一张 = 2 / 整池」重新成立（换卡组也会重开会话）
+  await page.getByText(/^(?:全部|All)$/).first().click();
+  assert(await waitForTotal(page, pool), `排序检查完切回「全部卡组」，分母回到整池 ${pool}`);
 
   // 5. 下一张 + 切到概念卡翻面
   await clickI18n(page, '下一张', 'Next');

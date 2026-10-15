@@ -15,10 +15,19 @@ import {
   type FlashcardLevel,
 } from '@/data/flashcards';
 import { localizeFlashcard } from '@/data/flashcard-i18n';
-import { availableDifficulties, availableKinds, filterCards, shuffleCards, type CardKind } from '@/lib/flashcard-session';
+import {
+  availableDifficulties,
+  availableKinds,
+  filterCards,
+  orderCards,
+  shuffleCards,
+  type CardKind,
+  type CardOrder,
+} from '@/lib/flashcard-session';
 import { loadLocalDeck, type LocalDeck } from '@/data/local-bank';
 
-/** 自由练：一场闪卡会话 —— 卡组 + 题型（+ AMC10 才有的难度），选择题点选、概念卡翻面。 */
+/** 自由练：一场闪卡会话 —— 卡组 + 题型（+ AMC10 才有的难度），选择题点选、概念卡翻面。
+ *  顺序一列里「乱序」与「由易到难 / 由难到易」互斥：排序会关掉乱序（见 pickOrder 的注释）。 */
 
 /** 新顺序的种子：切换卡组/题型/顺序时重新洗一次，同一次会话里顺序保持稳定。 */
 const nextSeed = () => Math.floor(Math.random() * 0xffffffff);
@@ -32,6 +41,9 @@ export default function StudyScreen() {
   const [kind, setKind] = useState<CardKind | null>('quiz');
   // 默认乱序：否则每次进来都从同一张卡开始
   const [shuffled, setShuffled] = useState(true);
+  // 难度排序：null = 不排序。与乱序**互斥**——"打乱"和"由易到难"是两种互相抵消的诉求
+  // （洗完之后再排序等于没洗），所以两个开关永远最多有一个为真，见 toggleShuffle / pickOrder。
+  const [order, setOrder] = useState<CardOrder>(null);
   const [seed, setSeed] = useState(nextSeed);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -72,14 +84,24 @@ export default function StudyScreen() {
     [pool, deck],
   );
   const showDifficulty = difficulties.length > 1;
+  /**
+   * 排序开关的显示条件：当前卡组里至少有一张带分级的卡。
+   * AMC10 概念卡整组没有 difficulty（难度那一行本来就不显示），按难度排序对它们无从下手，
+   * 所以那一组不显示这两个 chip；只有一档时排序是恒等操作，仍然显示，
+   * 免得同一个开关在别的卡组出现、在这里凭空消失。
+   */
+  const showOrder = difficulties.length > 0;
 
   const cards = useMemo(() => {
     const list = filterCards(
       { deck, level, difficulty: showDifficulty ? difficulty : null, kind: activeKind },
       pool,
     );
+    // 排序优先于乱序：两者互斥（界面保证不会同时为真），这里再判一次是为了让 lib 的语义显式，
+    // 而不是依赖"界面不出错"；order 为 null 时才轮到乱序。
+    if (order) return orderCards(list, order);
     return shuffled ? shuffleCards(list, seed) : list;
-  }, [pool, deck, level, difficulty, showDifficulty, activeKind, shuffled, seed]);
+  }, [pool, deck, level, difficulty, showDifficulty, activeKind, order, shuffled, seed]);
 
   const current = cards[index] ? localizeFlashcard(cards[index], locale) : cards[index];
   const quiz = current ? toQuiz(current) : null;
@@ -99,7 +121,21 @@ export default function StudyScreen() {
   };
 
   const toggleShuffle = () => {
-    setShuffled((s) => !s);
+    const next = !shuffled;
+    setShuffled(next);
+    // 打开乱序就把排序清掉：两者语义冲突，同时成立只会有一个悄悄失效
+    if (next) setOrder(null);
+    resetSession();
+  };
+
+  /**
+   * 难度排序：点一个方向就按那个方向排（再点一次同一个方向 = 取消排序，回到卡池原顺序）。
+   * 选了排序一定把乱序关掉——"洗好后按难度重排"等于没洗，所以让两者互斥，
+   * 而不是留一个在界面上假装还开着。切换后重开会话（下标与卡片一一对应，顺序变了旧下标就错位了）。
+   */
+  const pickOrder = (next: Exclude<CardOrder, null>) => {
+    setOrder((prev) => (prev === next ? null : next));
+    setShuffled(false);
     resetSession();
   };
 
@@ -240,7 +276,23 @@ export default function StudyScreen() {
             </>
           )}
           <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.order')}</Text>
-          <View style={styles.chipRow}>{chip(t('flashcards.shuffle'), shuffled, toggleShuffle)}</View>
+          <View style={styles.chipRow}>
+            {chip(t('flashcards.shuffle'), shuffled, toggleShuffle, 'order-shuffle')}
+            {showOrder &&
+              chip(
+                t('flashcards.orderAsc'),
+                order === 'difficulty-asc',
+                () => pickOrder('difficulty-asc'),
+                'order-asc',
+              )}
+            {showOrder &&
+              chip(
+                t('flashcards.orderDesc'),
+                order === 'difficulty-desc',
+                () => pickOrder('difficulty-desc'),
+                'order-desc',
+              )}
+          </View>
         </View>
 
         <Text style={[styles.note, { color: colors.textTertiary }]}>{t('flashcards.provenanceNote')}</Text>

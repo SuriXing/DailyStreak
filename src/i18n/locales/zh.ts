@@ -139,6 +139,8 @@ export const zh: UiStrings = {
   'flashcards.difficultyLabel': '难度 {level}',
   'flashcards.order': '顺序',
   'flashcards.shuffle': '乱序',
+  'flashcards.orderAsc': '由易到难',
+  'flashcards.orderDesc': '由难到易',
   'flashcards.sourceAmc10': 'AMC10 知识卡 · AI 整理',
   'flashcards.sourceAiMcq': 'AI 原创题',
   'flashcards.sourceLocalExam': '本地题库（未公开）',

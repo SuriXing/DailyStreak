@@ -172,12 +172,12 @@ export default function AuthScreen() {
             />
 
             {error && (
-              <Text accessibilityLiveRegion="polite" style={[styles.error, { color: colors.error }]}>
+              <Text accessibilityLiveRegion="polite" style={[styles.error, { color: colors.errorText }]}>
                 {error}
               </Text>
             )}
             {notice && (
-              <Text accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.success }]}>
+              <Text accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.successText }]}>
                 {notice}
               </Text>
             )}

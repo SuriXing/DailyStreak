@@ -62,45 +62,74 @@ function forEachPracticeCard(fn, file = null) {
   }
 }
 
+/**
+ * 本机 public/local-deck.json 里的卡（没有这个文件、或读不动就是空数组）。
+ * 练习页的池子包含它们，「我的」页的题库概览不包含（那个卡描述的是随 bundle 发出去的题库）。
+ */
+function localDeckCards() {
+  const file = path.join(__dirname, '..', 'public', 'local-deck.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const cards = JSON.parse(fs.readFileSync(file, 'utf8')).cards;
+    return Array.isArray(cards) ? cards : [];
+  } catch {
+    return [];
+  }
+}
+
 function expectedPracticePool() {
   let n = 0;
   forEachPracticeCard(() => {
     n += 1;
   });
   // 本机若生成了本地题库（content/local/ + npm run bank:local），它也会出现在练习池里
-  const local = path.join(__dirname, '..', 'public', 'local-deck.json');
-  if (fs.existsSync(local)) {
-    try {
-      const cards = JSON.parse(fs.readFileSync(local, 'utf8')).cards;
-      if (Array.isArray(cards)) n += cards.length;
-    } catch {
-      // 读不动就按没有处理
-    }
-  }
-  return n;
+  return n + localDeckCards().length;
 }
 
-/** UI 上会出现哪些难度档（0 是"没有分级"的占位，界面上不算一档）。 */
+/**
+ * 练习页难度筛选行里会出现哪些档：内置数据的档 + 本机本地题库里标过的档。
+ *
+ * 本地题的难度只认 1-4（src/data/local-bank.ts 的 normalizeDifficulty，与内置 rubric 同口径），
+ * 而内置数据四档齐全，所以本地题不可能让这一行多出第五档——"我的"页概览与练习页共用这个档位列表。
+ */
 function expectedDifficulties() {
   const seen = new Set();
   forEachPracticeCard((d) => {
     if (d) seen.add(d);
   });
+  for (const card of localDeckCards()) {
+    if (typeof card.difficulty === 'number' && card.difficulty > 0) seen.add(card.difficulty);
+  }
   return [...seen].sort((a, b) => a - b);
 }
 
-/**
- * 难度多选后的池子大小 = 练习池里 difficulty 落在选中集合里的题数。
- * 和 expectedPracticePool 一样从生成数据算，不写死数字；本地题库的卡没有 difficulty 字段，
- * 所以选中任何一档时它们都会被滤掉（这点与 filterCards 的语义一致）。
- */
-function expectedDifficultyPool(selected) {
+/** 内置题库（生成的数据文件）里落在选中难度集合里的题数。 */
+function builtinDifficultyPool(selected) {
   let n = 0;
   forEachPracticeCard((d) => {
     if (d !== null && selected.includes(d)) n += 1;
   });
   return n;
 }
+
+/**
+ * 练习页选中若干档后的池子大小 = 内置题里落在集合里的张数 + 本机本地题库里标了难度的那些。
+ * 与 expectedPracticePool 一样从数据算，不写死数字。
+ * 本地卡只在 markdown 行尾写了 `[难度 N]` 时才有 difficulty 字段（见 docs/local-bank.md）：
+ * 标了的与内置题一样会被这一档选中，没标的连字段都没有、所以整批被滤掉——与 filterCards 的语义一致。
+ */
+function expectedDifficultyPool(selected) {
+  const local = localDeckCards().filter(
+    (card) => typeof card.difficulty === 'number' && selected.includes(card.difficulty),
+  );
+  return builtinDifficultyPool(selected) + local.length;
+}
+
+/**
+ * 「我的」页题库概览里某一档的题数：概览只数随 bundle 发出去的这套题库，
+ * 本机 public/local-deck.json 不算在内（与 expectedLibraryTotal 同一个理由）。
+ */
+const expectedLibraryDifficultyPool = builtinDifficultyPool;
 
 /** 某个生成卡组里的题数（界面选中那个卡组后进度条的分母）。 */
 function expectedDeckPool(file) {
@@ -797,7 +826,7 @@ function clickI18n(page, zh, en) {
   const conceptCards = expectedConceptCards();
   const deckKeys = expectedDeckKeys();
   const gradeLevels = expectedDifficulties();
-  const gradePool = (d) => expectedDifficultyPool([d]);
+  const gradePool = (d) => expectedLibraryDifficultyPool([d]);
   const gradedSum = gradeLevels.reduce((n, d) => n + gradePool(d), 0);
   assertI18n(text, '题库概览', 'Question bank', '我的页渲染题库概览卡');
   assert((await countTestIds(page, 'pool-card')) === 1, '题库概览是一张独立的卡片（页面上只有一张）');

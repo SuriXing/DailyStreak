@@ -220,7 +220,7 @@ export default function StudyScreen() {
         testID="card-difficulty"
         style={[
           styles.difficultyBadge,
-          { backgroundColor: colors.backgroundSelected, borderColor: colors.primary, color: colors.primary },
+          { backgroundColor: colors.backgroundSelected, borderColor: colors.primary, color: colors.primaryForeground },
         ]}>
         {t('flashcards.difficultyLabel', { level: card.difficulty })}
       </Text>

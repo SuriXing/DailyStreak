@@ -162,4 +162,14 @@ export const zh: UiStrings = {
   'flashcards.unverified': '答案未核验',
   'flashcards.verified': '答案已独立核验',
   'flashcards.provenanceNote': '题库由 AI 生成的复习资料整理而来，不是官方真题；答案未经逐题独立核验，只作复习提示。',
+
+  // 筛选 chip 的无障碍文案：每一行读成一个 group，chip 的可读名 = 哪一行 + 哪个选项 + 选中没有
+  'flashcards.chipA11y': '{group}：{label}（{state}）',
+  'flashcards.chipSelected': '已选中',
+  'flashcards.chipUnselected': '未选中',
+  'flashcards.groupDeck': '卡组筛选',
+  'flashcards.groupKind': '题型筛选',
+  'flashcards.groupDifficulty': '难度分级筛选，可多选',
+  'flashcards.groupLevel': '分层筛选',
+  'flashcards.groupOrder': '顺序筛选',
 };

@@ -162,4 +162,14 @@ export const es: UiStrings = {
   'flashcards.unverified': 'respuesta sin verificar',
   'flashcards.verified': 'respuesta verificada de forma independiente',
   'flashcards.provenanceNote': 'Estas tarjetas vienen de material de estudio generado por IA, no de exámenes oficiales; las respuestas no se verificaron una por una.',
+
+  // Textos de accesibilidad de los chips de filtro: cada fila se lee como un grupo y el nombre del chip lleva fila + opción + estado
+  'flashcards.chipA11y': '{group}: {label} ({state})',
+  'flashcards.chipSelected': 'seleccionado',
+  'flashcards.chipUnselected': 'sin seleccionar',
+  'flashcards.groupDeck': 'Filtro de mazos',
+  'flashcards.groupKind': 'Filtro de tipo de tarjeta',
+  'flashcards.groupDifficulty': 'Filtro de nivel, selección múltiple',
+  'flashcards.groupLevel': 'Filtro por tramos',
+  'flashcards.groupOrder': 'Filtro de orden',
 };

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useI18n } from '@/i18n';
@@ -31,6 +31,36 @@ import { loadLocalDeck, type LocalDeck } from '@/data/local-bank';
 
 /** 新顺序的种子：切换卡组/题型/顺序时重新洗一次，同一次会话里顺序保持稳定。 */
 const nextSeed = () => Math.floor(Math.random() * 0xffffffff);
+
+/** chip 的语义角色：一行里同一时刻只有一个能成立 = radio；能同时选中多个（难度分级）= checkbox。 */
+type ChipRole = 'radio' | 'checkbox';
+
+/** 一行筛选的容器语义：单选行读成 radiogroup，多选行读成 group（两者都带 aria-label 说明这一行是干什么的）。 */
+type ChipGroupRole = 'radiogroup' | 'group';
+
+/** react-native-web 转发给 DOM 的键盘事件（这份类型在 RN 的 View/Pressable 里没有）。 */
+type WebKeyLike = { key?: string; code?: string; preventDefault?: () => void };
+
+/**
+ * 空格键要自己接住，Enter 不用。原因在 react-native-web 的 PressResponder.isValidKeyPress：
+ * `key === 'Enter' || (空格 && isButtonish)`——Enter 对任何角色都成立，而空格只对原生 <button>
+ * 或 role=button 成立。这一排 chip 改成 role=radio / checkbox 后，RNW 渲染的是
+ * <div role="radio|checkbox">（AccessibilityUtil.propsToAccessibilityComponent 只把 role=button 映射成
+ * <button>），于是空格会掉在地上并拿去滚动页面；这里补上空格，Enter 仍旧交给 Pressable，
+ * 免得一次按键触发两次。非 web 平台没有这套 DOM 键盘语义，原样返回空对象。
+ */
+const spaceKeyProps = (onPress: () => void) =>
+  Platform.OS === 'web'
+    ? {
+        onKeyDown: (e: WebKeyLike) => {
+          if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+            e.preventDefault?.();
+            onPress();
+          }
+        },
+      }
+    : {};
+
 export default function StudyScreen() {
   const colors = useTheme();
   const { t, locale } = useI18n();
@@ -196,23 +226,74 @@ export default function StudyScreen() {
       </Text>
     ) : null;
 
-  const chip = (label: string, active: boolean, onPress: () => void, testID?: string) => (
+  /** 每一行的分组名：读屏软件停在 chip 上时用它说明"这是哪一行的选项"。 */
+  const deckGroup = t('flashcards.groupDeck');
+  const kindGroup = t('flashcards.groupKind');
+  const difficultyGroup = t('flashcards.groupDifficulty');
+  const levelGroup = t('flashcards.groupLevel');
+  const orderGroup = t('flashcards.groupOrder');
+
+  /**
+   * 筛选 chip：一行里的一个选项。
+   *
+   * 语义按"这一行怎么选"定，而不是按它长得像按钮：
+   * - 卡组 / 题型 / 分层 / 顺序：同一时刻最多一个成立 → role=radio，容器 role=radiogroup。
+   *   顺序那一行允许"一个都不选"（= 按卡池原顺序，再点一次选中的 chip 就回到这个状态），
+   *   这是 radio 组里"可以没有选中项"的用法；反过来给每个 chip 一个 checkbox、再靠代码假装互斥，
+   *   会让读屏软件告诉学生"这几个可以同时勾上"，那是谎报。
+   * - 难度分级：本来就是多选（[3,4] = 只要 3 和 4）→ role=checkbox，容器 role=group。
+   *
+   * 选中态只用 aria-checked 表达：react-native-web 不认 accessibilityState——createDOMProps 只认
+   * aria-* 别名和 accessibilityChecked/Selected 这些单项别名，accessibilityState={{ selected }} 整个对象
+   * 会被丢掉，DOM 上一个属性都不会出现（仓库里踩过这个坑）。可读名把"哪一行 + 哪个选项 + 选中没有"
+   * 一次说完，因为读屏软件停在 chip 上时不会自动念出这一行的标题，光一个"4"什么信息都没有。
+   * 每个 chip 自己是一个 Tab 停靠点（tabIndex=0），没有做 roving tabindex 与方向键：
+   * 代价是读一个 16 个卡组的单选组要按 16 次 Tab，好处是每个选项都能被 Tab 直接摸到，
+   * 不会出现"选中项之外一个都进不去"的死角。
+   */
+  const chip = (opts: {
+    label: string;
+    group: string;
+    role: ChipRole;
+    active: boolean;
+    onPress: () => void;
+    testID: string;
+  }) => (
     <Pressable
-      key={label}
-      testID={testID}
+      key={opts.testID}
+      testID={opts.testID}
+      role={opts.role}
+      aria-checked={opts.active}
+      aria-label={t('flashcards.chipA11y', {
+        group: opts.group,
+        label: opts.label,
+        state: opts.active ? t('flashcards.chipSelected') : t('flashcards.chipUnselected'),
+      })}
+      tabIndex={0}
       style={({ pressed }) => [
         styles.chip,
         {
-          backgroundColor: active ? colors.primary : colors.backgroundElement,
-          borderColor: active ? colors.primary : colors.border,
+          backgroundColor: opts.active ? colors.primary : colors.backgroundElement,
+          borderColor: opts.active ? colors.primary : colors.border,
         },
         pressed && styles.pressed,
       ]}
-      onPress={onPress}
-      accessibilityRole="button"
-      aria-selected={active}>
-      <Text style={[styles.chipText, { color: active ? colors.primaryText : colors.text }]}>{label}</Text>
+      onPress={opts.onPress}
+      {...spaceKeyProps(opts.onPress)}>
+      <Text style={[styles.chipText, { color: opts.active ? colors.primaryText : colors.text }]}>
+        {opts.label}
+      </Text>
     </Pressable>
+  );
+
+  /**
+   * 一行筛选的容器：role 说明这一行是单选还是多选，aria-label 说明这一行在筛什么。
+   * 只加在容器上，不加在那一行可见的标题 Text 上——标题是给人看的排版，不是 chip 的可读名。
+   */
+  const chipRow = (group: string, role: ChipGroupRole, children: ReactNode) => (
+    <View role={role} aria-label={group} style={styles.chipRow}>
+      {children}
+    </View>
   );
 
   return (
@@ -228,23 +309,55 @@ export default function StudyScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            role="radiogroup"
+            aria-label={deckGroup}
             contentContainerStyle={styles.chipRow}>
-            {chip(t('flashcards.all'), deck == null, () => pickDeck(null))}
-            {decks.map((d: FlashcardDeck) => chip(d.label, deck === d.key, () => pickDeck(d.key)))}
+            {chip({
+              label: t('flashcards.all'),
+              group: deckGroup,
+              role: 'radio',
+              active: deck == null,
+              onPress: () => pickDeck(null),
+              testID: 'deck-all',
+            })}
+            {decks.map((d: FlashcardDeck) =>
+              chip({
+                label: d.label,
+                group: deckGroup,
+                role: 'radio',
+                active: deck === d.key,
+                onPress: () => pickDeck(d.key),
+                testID: `deck-${d.key}`,
+              }),
+            )}
           </ScrollView>
           {showKinds && (
             <>
               <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.kinds')}</Text>
-              <View style={styles.chipRow}>
-                {chip(t('flashcards.all'), kind == null, () => pickKind(null))}
-                {kinds.map((k) =>
-                  chip(
-                    k === 'quiz' ? t('flashcards.kindQuiz') : t('flashcards.kindConcept'),
-                    kind === k,
-                    () => pickKind(k),
-                  ),
-                )}
-              </View>
+              {chipRow(
+                kindGroup,
+                'radiogroup',
+                <>
+                  {chip({
+                    label: t('flashcards.all'),
+                    group: kindGroup,
+                    role: 'radio',
+                    active: kind == null,
+                    onPress: () => pickKind(null),
+                    testID: 'kind-all',
+                  })}
+                  {kinds.map((k) =>
+                    chip({
+                      label: k === 'quiz' ? t('flashcards.kindQuiz') : t('flashcards.kindConcept'),
+                      group: kindGroup,
+                      role: 'radio',
+                      active: kind === k,
+                      onPress: () => pickKind(k),
+                      testID: `kind-${k}`,
+                    }),
+                  )}
+                </>,
+              )}
             </>
           )}
           {showDifficulty && (
@@ -256,43 +369,109 @@ export default function StudyScreen() {
                   {t('flashcards.difficultyHint')}
                 </Text>
               </Text>
-              <View style={styles.chipRow}>
-                {chip(t('flashcards.all'), difficulty.length === 0, clearDifficulty, 'difficulty-all')}
-                {difficulties.map((d) =>
-                  chip(String(d), difficulty.includes(d), () => toggleDifficulty(d), `difficulty-${d}`),
-                )}
-              </View>
+              {chipRow(
+                difficultyGroup,
+                // 多选行：每一档是一个 checkbox，「全部」= 一个都没勾上（点它 = 清空选择）
+                'group',
+                <>
+                  {chip({
+                    label: t('flashcards.all'),
+                    group: difficultyGroup,
+                    role: 'checkbox',
+                    active: difficulty.length === 0,
+                    onPress: clearDifficulty,
+                    testID: 'difficulty-all',
+                  })}
+                  {difficulties.map((d) =>
+                    chip({
+                      label: String(d),
+                      group: difficultyGroup,
+                      role: 'checkbox',
+                      active: difficulty.includes(d),
+                      onPress: () => toggleDifficulty(d),
+                      testID: `difficulty-${d}`,
+                    }),
+                  )}
+                </>,
+              )}
             </>
           )}
           {showLevels && (
             <>
               <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.level')}</Text>
-              <View style={styles.chipRow}>
-                {chip(t('flashcards.all'), level == null, () => setLevel(null))}
-                {chip(t('flashcards.core'), level === 'core', () => setLevel('core'))}
-                {chip(t('flashcards.advance'), level === 'advance', () => setLevel('advance'))}
-                {chip(t('flashcards.boundary'), level === 'boundary', () => setLevel('boundary'))}
-              </View>
+              {chipRow(
+                levelGroup,
+                'radiogroup',
+                <>
+                  {chip({
+                    label: t('flashcards.all'),
+                    group: levelGroup,
+                    role: 'radio',
+                    active: level == null,
+                    onPress: () => setLevel(null),
+                    testID: 'level-all',
+                  })}
+                  {chip({
+                    label: t('flashcards.core'),
+                    group: levelGroup,
+                    role: 'radio',
+                    active: level === 'core',
+                    onPress: () => setLevel('core'),
+                    testID: 'level-core',
+                  })}
+                  {chip({
+                    label: t('flashcards.advance'),
+                    group: levelGroup,
+                    role: 'radio',
+                    active: level === 'advance',
+                    onPress: () => setLevel('advance'),
+                    testID: 'level-advance',
+                  })}
+                  {chip({
+                    label: t('flashcards.boundary'),
+                    group: levelGroup,
+                    role: 'radio',
+                    active: level === 'boundary',
+                    onPress: () => setLevel('boundary'),
+                    testID: 'level-boundary',
+                  })}
+                </>,
+              )}
             </>
           )}
           <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t('flashcards.order')}</Text>
-          <View style={styles.chipRow}>
-            {chip(t('flashcards.shuffle'), shuffled, toggleShuffle, 'order-shuffle')}
-            {showOrder &&
-              chip(
-                t('flashcards.orderAsc'),
-                order === 'difficulty-asc',
-                () => pickOrder('difficulty-asc'),
-                'order-asc',
-              )}
-            {showOrder &&
-              chip(
-                t('flashcards.orderDesc'),
-                order === 'difficulty-desc',
-                () => pickOrder('difficulty-desc'),
-                'order-desc',
-              )}
-          </View>
+          {chipRow(
+            orderGroup,
+            'radiogroup',
+            <>
+              {chip({
+                label: t('flashcards.shuffle'),
+                group: orderGroup,
+                role: 'radio',
+                active: shuffled,
+                onPress: toggleShuffle,
+                testID: 'order-shuffle',
+              })}
+              {showOrder &&
+                chip({
+                  label: t('flashcards.orderAsc'),
+                  group: orderGroup,
+                  role: 'radio',
+                  active: order === 'difficulty-asc',
+                  onPress: () => pickOrder('difficulty-asc'),
+                  testID: 'order-asc',
+                })}
+              {showOrder &&
+                chip({
+                  label: t('flashcards.orderDesc'),
+                  group: orderGroup,
+                  role: 'radio',
+                  active: order === 'difficulty-desc',
+                  onPress: () => pickOrder('difficulty-desc'),
+                  testID: 'order-desc',
+                })}
+            </>,
+          )}
         </View>
 
         <Text style={[styles.note, { color: colors.textTertiary }]}>{t('flashcards.provenanceNote')}</Text>

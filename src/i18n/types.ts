@@ -183,6 +183,14 @@ export interface UiStrings {
   'flashcards.unverified': DictValue;
   'flashcards.verified': DictValue;
   'flashcards.provenanceNote': DictValue;
+  'flashcards.chipA11y': DictValue;
+  'flashcards.chipSelected': DictValue;
+  'flashcards.chipUnselected': DictValue;
+  'flashcards.groupDeck': DictValue;
+  'flashcards.groupKind': DictValue;
+  'flashcards.groupDifficulty': DictValue;
+  'flashcards.groupLevel': DictValue;
+  'flashcards.groupOrder': DictValue;
 }
 
 export type TKey = keyof UiStrings;

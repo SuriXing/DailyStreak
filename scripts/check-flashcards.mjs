@@ -17,6 +17,8 @@
  *   8. README 里的题库计数（按族题数表、英文覆盖表、难度区间表、以及几处正文里的总数）
  *      必须与 scripts/bank-stats.mjs 现算的结果一致——手写的计数每次加题都会漂移一次，
  *      而漂移后的数字读起来和真的一样。
+ *   9. 难度分布的形状：每个卡组的最难档（level 4）为 0 道即失败（难度筛选点不出最难档），
+ *      少于 3 道只警告；摘要行每次都报最难档总数与最薄的卡组。
  *
  * 运行时的 toQuiz() 解析行为由 scripts/smoke-test.js 端到端覆盖，这里只管数据形状。
  *
@@ -506,6 +508,53 @@ function checkDifficulty() {
   }
 }
 
+/**
+ * 难度分布的形状：最难档（level 4）在每个卡组里还剩几张。
+ *
+ * checkDifficulty 只问"标没标、值在不在 1-4 里、有没有整组挤在一个级别"，它不看某个
+ * 卡组的最难档有没有被抽空，所以那种缺陷在门禁里完全看不见：几周前 precalc 情境题的
+ * level-4 就是 0 道，一直等到有人手动翻了一遍才发现——难度筛选在那个卡组里点不出最难档，
+ * 而"难度分布"这件事此前只有 npm run bank:stats 会打印，没人会主动看。
+ *
+ * 两个阈值都是工程判断，不是统计结论（题库本来就稀薄，任何"统计上正常"的分布都拦不住
+ * 一个卡组慢慢掉到零）：
+ *   - LEVEL4_EMPTY = 0：一道都没有是明确缺陷，不是"薄"。难度筛选勾上最难档却什么都捞不到，
+ *     说明这个档位在这个卡组里等于没有内容，必须失败。
+ *   - LEVEL4_THIN = 3：少于 3 道算"薄"。薄是当前题库可接受的现状（每族情境题本来就只有
+ *     4 道左右），所以只往 stderr 打一行、不失败；定 3 而不是 1，是因为 1-2 道在一轮
+ *     难度筛选里几乎必然被抽完，等于这个卡组的最难档"名义上有、实际上点不出几道"。
+ */
+const LEVEL4_EMPTY = 0;
+const LEVEL4_THIN = 3;
+/** 最难档的分布，供摘要行使用：总数 + 最薄的卡组。 */
+const level4Stats = { total: 0, thinnest: null };
+function checkDifficultyShape() {
+  const byDeck = SUBJECT_DECKS.map((deck) => {
+    const counts = difficultyStats[deck] || [0, 0, 0, 0];
+    level4Stats.total += counts[3];
+    return { deck, counts, total: counts.reduce((a, b) => a + b, 0), level4: counts[3] };
+  });
+  for (const { deck, counts, total, level4 } of byDeck) {
+    if (level4 <= LEVEL4_EMPTY) {
+      problems.push(
+        `${deck}: 最难档（level 4）一道都没有（${total} 张卡，分布 L1/L2/L3/L4 = ${counts.join(
+          '/',
+        )}）→ 难度筛选在这个卡组里点不出最难档`,
+      );
+    } else if (level4 < LEVEL4_THIN) {
+      console.warn(
+        `⚠️ ${deck}: 最难档（level 4）只有 ${level4} 张、占 ${((level4 / total) * 100).toFixed(1)}%` +
+          `（少于 ${LEVEL4_THIN} 道只警告不失败：薄是现状，但要让人看见）`,
+      );
+    }
+  }
+  // 并列时按卡组名取第一个，保证摘要行稳定、可比；并列个数一起报，免得读成"只有它薄"。
+  level4Stats.thinnest = byDeck.reduce((a, b) =>
+    b.level4 < a.level4 || (b.level4 === a.level4 && b.deck < a.deck) ? b : a,
+  );
+  level4Stats.thinnest.tied = byDeck.filter((d) => d.level4 === level4Stats.thinnest.level4).length;
+}
+
 function checkOptionShape() {
   for (const card of ALL_CARDS) {
     const opts = card.front
@@ -605,6 +654,7 @@ checkFlashcardOverlay();
 checkDuplicateItems();
 checkOptionShape();
 checkDifficulty();
+checkDifficultyShape();
 checkDeckSourceSync();
 
 /**
@@ -908,7 +958,11 @@ console.log(
     Object.entries(difficultyStats)
       .map(([d, c]) => `${d} ${c.join('/')}`)
       .join('、')
-  }；英文覆盖 ${
+  }；最难档 ${level4Stats.total} 张，最薄：${level4Stats.thinnest.deck} ${
+    level4Stats.thinnest.level4
+  } 张（${((level4Stats.thinnest.level4 / level4Stats.thinnest.total) * 100).toFixed(1)}%${
+    level4Stats.thinnest.tied > 1 ? `，${level4Stats.thinnest.tied} 个卡组并列` : ''
+  }）；英文覆盖 ${
     overlayStats.covered
   }/${overlayStats.total}（情境题 ${overlayStats.scenario} 张要求全覆盖）；bundle 压缩块 ${
     (read('src/data/deck-pack.ts').length / 1024).toFixed(0)

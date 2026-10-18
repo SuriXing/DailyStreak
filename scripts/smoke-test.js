@@ -112,6 +112,56 @@ function expectedDeckPool(file) {
 }
 
 /**
+ * AMC10 概念卡的张数：src/data/amc10-flashcards.ts 里一行一张卡（生成文件，不写死数字）。
+ * 这一批卡没有 difficulty 字段（打包格式给"没有分级"写 0），「我的」页题库概览把它们单列在
+ * "没有分级"那一行，所以这个数同时是那一行的期望值。
+ */
+function expectedConceptCards() {
+  const file = path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
+  return fs
+    .readFileSync(file, 'utf8')
+    .split('\n')
+    .filter((line) => /\{ id: "/.test(line)).length;
+}
+
+/**
+ * 整套题库的题数 = AMC10 概念卡 + 练习池里的选择题，两个数都从生成数据里数出来。
+ *
+ * 这里刻意不走 expectedPracticePool：那个助手会把本机 public/local-deck.json 的题加进去
+ * （练习页确实会练到它们），而「我的」页的题库概览描述的是随 bundle 发出去的这套题库——
+ * 本地题库默认关闭（src/data/local-bank.ts 的 LOCAL_DECK_ENABLED），概览里不含它。
+ */
+function expectedLibraryTotal() {
+  let practice = 0;
+  forEachPracticeCard(() => {
+    practice += 1;
+  });
+  return expectedConceptCards() + practice;
+}
+
+/** 全部卡组键：AMC10 的五个概念卡组（amc10-flashcards.ts 的 AMC10_DECKS）+ subject-decks 下的卡组文件。 */
+function expectedDeckKeys() {
+  const amc10 = path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
+  const concepts = [...fs.readFileSync(amc10, 'utf8').matchAll(/\{ key: "([a-z0-9-]+)", label:/g)].map((m) => m[1]);
+  const dir = path.join(__dirname, '..', 'src', 'data', 'subject-decks');
+  const subject = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
+    .map((f) => f.replace(/\.ts$/, ''));
+  return [...concepts, ...subject];
+}
+
+/** 某个卡组的题数：AMC10 卡组在 amc10-flashcards.ts 里按 deck 数，其余走 expectedDeckPool。 */
+function expectedDeckCards(key) {
+  const file = path.join(__dirname, '..', 'src', 'data', 'amc10-flashcards.ts');
+  const concept = fs
+    .readFileSync(file, 'utf8')
+    .split('\n')
+    .filter((line) => /\{ id: "/.test(line) && line.includes(`deck: "${key}"`)).length;
+  return concept > 0 ? concept : expectedDeckPool(key);
+}
+
+/**
  * 按难度排序后的**整条**档位序列，由 orderCards 的语义从生成数据推出（不从界面读回来）：
  * 稳定排序 → 同一档内部沿用文件顺序；没有 difficulty 的卡（含打包格式的 0）排在末尾。
  */
@@ -198,6 +248,46 @@ async function waitForCurrentCardDifficulty(page, expected, tries = 24) {
   }
   return false;
 }
+
+/** 读某个 testID 元素里的第一个数字（题库概览的每一行都是"N 题"这种文案；没有元素返回 null）。 */
+async function readTestIdNumber(page, testID) {
+  const el = page.locator(`[data-testid="${testID}"]`);
+  if ((await el.count()) === 0) return null;
+  const m = (await el.first().innerText()).match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+/** 轮询等某个 testID 上的数字变成期望值（题库概览的行随渲染出现，不睡固定时长）。 */
+async function waitForTestIdNumber(page, testID, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    if ((await readTestIdNumber(page, testID)) === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
+/** 数一数某个前缀的 testID 有几个（卡组明细展开/收起时用）。 */
+const countTestIds = (page, prefix) => page.locator(`[data-testid^="${prefix}"]`).count();
+
+/** 轮询等某个前缀的 testID 个数变成期望值，返回是否等到。 */
+async function waitForTestIdCount(page, prefix, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    if ((await countTestIds(page, prefix)) === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
+/** 某个元素的可读 label（RN Web 把 accessibilityLabel 渲染成 aria-label）。 */
+async function ariaLabelOf(page, testID) {
+  const el = page.locator(`[data-testid="${testID}"]`);
+  if ((await el.count()) === 0) return null;
+  return (await el.first().getAttribute('aria-label')) ?? '';
+}
+
+/** 页面横向溢出的像素数：>0 说明有元素把页面撑出视口（"这个视口下不破版"的机器可判据）。 */
+const horizontalOverflow = (page) =>
+  page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 function clickI18n(page, zh, en) {
   return page.getByText(new RegExp(`${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).first().click();
@@ -458,6 +548,89 @@ function clickI18n(page, zh, en) {
   assertI18n(text, '主题', 'Theme', '我的页渲染主题切换');
   assertI18n(text, '里程碑徽章', 'Milestones', '我的页渲染里程碑徽章');
 
+  // 6a. 「我的」页·题库概览：总题数、每档题数、没有分级的张数、每个卡组的题数全部与生成数据比对。
+  //     期望值从生成文件算（AMC10 概念卡 + 练习池），不写死任何数字；渲染靠轮询等，不睡固定时长。
+  const libraryTotal = expectedLibraryTotal();
+  const conceptCards = expectedConceptCards();
+  const deckKeys = expectedDeckKeys();
+  const gradeLevels = expectedDifficulties();
+  const gradePool = (d) => expectedDifficultyPool([d]);
+  const gradedSum = gradeLevels.reduce((n, d) => n + gradePool(d), 0);
+  assertI18n(text, '题库概览', 'Question bank', '我的页渲染题库概览卡');
+  assert((await countTestIds(page, 'pool-card')) === 1, '题库概览是一张独立的卡片（页面上只有一张）');
+  assert(await waitForTestIdNumber(page, 'pool-total', libraryTotal), `题库概览的总题数是 ${libraryTotal}（AMC10 概念卡 + 练习池，两个数都从生成数据数出来）`);
+  assert(
+    await waitForTestIdNumber(page, 'pool-ungraded-count', conceptCards),
+    `"没有分级"那一行是 AMC10 概念卡的张数 ${conceptCards}（不是 0，也不是某一档）`,
+  );
+  for (const d of gradeLevels) {
+    assert(
+      await waitForTestIdNumber(page, `pool-grade-count-${d}`, gradePool(d)),
+      `难度 ${d} 的题数是 ${gradePool(d)}（该档在生成数据里的题数）`,
+    );
+  }
+  assert(
+    gradedSum + conceptCards === libraryTotal,
+    `四档之和 ${gradedSum} + 没有分级 ${conceptCards} = 总题数 ${libraryTotal}（无分级的卡没被算进任何一档，也没被算成 0 档）`,
+  );
+  assert(
+    !/(?:难度|Level|Nivel)\s*0/.test(text),
+    '概览里没有"难度 0"这种把"没有分级"当成一档的行（上面那行是单列的）',
+  );
+  assert(
+    (await countTestIds(page, 'pool-grade-count-')) === gradeLevels.length,
+    `难度行数与数据里的档位数一致（${gradeLevels.length} 档：${gradeLevels.join('/')}）`,
+  );
+
+  // 无障碍：标题与每一项都有可读的 label（沿用仓库做法：accessibilityLabel → aria-label）。
+  // 断言 label 里同时有档位与该档题数，学生/读屏软件听到的才是"难度 3，192 题"这种完整信息。
+  const totalLabel = (await ariaLabelOf(page, 'pool-total-row')) ?? '';
+  assert(totalLabel.includes(String(libraryTotal)), `总题数一行有可读的 label（含 ${libraryTotal}）：${totalLabel}`);
+  for (const d of gradeLevels) {
+    const label = (await ariaLabelOf(page, `pool-grade-${d}`)) ?? '';
+    assert(
+      label.includes(String(d)) && label.includes(String(gradePool(d))),
+      `难度 ${d} 一行有可读的 label（含档位与该档题数）：${label}`,
+    );
+  }
+  const ungradedLabel = (await ariaLabelOf(page, 'pool-ungraded-row')) ?? '';
+  assert(
+    ungradedLabel.includes(String(conceptCards)),
+    `"没有分级"一行有可读的 label（含张数 ${conceptCards}）：${ungradedLabel}`,
+  );
+
+  // 卡组明细：默认收起（不把这一页撑长），展开后逐个卡组与生成数据比对，再收起
+  assert((await countTestIds(page, 'pool-deck-count-')) === 0, '卡组明细默认收起（页面上没有 15 行卡组）');
+  await page.locator('[data-testid="pool-decks-toggle"]').click();
+  assert(
+    await waitForTestIdCount(page, 'pool-deck-count-', deckKeys.length),
+    `展开后列出全部 ${deckKeys.length} 个卡组`,
+  );
+  let deckSum = 0;
+  const deckMismatch = [];
+  for (const key of deckKeys) {
+    const shown = await readTestIdNumber(page, `pool-deck-count-${key}`);
+    const expected = expectedDeckCards(key);
+    deckSum += shown ?? 0;
+    if (shown !== expected) deckMismatch.push(`${key}: 界面 ${shown} ≠ 期望 ${expected}`);
+  }
+  assert(
+    deckMismatch.length === 0,
+    `每个卡组的题数都与生成数据一致（${deckKeys.length} 个卡组）${deckMismatch.length ? '：' + deckMismatch[0] : ''}`,
+  );
+  assert(deckSum === libraryTotal, `各卡组题数之和 ${deckSum} = 总题数 ${libraryTotal}`);
+  const deckLabel = (await ariaLabelOf(page, `pool-deck-${deckKeys[0]}`)) ?? '';
+  assert(
+    deckLabel.includes(String(expectedDeckCards(deckKeys[0]))),
+    `卡组明细每行有可读的 label（含该卡组题数）：${deckLabel}`,
+  );
+  await page.locator('[data-testid="pool-decks-toggle"]').click();
+  assert(await waitForTestIdCount(page, 'pool-deck-count-', 0), '再点一次收起卡组明细（折叠是可逆的）');
+
+  // 移动端视口（390px）下不横向溢出：展开过的卡组行收起后也不该剩下一根被撑出去的横条
+  const mobileOverflow = await horizontalOverflow(page);
+  assert(mobileOverflow <= 1, `移动端（390px）没有任何元素把页面撑出视口（超出 ${mobileOverflow}px）`);
+
   // 6b. 主题切换：点「暗色」后页面背景应变黑，切回后恢复
   const bgBefore = await page.evaluate(() =>
     [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(245, 245, 245)'),
@@ -491,6 +664,43 @@ function clickI18n(page, zh, en) {
   assert(flameIcons === 0 || !tabBarVisible, '桌面端隐藏底部 Tab 栏');
   // 侧边栏导航项应包含 今日 / 自由练 / 我的（无需点击，避免 dark 全屏层与深链抖动）
   assert(/(Today|今日)[\s\S]*(Practice|自由练)[\s\S]*(Me|我的)/.test(text), '桌面端侧边栏含 今日 / 自由练 / 我的');
+
+  // 7b. 桌面视口下的题库概览：宽屏有左侧边栏、卡片 maxWidth 760，数字与移动端一致才算"两种视口没有差异"。
+  //     这里不能像 6c 那样直接 goto '/profile'：整套布局挂在 Stack.Protected 里，
+  //     带路径的整页加载会被路由守卫重置回首页（实测 goto '/profile' 后 URL 变成 '/'、
+  //     且停在今日页），所以改成点侧边栏的「我的」做客户端跳转——探针验证过暗色下这一下点得动。
+  await clickI18n(page, '我的', 'Me');
+  assert(
+    await waitForTestIdNumber(page, 'pool-total', libraryTotal),
+    `桌面端（1280px）题库概览的总题数同样是 ${libraryTotal}`,
+  );
+  assert(
+    await waitForTestIdNumber(page, 'pool-ungraded-count', conceptCards),
+    `桌面端"没有分级"那一行同样是 ${conceptCards}`,
+  );
+  for (const d of gradeLevels) {
+    assert(
+      await waitForTestIdNumber(page, `pool-grade-count-${d}`, gradePool(d)),
+      `桌面端难度 ${d} 的题数同样是 ${gradePool(d)}（与移动端一致，说明宽屏只是排版变宽）`,
+    );
+  }
+  // 宽屏下把 15 行卡组展开，确认卡片在 760px 里排得下、横向不溢出，再收起
+  await page.locator('[data-testid="pool-decks-toggle"]').click();
+  assert(
+    await waitForTestIdCount(page, 'pool-deck-count-', deckKeys.length),
+    `桌面端展开卡组明细同样列出 ${deckKeys.length} 个卡组`,
+  );
+  const desktopOverflowOpen = await horizontalOverflow(page);
+  assert(
+    desktopOverflowOpen <= 1,
+    `桌面端（1280px）卡组明细展开后仍没有元素把页面撑出视口（超出 ${desktopOverflowOpen}px）`,
+  );
+  await page.locator('[data-testid="pool-decks-toggle"]').click();
+  assert(await waitForTestIdCount(page, 'pool-deck-count-', 0), '桌面端再点一次同样收起');
+  const desktopOverflow = await horizontalOverflow(page);
+  assert(desktopOverflow <= 1, `桌面端（1280px）没有任何元素把页面撑出视口（超出 ${desktopOverflow}px）`);
+  text = await page.locator('body').innerText();
+  assertI18n(text, '题库概览', 'Question bank', '桌面端题库概览卡正常渲染');
 
   console.log(`\n🎉 全部通过（测试账号 ${EMAIL}，密码 ${PASSWORD}）`);
 

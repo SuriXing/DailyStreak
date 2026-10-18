@@ -94,6 +94,21 @@ export const es: UiStrings = {
   'profile.themeLight': 'Claro',
   'profile.themeDark': 'Oscuro',
 
+  'profile.pool': 'Banco de preguntas',
+  'profile.poolTotalLabel': 'tarjetas para practicar',
+  'profile.poolTotalA11y': 'En total {count} tarjetas para practicar',
+  'profile.poolCount': '{count} tarjetas',
+  'profile.poolDifficultyHint': 'en Práctica puedes filtrar por varios niveles',
+  'profile.poolUngraded': 'Sin nivel',
+  'profile.poolUngradedHint':
+    'Las tarjetas de concepto de AMC10 se dividen en clave / avanzado / límite, así que no tienen nivel de dificultad y no se cuentan en ningún nivel de arriba.',
+  'profile.poolDecks': 'Por mazo',
+  'profile.poolDecksShow': 'Ver {count} mazos',
+  'profile.poolDecksHide': 'Ocultar mazos',
+  'profile.poolGradeA11y': 'Nivel {level}, {count} tarjetas',
+  'profile.poolUngradedA11y': '{count} tarjetas sin nivel de dificultad, no cuentan en ningún nivel',
+  'profile.poolDeckA11y': '{deck}, {count} tarjetas',
+
   'badges.title': 'Hitos',
   'badges.streakDays': 'Racha de {days} días',
   'badges.locked': 'Bloqueado',

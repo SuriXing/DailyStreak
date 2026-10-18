@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ import { useSessionUser } from '@/hooks/use-session-user';
 import { DAILY_GOALS, useDailyGoal, type DailyGoal } from '@/hooks/use-daily-goal';
 import { LOCALES, LOCALE_META, useI18n, type Locale } from '@/i18n';
 import { maxStreak, milestoneStatus } from '@/lib/badges';
+import { summarizePool } from '@/lib/flashcard-session';
 import { useThemePreference, type ThemePreference } from '@/contexts/theme-preference';
 import { Progress, Tag } from '@ant-design/react-native';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
@@ -32,6 +33,16 @@ export default function ProfileScreen() {
   const [answersByCourse, setAnswersByCourse] = useState<Record<string, AnswerRecord[]>>({});
   const [signingOut, setSigningOut] = useState(false);
   const [goal, setGoal] = useDailyGoal();
+  // 卡组明细默认收起：15 行摊开会把这一页拉得很长，而学生多数时候只想看总量与难度分布
+  const [decksOpen, setDecksOpen] = useState(false);
+
+  /**
+   * 题库概览：数字全部从卡片数据里数出来（summarizePool 用的是与筛选/排序同一套
+   * "算不算一档"的口径），这里不写死任何一个数。本地题库（运行时按开关拉取的
+   * 那份 public/local-deck.json）不在内：它只有本机打开开关时才存在，概览描述的是
+   * 随 bundle 一起发出去的那套题库，也就是学生在任何环境都能练到的那些卡。
+   */
+  const pool = useMemo(() => summarizePool(), []);
 
   useEffect(() => {
     if (!user) return;
@@ -127,6 +138,122 @@ export default function ProfileScreen() {
               </View>
             );
           })}
+        </View>
+
+        <View
+          testID="pool-card"
+          style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]} accessibilityRole="header">
+            {t('profile.pool')}
+          </Text>
+          <View
+            testID="pool-total-row"
+            style={styles.poolTotalRow}
+            accessibilityLabel={t('profile.poolTotalA11y', { count: pool.total })}>
+            <Text testID="pool-total" style={[styles.statNumber, { color: colors.text }]}>
+              {pool.total}
+            </Text>
+            <Text style={[styles.poolTotalLabel, { color: colors.textSecondary }]}>
+              {t('profile.poolTotalLabel')}
+            </Text>
+          </View>
+
+          <Text style={[styles.poolSectionLabel, { color: colors.textSecondary }]}>
+            {t('flashcards.difficulty')}
+            <Text style={[styles.cardHint, { color: colors.textTertiary }]}>
+              {' · '}
+              {t('profile.poolDifficultyHint')}
+            </Text>
+          </Text>
+          {pool.grades.map((grade) => (
+            <View
+              key={grade.difficulty}
+              testID={`pool-grade-${grade.difficulty}`}
+              style={styles.poolRow}
+              accessibilityLabel={t('profile.poolGradeA11y', { level: grade.difficulty, count: grade.count })}>
+              <Text
+                style={[
+                  styles.poolGradeBadge,
+                  {
+                    backgroundColor: colors.backgroundSelected,
+                    borderColor: colors.primary,
+                    color: colors.primary,
+                  },
+                ]}>
+                {t('flashcards.difficultyLabel', { level: grade.difficulty })}
+              </Text>
+              <Progress
+                percent={pool.total === 0 ? 0 : Math.round((grade.count / pool.total) * 100)}
+                barStyle={{ backgroundColor: colors.primary }}
+                style={styles.poolBar}
+              />
+              <Text
+                testID={`pool-grade-count-${grade.difficulty}`}
+                style={[styles.poolCount, { color: colors.textSecondary }]}>
+                {t('profile.poolCount', { count: grade.count })}
+              </Text>
+            </View>
+          ))}
+          {/* 没有分级的卡单列一行、不给进度条：它不是一个档位，画成一条"0 档"的横条等于把
+              564 张概念卡混进难度分布里，正是这一行要避免的误读 */}
+          <View
+            testID="pool-ungraded-row"
+            style={styles.poolUngradedRow}
+            accessibilityLabel={t('profile.poolUngradedA11y', { count: pool.ungraded })}>
+            <Text
+              style={[
+                styles.poolGradeBadge,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  borderColor: colors.border,
+                  color: colors.textSecondary,
+                },
+              ]}>
+              {t('profile.poolUngraded')}
+            </Text>
+            <Text
+              testID="pool-ungraded-count"
+              style={[styles.poolCount, { color: colors.textSecondary }]}>
+              {t('profile.poolCount', { count: pool.ungraded })}
+            </Text>
+          </View>
+          <Text style={[styles.cardHint, { color: colors.textTertiary }]}>
+            {t('profile.poolUngradedHint')}
+          </Text>
+
+          <Pressable
+            testID="pool-decks-toggle"
+            style={({ pressed }) => [styles.poolDeckToggle, pressed && styles.pressed]}
+            onPress={() => setDecksOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: decksOpen }}
+            accessibilityLabel={
+              decksOpen ? t('profile.poolDecksHide') : t('profile.poolDecksShow', { count: pool.decks.length })
+            }>
+            <Text style={[styles.poolSectionLabel, styles.poolSectionLabelFlat, { color: colors.textSecondary }]}>
+              {t('profile.poolDecks')}
+            </Text>
+            <Text style={[styles.poolToggleText, { color: colors.primary }]}>
+              {decksOpen
+                ? t('profile.poolDecksHide')
+                : t('profile.poolDecksShow', { count: pool.decks.length })}
+            </Text>
+          </Pressable>
+          {decksOpen &&
+            pool.decks.map((deck) => (
+              <View
+                key={deck.key}
+                testID={`pool-deck-${deck.key}`}
+                style={styles.poolDeckRow}
+                accessibilityLabel={t('profile.poolDeckA11y', { deck: deck.label, count: deck.count })}>
+                <Text style={[styles.poolDeckLabel, { color: colors.text }]}>{deck.label}</Text>
+                <Text
+                  testID={`pool-deck-count-${deck.key}`}
+                  style={[styles.poolCount, { color: colors.textSecondary }]}>
+                  {t('profile.poolCount', { count: deck.count })}
+                </Text>
+              </View>
+            ))}
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
@@ -316,6 +443,54 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two + 2,
   },
   statLabel: { fontSize: 12 },
+  poolTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  poolTotalLabel: { fontSize: 13, fontWeight: '600' },
+  poolSectionLabel: { fontSize: 12, fontWeight: '700', marginTop: Spacing.three },
+  poolSectionLabelFlat: { marginTop: 0 },
+  poolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  poolGradeBadge: {
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  poolBar: { flex: 1 },
+  poolCount: { fontSize: 12, fontWeight: '700', width: 56, textAlign: 'right' },
+  poolUngradedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  poolDeckToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  poolToggleText: { fontSize: 12, fontWeight: '700' },
+  poolDeckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  poolDeckLabel: { fontSize: 13, flexShrink: 1 },
   signOut: {
     borderRadius: 12,
     paddingVertical: 14,

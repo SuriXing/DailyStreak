@@ -1,4 +1,11 @@
-import { ALL_FLASHCARDS, toQuiz, type Flashcard, type FlashcardLevel } from '@/data/flashcards';
+import {
+  ALL_FLASHCARDS,
+  FLASHCARD_DECKS,
+  toQuiz,
+  type Flashcard,
+  type FlashcardDeck,
+  type FlashcardLevel,
+} from '@/data/flashcards';
 
 /** 卡片题型：带选项可点选的是选择题，其余（AMC10 知识卡）靠翻面复习。 */
 export type CardKind = 'quiz' | 'concept';
@@ -62,6 +69,66 @@ export function availableDifficulties(cards: readonly Flashcard[]): number[] {
     if (d !== null) seen.add(d);
   }
   return [...seen].sort((a, b) => a - b);
+}
+
+/** 一个卡组在题库里的题数（label 直接取卡组自己的展示名，与练习页的卡组 chip 同源）。 */
+export interface PoolDeckCount {
+  key: string;
+  label: string;
+  count: number;
+}
+
+/** 一个难度档在题库里的题数：档位来自 availableDifficulties，不写死 1-4。 */
+export interface PoolGradeCount {
+  difficulty: number;
+  count: number;
+}
+
+/** 「我的」页题库概览要用的全部数字。 */
+export interface PoolSummary {
+  /** 总题数：等于 grades 各档之和 + ungraded。 */
+  total: number;
+  decks: PoolDeckCount[];
+  grades: PoolGradeCount[];
+  /** 没有分级的题数（AMC10 概念卡）：不落在任何一档里，单列一项。 */
+  ungraded: number;
+}
+
+/**
+ * 题库概览（「我的」页）用的统计：总题数、每个卡组的题数、每一档的题数、没有分级的题数。
+ *
+ * 三组数字全部用与筛选/排序同一个 gradedDifficulty 口径数出来，所以不存在"把没有分级的卡
+ * 算成 0 档"：0（打包格式给"没有分级"写的占位）与 undefined 都只计入 ungraded，
+ * 既不进 1 档、也不会凭空多出一个"难度 0"的行。档位列表本身取自 availableDifficulties，
+ * 于是概览里出现的档位与练习页难度筛选行里出现的档位永远一致（数据里没有的档不会出现）。
+ *
+ * 传 cards 但没传 decks 时，卡组那一列只会数出 decks 里列出的卡组，
+ * 所以上面的"总题数 = 各卡组之和"只在 cards 就是整套题库（默认参数）时成立。
+ */
+export function summarizePool(
+  cards: readonly Flashcard[] = ALL_FLASHCARDS,
+  decks: readonly FlashcardDeck[] = FLASHCARD_DECKS,
+): PoolSummary {
+  const counts = new Map<number, number>();
+  let ungraded = 0;
+  for (const card of cards) {
+    const d = gradedDifficulty(card);
+    if (d === null) ungraded += 1;
+    else counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return {
+    total: cards.length,
+    decks: decks.map((deck) => ({
+      key: deck.key,
+      label: deck.label,
+      count: cards.filter((card) => card.deck === deck.key).length,
+    })),
+    grades: availableDifficulties(cards).map((difficulty) => ({
+      difficulty,
+      count: counts.get(difficulty) ?? 0,
+    })),
+    ungraded,
+  };
 }
 
 /** 会话的排序方式；null = 不排序（保持卡池原来的顺序）。 */

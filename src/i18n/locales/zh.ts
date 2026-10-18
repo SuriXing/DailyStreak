@@ -94,6 +94,21 @@ export const zh: UiStrings = {
   'profile.themeLight': '亮色',
   'profile.themeDark': '暗色',
 
+  'profile.pool': '题库概览',
+  'profile.poolTotalLabel': '题可练',
+  'profile.poolTotalA11y': '题库共 {count} 题可练',
+  'profile.poolCount': '{count} 题',
+  'profile.poolDifficultyHint': '练习页可按档多选筛选',
+  'profile.poolUngraded': '没有分级',
+  'profile.poolUngradedHint':
+    'AMC10 概念卡按核心 / 提高 / 边界分层，本身没有难度档，所以不计入上面任何一档。',
+  'profile.poolDecks': '按卡组',
+  'profile.poolDecksShow': '展开 {count} 个卡组',
+  'profile.poolDecksHide': '收起卡组',
+  'profile.poolGradeA11y': '难度 {level}，{count} 题',
+  'profile.poolUngradedA11y': '没有分级的卡 {count} 题，不计入任何难度档',
+  'profile.poolDeckA11y': '{deck}，{count} 题',
+
   'badges.title': '里程碑徽章',
   'badges.streakDays': '{days} 天连胜',
   'badges.locked': '未达成',

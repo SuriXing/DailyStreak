@@ -94,6 +94,21 @@ export const en: UiStrings = {
   'profile.themeLight': 'Light',
   'profile.themeDark': 'Dark',
 
+  'profile.pool': 'Question bank',
+  'profile.poolTotalLabel': 'cards to practise',
+  'profile.poolTotalA11y': '{count} cards to practise in total',
+  'profile.poolCount': '{count} cards',
+  'profile.poolDifficultyHint': 'multi-select these levels in Practice',
+  'profile.poolUngraded': 'No level',
+  'profile.poolUngradedHint':
+    'The AMC10 concept cards are split into core / advanced / boundary instead, so they have no difficulty level and are not counted in any level above.',
+  'profile.poolDecks': 'By deck',
+  'profile.poolDecksShow': 'Show {count} decks',
+  'profile.poolDecksHide': 'Hide decks',
+  'profile.poolGradeA11y': 'Level {level}, {count} cards',
+  'profile.poolUngradedA11y': '{count} cards have no difficulty level and count towards no level',
+  'profile.poolDeckA11y': '{deck}, {count} cards',
+
   'badges.title': 'Milestones',
   'badges.streakDays': '{days}-day streak',
   'badges.locked': 'Locked',

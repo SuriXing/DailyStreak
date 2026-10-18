@@ -231,35 +231,90 @@ async function readProgress(page) {
   return m ? [Number(m[1]), Number(m[2])] : null;
 }
 
+/**
+ * 通用轮询助手：反复问 predicate(page)，第一次返回真值就把它返回；超时返回 null。
+ *
+ * 为什么全脚本只该有这一处等待：固定 sleep 是**拿运行时速度当承诺**——慢机器、冷缓存、
+ * 一次 GC 停顿都会输给它，而输掉的样子和"这个功能坏了"一模一样；反过来在快机器上它又
+ * 白等满，把整次冒烟拖长。等条件则是：到位就立刻过，没到位就多转几圈。
+ *
+ * 超时不是静默的：打印**等了多久、当时的 URL、页面开头几行**，才能一眼分辨
+ * "根本没导航过去"（点空了/被拦住了）和"导航过去了但内容不对"（真的坏了）——
+ * 这两件事要修的地方完全不同。predicate 自己抛错（轮询过程中页面刚好在导航，执行上下文被换掉）
+ * 不算失败，记下最后一次错误继续等，真超时了连同它一起打出来。
+ *
+ * tries × delay 是时间预算（默认 40 × 250ms ≈ 10s）；慢步骤（注册、整页重载）传大一点的 tries，
+ * 快门限（应当立刻成立的切换）传小一点的 tries —— 预算的大小不改变"到位就过"这件事实。
+ */
+async function waitFor(page, predicate, { tries = 40, delay = 250, label = '条件成立' } = {}) {
+  const startedAt = Date.now();
+  let lastError = null;
+  for (let i = 0; i < tries; i += 1) {
+    try {
+      const value = await predicate(page);
+      if (value) return value;
+    } catch (e) {
+      lastError = e;
+    }
+    // 最后一次不再空转一圈：等到了就返回，等不到立刻去打印诊断
+    if (i < tries - 1) await page.waitForTimeout(delay);
+  }
+  const waited = ((Date.now() - startedAt) / 1000).toFixed(1);
+  let head = '（读不到页面文本）';
+  try {
+    head = (await page.locator('body').innerText())
+      .split('\n')
+      .filter(Boolean)
+      .slice(0, 4)
+      .join(' / ')
+      .slice(0, 160);
+  } catch {
+    /* 页面已经关掉/崩掉时诊断信息能少一行就少一行，不能因为它再抛一次 */
+  }
+  console.log(
+    `⚠️ 轮询 ${tries} 次 × ${delay}ms（实际等了 ${waited}s）仍未满足「${label}」；` +
+      `URL ${page.url()}；页面开头：${head}` +
+      (lastError ? `；最后一次取状态报错：${String(lastError).slice(0, 140)}` : ''),
+  );
+  return null;
+}
+
+/** waitFor 的布尔版：只想知道"到没到位"的调用方用它，判据与诊断都还是 waitFor 那一套。 */
+const waitUntil = async (page, predicate, opts) => (await waitFor(page, predicate, opts)) !== null;
+
 /** 轮询等进度分母变成期望值（不用固定 sleep，等到了就返回 true）。 */
 async function waitForTotal(page, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    const progress = await readProgress(page);
-    if (progress && progress[1] === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => {
+      const progress = await readProgress(p);
+      return progress !== null && progress[1] === expected;
+    },
+    { tries, label: `进度分母变成 ${expected}` },
+  );
 }
 
 /** 轮询等进度分子/分母都变成期望值（切换筛选或顺序后会话重开，等它自己到位）。 */
 async function waitForProgress(page, current, total, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    const progress = await readProgress(page);
-    if (progress && progress[0] === current && progress[1] === total) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => {
+      const progress = await readProgress(p);
+      return progress !== null && progress[0] === current && progress[1] === total;
+    },
+    { tries, label: `进度变成 ${current} / ${total}` },
+  );
 }
 
 /** 卡片上的难度标签（testID=card-difficulty）：只有真的带分级的卡才该有，个数按期望等。 */
 const cardDifficulty = (page) => page.locator('[data-testid="card-difficulty"]');
 
 async function waitForCardDifficulty(page, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    if ((await cardDifficulty(page).count()) === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => (await cardDifficulty(p).count()) === expected,
+    { tries, label: `卡片上的难度标签个数变成 ${expected}` },
+  );
 }
 
 /** 当前这张卡上的难度档（没有标签就返回 null），文案兼容「难度 3 / Level 3 / Nivel 3」。 */
@@ -271,11 +326,11 @@ async function currentCardDifficulty(page) {
 
 /** 轮询等"当前这张卡的难度"变成期望档：排序切换后卡片是重渲染出来的，不睡固定时长。 */
 async function waitForCurrentCardDifficulty(page, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    if ((await currentCardDifficulty(page)) === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => (await currentCardDifficulty(p)) === expected,
+    { tries, label: `当前这张卡的难度档变成 ${expected}` },
+  );
 }
 
 /** 读某个 testID 元素里的第一个数字（题库概览的每一行都是"N 题"这种文案；没有元素返回 null）。 */
@@ -288,11 +343,11 @@ async function readTestIdNumber(page, testID) {
 
 /** 轮询等某个 testID 上的数字变成期望值（题库概览的行随渲染出现，不睡固定时长）。 */
 async function waitForTestIdNumber(page, testID, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    if ((await readTestIdNumber(page, testID)) === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => (await readTestIdNumber(p, testID)) === expected,
+    { tries, label: `${testID} 上的数字变成 ${expected}` },
+  );
 }
 
 /** 数一数某个前缀的 testID 有几个（卡组明细展开/收起时用）。 */
@@ -300,11 +355,11 @@ const countTestIds = (page, prefix) => page.locator(`[data-testid^="${prefix}"]`
 
 /** 轮询等某个前缀的 testID 个数变成期望值，返回是否等到。 */
 async function waitForTestIdCount(page, prefix, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    if ((await countTestIds(page, prefix)) === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => (await countTestIds(p, prefix)) === expected,
+    { tries, label: `以 ${prefix} 开头的元素个数变成 ${expected}` },
+  );
 }
 
 /** 读某个 testID 元素上的一个属性：元素不在返回 null，属性不在也返回 null。 */
@@ -319,11 +374,11 @@ async function testIdAttr(page, testID, attr) {
  * 属性是跟着一次重渲染才更新的（点一下 → setState → 提交），所以和文件里其他断言一样等状态，不睡固定时长。
  */
 async function waitForTestIdAttr(page, testID, attr, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    if ((await testIdAttr(page, testID, attr)) === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => (await testIdAttr(p, testID, attr)) === expected,
+    { tries, label: `${testID} 的 ${attr} 变成 ${expected === null ? '（不存在）' : expected}` },
+  );
 }
 
 /** 某个元素的可读 label（RN Web 把 accessibilityLabel 渲染成 aria-label）。 */
@@ -412,47 +467,45 @@ async function controlA11y(page, testID) {
 const hasI18n = (text, zh, en) => text.includes(zh) || text.toLowerCase().includes(en.toLowerCase());
 
 /**
- * 轮询等页面文本里出现某个中/英文说法，返回等到的文本（超时返回最后一次读到的文本）。
+ * 轮询等页面文本里出现某个中/英文说法，返回等到的文本（超时返回最后读到的文本）。
  *
  * 为什么要有它：切 Tab 之后目标屏是**第一次挂载**（懒挂载 + 该屏自己的数据），
  * "点完睡 2500ms 再读一次文本"是拿运行时速度当承诺——慢机器、冷缓存、GC 停顿都会输给它，
- * 而输掉的样子和"这个功能坏了"一模一样。仓库里其他断言早就是轮询（waitForTotal / waitForTestIdNumber …），
- * 只有这一屏是读一次就判。
- *
- * 超时不是静默失败的：把当时的 URL 和页面开头打出来，才能一眼看出是"根本没导航过去"
- * 还是"导航过去了但内容不对"——这两件事要修的地方完全不同。
+ * 而输掉的样子和"这个功能坏了"一模一样。判据与超时诊断（耗时 / URL / 页面开头）在 waitFor 里统一定义，
+ * 这里只负责"命中就返回那段文本"，好让调用方原本那条 assertI18n 继续当失败点。
  */
 async function waitForI18n(page, zh, en, tries = 40) {
-  let text = '';
-  for (let i = 0; i < tries; i += 1) {
-    text = await page.locator('body').innerText();
-    if (hasI18n(text, zh, en)) return text;
-    await page.waitForTimeout(250);
-  }
-  console.log(
-    `⚠️ 等了 ${(tries * 250) / 1000}s 也没等到「${zh} / ${en}」；URL ${page.url()}；` +
-      `页面开头：${text.split('\n').filter(Boolean).slice(0, 4).join(' / ').slice(0, 160)}`,
+  const hit = await waitFor(
+    page,
+    async (p) => {
+      const text = await p.locator('body').innerText();
+      return hasI18n(text, zh, en) ? text : null;
+    },
+    { tries, label: `页面出现「${zh} / ${en}」` },
   );
-  return text;
+  // 超时也要把最后读到的文本交回去，失败才落在调用方那条断言上（waitFor 已经把诊断打出来了）
+  return hit ?? (await page.locator('body').innerText());
 }
 
 /** 轮询等某个 chip 的 aria-checked 变成期望值（切换后重渲染是异步的，不睡固定时长）。 */
 async function waitForChipChecked(page, testID, expected, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    const chip = await chipA11y(page, testID);
-    if (chip && chip.checked === expected) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => {
+      const chip = await chipA11y(p, testID);
+      return chip !== null && chip.checked === expected;
+    },
+    { tries, label: `${testID} 的 aria-checked 变成 ${expected}` },
+  );
 }
 
 /** 轮询等某个 testID 的元素出现（换卡组会让整行 chip 换掉，等它渲染出来再断言）。 */
 async function waitForChip(page, testID, tries = 24) {
-  for (let i = 0; i < tries; i += 1) {
-    if ((await page.locator(`[data-testid="${testID}"]`).count()) > 0) return true;
-    await page.waitForTimeout(250);
-  }
-  return false;
+  return waitUntil(
+    page,
+    async (p) => (await p.locator(`[data-testid="${testID}"]`).count()) > 0,
+    { tries, label: `页面上出现 ${testID}` },
+  );
 }
 
 /** 当前焦点元素的 testID（焦点不在带 testID 的元素上就返回 null）。 */
@@ -530,8 +583,8 @@ async function clickTab(page, zh, en) {
 
   // 1. 未登录应看到登录页（路由守卫）
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForTimeout(4000);
-  let text = await page.locator('body').innerText();
+  // 首屏要先下载/执行 bundle、再解析会话，才知道该显示登录页还是主界面：等登录文案出现，不睡 4s
+  let text = await waitForI18n(page, '登 录', 'Log in', 80);
   assertI18n(text, '登 录', 'Log in', '未登录时显示登录页（路由守卫生效）');
   assertI18n(text, '没有账号？去注册', 'No account? Sign up', '登录页有注册入口');
   assertI18n(text, '继续使用 Google', 'Continue with Google', '登录页有 Google 登录按钮');
@@ -544,8 +597,9 @@ async function clickTab(page, zh, en) {
   await inputs.nth(1).fill(EMAIL);
   await inputs.nth(2).fill(PASSWORD);
   await clickI18n(page, '注 册', 'Sign up');
-  await page.waitForTimeout(7000);
-  text = await page.locator('body').innerText();
+  // 注册要走一次真实的 Supabase 写入 + 首屏数据拉取，慢的时候确实久：但"久"应该多转几圈，
+  // 而不是把 7s 当成承诺——等今日页的标题出现（40s 预算，到位就立刻往下走）
+  text = await waitForI18n(page, '今日知识点', "Today's lesson", 160);
   assertI18n(text, '今日知识点', "Today's lesson", '注册后进入今日页');
   assert(
     !(text.includes('没有账号？去注册') || text.includes('No account? Sign up')),
@@ -562,26 +616,34 @@ async function clickTab(page, zh, en) {
   ]);
   if ((await flipCard.count()) > 0) await flipCard.click();
   else if ((await optionA.count()) > 0) await optionA.click();
-  await page.waitForTimeout(600);
+  // 作答之后「今日打卡」按钮才会出现（index.tsx 的 doneStep = 答过题 / 翻过面；没满足时那一格是
+  // 灰的「先翻面」）：等的是**这个按钮本身**，不是"点完睡 600ms 希望 setState 已经提交"。
+  assert(
+    await waitUntil(
+      page,
+      async (p) => hasI18n(await p.locator('body').innerText(), '今日打卡', 'Check in today'),
+      { label: '作答后出现可点的「今日打卡 / Check in today」按钮（doneStep 成立才有它）' },
+    ),
+    '作答（点选项 / 翻面）后出现可点的「今日打卡」按钮',
+  );
 
-  // 打卡：点完轮询等状态变化，而不是睡一个固定时长
+  // 打卡是一次网络写入 + 状态回填：轮询等按钮变成「今日已打卡」，而不是每 1s 硬睡、睡满 20 次
   await clickI18n(page, '今日打卡', 'Check in today');
-  let checkedIn = false;
-  for (let i = 0; i < 20; i += 1) {
-    await page.waitForTimeout(1000);
-    const t = await page.locator('body').innerText();
-    if (t.includes('今日已打卡') || t.includes('Checked in today')) {
-      checkedIn = true;
-      break;
-    }
-  }
+  const checkedIn = await waitUntil(
+    page,
+    async (p) => hasI18n(await p.locator('body').innerText(), '今日已打卡', 'Checked in today'),
+    { tries: 80, label: '打卡后按钮变成「今日已打卡 / Checked in today」' },
+  );
   assert(checkedIn, '打卡成功（先作答今日一课），按钮变为已打卡（今日已打卡 / Checked in today）');
   text = await page.locator('body').innerText();
   assertI18n(text, '今日练习', "Today's practice", '今日练习进度卡渲染');
 
   // 4. 自由练（Practice）：默认应为选择题卡（默认只练选择题，不再一进来就是概念词条）
+  // 这一屏也是第一次挂载：等的是"整池已经灌进会话"——进度分母到位，说明卡片数据与筛选都渲染完了，
+  // 比"点完睡 2500ms 再读一次文本"可靠，也快（通常 1-2 次轮询就过）。
   await clickI18n(page, '自由练', 'Practice');
-  await page.waitForTimeout(2500);
+  const pool = expectedPracticePool();
+  assert(await waitForTotal(page, pool), `自由练渲染完成：进度分母是整池 ${pool}（会话已灌入卡片数据）`);
   text = await page.locator('body').innerText();
   assertLabel(text, '全部卡组', 'all decks', '自由练渲染卡组筛选');
   assertLabel(text, '题型', 'card type', '自由练渲染题型筛选');
@@ -594,7 +656,6 @@ async function clickTab(page, zh, en) {
 
   // 4b. 难度分级可多选：点一个档是"加入选择"，再点一个档是"或"（不是替换它），「全部」清空选择。
   // 每一步的分母都从生成数据算（expectedDifficultyPool），不写死数字，也等轮询而不是睡固定时长。
-  const pool = expectedPracticePool();
   const levels = expectedDifficulties();
   assert(levels.length > 1, `生成数据里有多个难度档可供多选（${levels.join('/')}）`);
   const [first, second] = levels.slice(-2); // 取最高的两档，正是"只要 3 和 4"这种诉求
@@ -881,18 +942,26 @@ async function clickTab(page, zh, en) {
   assert(await waitForTotal(page, pool), `分层行检查完切回「全部卡组」，分母回到整池 ${pool}`);
 
   // 5. 下一张 + 切到概念卡翻面
+  // 三处都不睡固定时长：分子/分母与翻面提示都是 DOM 状态，等它们到位即可
   await clickI18n(page, '下一张', 'Next');
-  await page.waitForTimeout(800);
-  text = await page.locator('body').innerText();
-  assert(new RegExp(`2 / ${pool}`).test(text), `下一张后进度为 2 / ${pool}（练习册 + 情境题的题量，从生成数据算出）`);
+  assert(
+    await waitForProgress(page, 2, pool),
+    `下一张后进度为 2 / ${pool}（练习册 + 情境题的题量，从生成数据算出）`,
+  );
   await clickI18n(page, '概念卡', 'Concept cards');
-  await page.waitForTimeout(800);
-  text = await page.locator('body').innerText();
+  text = await waitForI18n(page, '点击卡片查看答案', 'Tap the card to reveal the answer');
   assertI18n(text, '点击卡片查看答案', 'Tap the card to reveal the answer', '切到概念卡后走翻面模式');
   await clickI18n(page, '翻面', 'Flip');
-  await page.waitForTimeout(800);
-  text = await page.locator('body').innerText();
-  assert(!(text.includes('点击卡片查看答案') || text.includes('Tap the card to reveal the answer')), '翻面后露出答案（隐藏翻卡提示）');
+  // 这一条是**反向**条件（提示消失），同样是等得到的状态，只是判据写成"不再出现"
+  assert(
+    await waitUntil(
+      page,
+      async (p) =>
+        !hasI18n(await p.locator('body').innerText(), '点击卡片查看答案', 'Tap the card to reveal the answer'),
+      { label: '翻面后「点击卡片查看答案 / Tap the card」提示消失' },
+    ),
+    '翻面后露出答案（隐藏翻卡提示）',
+  );
 
   // 6. 我的页
   // 这一步曾经偶发失败（CI 红过一次、同提交重跑就过；本地也有人遇到过一次同样现象），两个原因叠在同一条断言上：
@@ -1097,9 +1166,15 @@ async function clickTab(page, zh, en) {
     [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(245, 245, 245)'),
   );
   await clickI18n(page, '暗色', 'Dark');
-  await page.waitForTimeout(1200);
-  const darkApplied = await page.evaluate(() =>
-    [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(0, 0, 0)'),
+  // 暗色是靠 Provider 换 theme + 重挂载生效的（antd 把样式缓存在组件实例里），所以"变黑"本身
+  // 就是可观察终点：等出现 rgb(0,0,0) 的背景色，而不是点完硬睡 1200ms 再赌它已经重挂载完
+  const darkApplied = await waitUntil(
+    page,
+    (p) =>
+      p.evaluate(() =>
+        [...document.querySelectorAll('*')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(0, 0, 0)'),
+      ),
+    { label: '点「暗色」后有元素背景变成 rgb(0, 0, 0)' },
   );
   assert(bgBefore && darkApplied, '暗色主题生效（背景变黑）');
 
@@ -1117,8 +1192,8 @@ async function clickTab(page, zh, en) {
 
   // 6c. 今日页新增：今日一课 + 本周概览（dark 下点击会被全屏层拦截，用 URL 导航）
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForTimeout(2500);
-  text = await page.locator('body').innerText();
+  // 整页重载：bundle 执行 + 会话恢复都比一次客户端跳转慢，等今日页标题出现（20s 预算）
+  text = await waitForI18n(page, '今日知识点', "Today's lesson", 80);
   assertI18n(text, '今日知识点', "Today's lesson", '今日页渲染今日一课');
   assertI18n(text, '本周概览', 'This week', '今日页渲染本周概览');
 
@@ -1127,7 +1202,16 @@ async function clickTab(page, zh, en) {
 
   // 7. 桌面端（≥900px）：侧边栏布局 + 导航
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.waitForTimeout(2000);
+  // 视口一变，布局由 useMedia 的监听重挂载成侧边栏：等侧边栏的导航项真的出现在 DOM 上，
+  // 不睡 2000ms 赌它在（这条判据比"品牌文案"稳：折叠成图标栏时文案不渲染，导航项照旧在）
+  assert(
+    await waitUntil(
+      page,
+      async (p) => (await p.locator('[data-testid="sidebar-nav-checkin"]').count()) > 0,
+      { label: '视口切到 1280px 后出现侧边栏（sidebar-nav-checkin）' },
+    ),
+    '桌面视口（1280px）下切出侧边栏布局',
+  );
   text = await page.locator('body').innerText();
   assertI18n(text, '每日学习打卡', 'Daily study habit', '桌面端显示侧边栏品牌');
   assertI18n(text, '退出登录', 'Sign out', '桌面端侧边栏有退出入口');

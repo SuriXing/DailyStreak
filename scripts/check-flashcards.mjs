@@ -17,8 +17,8 @@
  *   8. README 里的题库计数（按族题数表、英文覆盖表、难度区间表、以及几处正文里的总数）
  *      必须与 scripts/bank-stats.mjs 现算的结果一致——手写的计数每次加题都会漂移一次，
  *      而漂移后的数字读起来和真的一样。
- *   9. 难度分布的形状：每个卡组的最难档（level 4）为 0 道即失败（难度筛选点不出最难档），
- *      少于 3 道只警告；摘要行每次都报最难档总数与最薄的卡组。
+ *   9. 难度分布的形状：两端对称——每个卡组的最弱档（level 1）与最难档（level 4）为 0 道都
+ *      失败（难度筛选点不出这一档），少于 3 道只警告；摘要行每次都报两端的总数与最薄的卡组。
  *
  * 运行时的 toQuiz() 解析行为由 scripts/smoke-test.js 端到端覆盖，这里只管数据形状。
  *
@@ -509,50 +509,113 @@ function checkDifficulty() {
 }
 
 /**
- * 难度分布的形状：最难档（level 4）在每个卡组里还剩几张。
+ * 难度分布的形状：两端（最弱档 level 1、最难档 level 4）在每个卡组里还剩几张。
  *
  * checkDifficulty 只问"标没标、值在不在 1-4 里、有没有整组挤在一个级别"，它不看某个
- * 卡组的最难档有没有被抽空，所以那种缺陷在门禁里完全看不见：几周前 precalc 情境题的
+ * 卡组的两端有没有被抽空，所以那种缺陷在门禁里完全看不见：几周前 precalc 情境题的
  * level-4 就是 0 道，一直等到有人手动翻了一遍才发现——难度筛选在那个卡组里点不出最难档，
  * 而"难度分布"这件事此前只有 npm run bank:stats 会打印，没人会主动看。
  *
- * 两个阈值都是工程判断，不是统计结论（题库本来就稀薄，任何"统计上正常"的分布都拦不住
+ * 最弱档同样会空，而且空得更隐蔽：csa-scenario 的分布曾是 0/23/25/4、precalc-scenario 曾是
+ * 0/28/22/4，两个卡组一道入门题都没有，想先做热身题的学生只能从 level 2 起跳——`bank:stats`
+ * 把那个 0 印在一列里，没有任何门禁读它。两端空掉对学生的后果一样具体（一个是练不到难的，
+ * 一个是入不了门），所以这条检查两端对称，阈值也各有一套名字，不共用一个 LEVEL4 常量。
+ *
+ * 四个阈值都是工程判断，不是统计结论（题库本来就稀薄，任何"统计上正常"的分布都拦不住
  * 一个卡组慢慢掉到零）：
- *   - LEVEL4_EMPTY = 0：一道都没有是明确缺陷，不是"薄"。难度筛选勾上最难档却什么都捞不到，
- *     说明这个档位在这个卡组里等于没有内容，必须失败。
- *   - LEVEL4_THIN = 3：少于 3 道算"薄"。薄是当前题库可接受的现状（每族情境题本来就只有
- *     4 道左右），所以只往 stderr 打一行、不失败；定 3 而不是 1，是因为 1-2 道在一轮
- *     难度筛选里几乎必然被抽完，等于这个卡组的最难档"名义上有、实际上点不出几道"。
+ *   - LEVEL1_EMPTY / LEVEL4_EMPTY = 0：一道都没有是明确缺陷，不是"薄"。难度筛选勾上这一档
+ *     却什么都捞不到，说明这个档位在这个卡组里等于没有内容，必须失败。
+ *   - LEVEL1_THIN / LEVEL4_THIN = 3：少于 3 道算"薄"。薄是当前题库可接受的现状（每族情境题
+ *     本来就只有 4 道左右；level-1 最薄的是 calcbc-scenario 的 1 道，csa/precalc 两个情境
+ *     卡组各 2 道），所以只往 stderr 打一行、不失败；定 3 而不是 1，是因为 1-2 道在一轮
+ *     难度筛选里几乎必然被抽完，等于这个卡组的这一档"名义上有、实际上点不出几道"。
+ *     两端用同一个数字不是为了让代码对称好看，而是"一轮练习抽得完"这个判据对两端是同一个。
  */
+const LEVEL1_EMPTY = 0;
+const LEVEL1_THIN = 3;
 const LEVEL4_EMPTY = 0;
 const LEVEL4_THIN = 3;
-/** 最难档的分布，供摘要行使用：总数 + 最薄的卡组。 */
-const level4Stats = { total: 0, thinnest: null };
+
+/**
+ * 两端的判定与摘要桶。两端的规则一字不差，差别只在打印的字面和"抽不到这一档意味着什么"，
+ * 所以写成一张描述表跑两遍，而不是把同一个循环抄两份——抄两份的下一步就是两边漂移。
+ */
+const DIFFICULTY_TIERS = [
+  {
+    key: 'low',
+    index: 0,
+    label: '最弱档（level 1）',
+    summaryLabel: '最弱档',
+    empty: LEVEL1_EMPTY,
+    thin: LEVEL1_THIN,
+    consequence: '难度筛选勾上最弱档却什么都捞不到，想先做热身题的学生在这个卡组里没有一道入门题',
+  },
+  {
+    key: 'high',
+    index: 3,
+    label: '最难档（level 4）',
+    summaryLabel: '最难档',
+    empty: LEVEL4_EMPTY,
+    thin: LEVEL4_THIN,
+    consequence: '难度筛选在这个卡组里点不出最难档',
+  },
+];
+/** 两端的分布，供摘要行使用：总张数 + 最薄的卡组（并列个数一起记）。 */
+const tierStats = {
+  low: { total: 0, thinnest: null },
+  high: { total: 0, thinnest: null },
+};
+
 function checkDifficultyShape() {
   const byDeck = SUBJECT_DECKS.map((deck) => {
     const counts = difficultyStats[deck] || [0, 0, 0, 0];
-    level4Stats.total += counts[3];
-    return { deck, counts, total: counts.reduce((a, b) => a + b, 0), level4: counts[3] };
+    return { deck, counts, total: counts.reduce((a, b) => a + b, 0) };
   });
-  for (const { deck, counts, total, level4 } of byDeck) {
-    if (level4 <= LEVEL4_EMPTY) {
-      problems.push(
-        `${deck}: 最难档（level 4）一道都没有（${total} 张卡，分布 L1/L2/L3/L4 = ${counts.join(
-          '/',
-        )}）→ 难度筛选在这个卡组里点不出最难档`,
-      );
-    } else if (level4 < LEVEL4_THIN) {
-      console.warn(
-        `⚠️ ${deck}: 最难档（level 4）只有 ${level4} 张、占 ${((level4 / total) * 100).toFixed(1)}%` +
-          `（少于 ${LEVEL4_THIN} 道只警告不失败：薄是现状，但要让人看见）`,
-      );
+  for (const tier of DIFFICULTY_TIERS) {
+    const stats = tierStats[tier.key];
+    for (const { deck, counts, total } of byDeck) {
+      const n = counts[tier.index];
+      if (n <= tier.empty) {
+        problems.push(
+          `${deck}: ${tier.label}一道都没有（${total} 张卡，分布 L1/L2/L3/L4 = ${counts.join(
+            '/',
+          )}）→ ${tier.consequence}`,
+        );
+      } else if (n < tier.thin) {
+        console.warn(
+          `⚠️ ${deck}: ${tier.label}只有 ${n} 张、占 ${((n / total) * 100).toFixed(1)}%` +
+            `（少于 ${tier.thin} 道只警告不失败：薄是现状，但要让人看见）`,
+        );
+      }
     }
+    stats.total = byDeck.reduce((a, d) => a + d.counts[tier.index], 0);
+    // 并列时按卡组名取第一个，保证摘要行稳定、可比；并列个数一起报，免得读成"只有它薄"。
+    const thinnest = byDeck.reduce((a, b) =>
+      b.counts[tier.index] < a.counts[tier.index] ||
+      (b.counts[tier.index] === a.counts[tier.index] && b.deck < a.deck)
+        ? b
+        : a,
+    );
+    const count = thinnest.counts[tier.index];
+    stats.thinnest = {
+      deck: thinnest.deck,
+      total: thinnest.total,
+      count,
+      tied: byDeck.filter((d) => d.counts[tier.index] === count).length,
+    };
   }
-  // 并列时按卡组名取第一个，保证摘要行稳定、可比；并列个数一起报，免得读成"只有它薄"。
-  level4Stats.thinnest = byDeck.reduce((a, b) =>
-    b.level4 < a.level4 || (b.level4 === a.level4 && b.deck < a.deck) ? b : a,
+}
+
+/** 摘要行里一段："最弱档 15 张，最薄：csa-scenario 2 张（3.7%，2 个卡组并列）"。 */
+function tierSummaryText(key) {
+  const { total, thinnest } = tierStats[key];
+  const label = DIFFICULTY_TIERS.find((t) => t.key === key).summaryLabel;
+  return (
+    `${label} ${total} 张，最薄：${thinnest.deck} ${thinnest.count} 张` +
+    `（${((thinnest.count / thinnest.total) * 100).toFixed(1)}%${
+      thinnest.tied > 1 ? `，${thinnest.tied} 个卡组并列` : ''
+    }）`
   );
-  level4Stats.thinnest.tied = byDeck.filter((d) => d.level4 === level4Stats.thinnest.level4).length;
 }
 
 function checkOptionShape() {
@@ -958,11 +1021,7 @@ console.log(
     Object.entries(difficultyStats)
       .map(([d, c]) => `${d} ${c.join('/')}`)
       .join('、')
-  }；最难档 ${level4Stats.total} 张，最薄：${level4Stats.thinnest.deck} ${
-    level4Stats.thinnest.level4
-  } 张（${((level4Stats.thinnest.level4 / level4Stats.thinnest.total) * 100).toFixed(1)}%${
-    level4Stats.thinnest.tied > 1 ? `，${level4Stats.thinnest.tied} 个卡组并列` : ''
-  }）；英文覆盖 ${
+  }；${tierSummaryText('low')}；${tierSummaryText('high')}；英文覆盖 ${
     overlayStats.covered
   }/${overlayStats.total}（情境题 ${overlayStats.scenario} 张要求全覆盖）；bundle 压缩块 ${
     (read('src/data/deck-pack.ts').length / 1024).toFixed(0)

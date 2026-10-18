@@ -50,7 +50,7 @@ An item whose explanation mentions a standalone A–D is **not** option-rotated,
 
 ## Difficulty
 
-Levels 1–4 are a rubric judgement about expected work, not measured difficulty. The rubric, worked examples, and the change procedure live in `docs/difficulty-rubric.md`. After changing a level, re-run the generator chain: the gate fails when a deck has **zero** level-4 items and warns when it has fewer than three.
+Levels 1–4 are a rubric judgement about expected work, not measured difficulty. The rubric, worked examples, and the change procedure live in `docs/difficulty-rubric.md`. After changing a level, re-run the generator chain: the gate fails when a deck has **zero** items at either end of the scale (level 4 *or* level 1) and warns when either end has fewer than three.
 
 ---
 

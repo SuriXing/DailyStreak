@@ -236,6 +236,57 @@ letter that holds the correct option. Items whose stems carry a leftover line fr
 "carrying on from the last item" cards) and one stem that merges two questions (calculus 112) are known and left
 alone; they are wording problems rather than wrong keys.
 
+### 哪些保证是机器强制的，哪些只是人的承诺
+
+上面几段说"门禁会检查……"，但读的人没法从中判断某一句保证到底是脚本在挡，还是必须有人去读。
+下表逐条拆开：**每行 = 一个保证**，"由什么强制"写的是真正让它成立的机制（脚本名，或"人读"），
+"在什么情况下会失败"是按当前代码读出来的触发条件，"已知盲点"是这条机制**管不到**的部分。
+表里的数字全部来自 `npm run bank:stats`、`node scripts/sync-overlays.mjs --check`、
+`npm run test:session` 与 `npm run check:flashcards` 的现算输出，不是手抄的。
+
+| 保证 | 由什么强制 | 在什么情况下会失败 | 已知盲点 |
+|---|---|---|---|
+| 卡片形状：文件头声明的张数 = 实际张数；id 连续且等于源题号；恰好四行 `A./B./C./D.`；选项非空、无残留标签；`答案：X` 与 `正确选项：…` 逐字一致 | `check-flashcards.mjs`（`parseCards` / `checkIdSequence` / `checkSubjectCard`） | 手改数据、解析规则回归、源题缺号 | 只管形状：选项顺序、题干文字、答案对不对它都不知道 |
+| 概念卡（564 张）没有选项行，`level` 只在 `core/advance/boundary` 里 | 同上（`checkConceptCard`） | 概念卡混进选项块、`level` 拼错 | 只认三个字面值，级别判得对不对不管 |
+| 题干出现"上题/上式/上述/前一题"时，`front` 必须以 `【承接上题】` 开头 | 同上（`checkBackReference`） | 承接行被删掉 | 只认这四个词，换了说法这条检查就失去对象 |
+| `source` 正确、`verified` 与台账哈希一致、台账里没有孤儿 id | 同上（`checkProvenance`）+ `scripts/flashcard-verification.json`（登记 1462 张、当前实际核验 1462 张） | 改了 `front`/`back` 而没更新台账 → 直接失败并打印新旧哈希 | 只证明"这一版正文被复核过"；复核本身的质量（干扰项写的错法能不能真算出那个数）机器判断不了 |
+| `FlashcardSource` 联合类型仍含 `'amc10-concept'` / `'ai-mcq'` | 同上（`checkSourceUnion`） | 字面量被人删掉 → 界面上的来源标注静默走错分支 | 只比对两个字符串，来源是否真的填对了不在它手里（见上一行） |
+| 产物与 `content/` 源同步 | 同上（`checkDeckSourceSync`：把两个生成器重建到临时目录逐字比对） | 改了源忘了重跑生成链 | 只证明"产物 = 按当前源重建的结果"，源里的题对不对不管 |
+| bundle 压缩块与卡组数据同步；应用代码不许 import 明文卡组 | 同上（重打包后比对解压内容 + `checkNoPlainDeckImport`） | 改了卡没重新打包、有人把明文模块 import 回 app | 压缩只省体积、只防 grep，不是保护（脚本打印的 194 KB 就是 `deck-pack.ts` 的文件长度） |
+| 答案字母分布：≥40 张的卡组里每个字母 25%±10% | 同上（`checkAnswerPositions`） | 重新生成后答案挤在某个字母上 | 概念卡没有答案字母、不参与；只约束聚合比例，单张卡不保证 |
+| "正确项 = 最长"比例：每卡组 ≤40%、全库 ≤30%（并列时算在最靠前那一项头上） | 同上（`checkOptionLengthBias`） | 选项长度又开始泄露答案 | 同样只看聚合比例，单张卡的正确答案可以是最长的；这个口径比"严格最长"读数更高 |
+| 情境题卡组：≥20 题，且 ≥75% 的题干带刺激材料（多行或 ≥30 字） | 同上（`checkScenarioDecks`） | 用单步题充数 | 只挡住最粗的退化，不判断情境是否真的需要多步推理 |
+| 题干重复 | 同上（`checkDuplicateItems`：去标点、去空白、取前 80 字） | 复制粘贴出两张同题干卡 | 只抓归一化后完全相同的题干；同一概念的近重复（CSP 那几处聚集）它看不出来 |
+| 选项形状：空选项、两个选项文字完全相同、"以上都不对/无法判断"这类逃生口（且它是干扰项） | 同上（`checkOptionShape`） | 生成或手改出这类选项 | 逃生口只在选项本身很短（≤12 字）时才判；正确答案写成这类是允许的 |
+| 简析不得把错法挂在正确答案的字母上 | 同上（`checkBriefLetterReferences`） | 简析里出现"字母 + 漏/忘/误/把/当成…"且那个字母就是答案字母 | 判据故意窄：只认那一组错法动词、字母后紧跟"正确/成立"就豁免；不检查英文简析里的字母引用；字母指向**另一个干扰项**（写错了是哪个干扰项）它看不出来 |
+| 难度：练习册每张必须有 1–4；≥40 张的卡组不能有单一级别超过九成 | `check-flashcards.mjs`（`checkDifficulty`）+ 生成器（缺标注直接 `throw`） | 缺标注、标成 0/5、整组一个级别 | 情境题的难度不是逐卡断言的（`checkDifficulty` 只对非 `-scenario` 卡组要求存在，缺标注靠"生成器抛错 + 产物同步比对"兜住）；级别判得对不对机器不管 |
+| README 的题库计数：按族题数表、英文覆盖表的 `N of M`、难度区间表 16 个百分比、正文里点名总数的四句 | `check-flashcards.mjs`（`checkReadmeBankCounts`，数字现取自 `bank-stats.mjs`） | 加题后手写数字漂移；表头或措辞改到解析不出来（这也算失败，免得检查失去对象） | 只覆盖它认得的那三张表与那四句话。README 里其它数字没有门禁：`Quality Gates` 段的 "30 assertions" 与 bundle 段的 "132 KB / 321 KB" 都已经对不上现在的脚本与实测（`smoke-test.js` 里 125 处断言调用点；`deck-pack.ts` 194 KB、gzip 块 145 KB、明文卡组模块 583 KB） |
+| 英文覆盖层结构自洽：四个选项字母、答案字母与中文一致、`Correct option` 与它指向的选项逐字一致、无残留中文、无孤立 id、`src` 与当前中文 `front+back` 的哈希一致；情境题必须全覆盖 | `check-flashcards.mjs`（`checkFlashcardOverlay`） | 中文改了英文没跟上（`src` 对不上）；情境题缺条目 | 只校验结构与自洽，**不校验译文的意思**——`Answer: A` 与 `Correct option` 可以互相印证地一起写错成同一条错方法（`csp-126` 现在就是这样）；练习册与概念卡缺条目只报比例、不是失败。另外 `src` 是人跑 `sync-overlays.mjs --write` 时机械重算的，**对它没能对齐的那些卡也会刷新**，所以这个哈希证明的是"跑过脚本"，不是"这一版英文被人读过" |
+| 英文选项顺序与中文逐字母对应 | `scripts/sync-overlays.mjs` 的数字指纹（**人跑的脚本：不在 CI、不在 `precheck`、不在 git 钩子里**） | `--check` 在需要重排顺序或重算 `src` 时退出码非 0 | 实测 898 张带选项的卡里指纹只能判定 **278** 张（另有 5 张靠 `scripts/overlay-order-overrides.json` 的显式置换）；**339** 张被列进"需人工核对"（其中 319 张中英指纹序列逐位相同，只是指纹重复或某个选项没有数字，脚本"绝不猜"）；**281** 张至少有一侧的四个选项里一个数字都没有，脚本连报都不报、静默跳过。**跳过多少张不影响退出码**，所以它绿着不代表英文顺序是对的 |
+| UI 词典 zh/en/es 键集一致、课程内容覆盖齐全 | `scripts/check-i18n.mjs`（147 keys，17 条目 / 17 技能 / 3 课程） | 新增键只改 `zh`、课程条目漏译 | 只查键的存在与集合相等，不查译文语义；英文卡片覆盖层不在这里（在 `check-flashcards` 那两行） |
+| 练习页筛选/排序语义，以及真实题库的恒等式"各档之和 + 没有分级 = 总题数" | `scripts/test-session-logic.mjs`（60 个 test，需要 Node ≥22.15） | `filterCards` / `availableDifficulties` / `orderCards` / `summarizePool` 的语义被改坏 | 只测 lib 层的返回值：不测渲染、不测点选、不测翻面 |
+| 本地题库链路（`content/local/` → `public/local-deck.json` → 卡池 → 难度筛选） | 同一支脚本里的往返测试（在临时目录真跑一遍生成器）+ `build-local-bank.mjs` 自己跳过写错标注的题 | 生成器解析回归、难度标记写错 | **浏览器里没跑过**：本机 `public/` 下没有 `local-deck.json`，也没有 `.env.local` 去打开 `EXPO_PUBLIC_LOCAL_DECK=1`（默认关），所以 fetch → 卡池 → 渲染那一跳只有单测覆盖 |
+| 端到端 UI 行为：登录门控、注册、打卡、三个 Tab、难度多选与键盘操作、排序、题库概览数字、390px/1280px 不横向溢出、零控制台错误 | `scripts/smoke-test.js`（Playwright，125 处断言调用点：`assert(...)` 98、`assertI18n` 20、`assertLabel` 7，其中一部分在循环里） | 需要 8081（或 `SMOKE_BASE`）上跑着 dev server、装好 chromium、并且能连到 Supabase 走完真实注册；CI 的 smoke job 在没配 secrets 时**整段跳过**（只打一条 warning），脚本自己没有跳过逻辑 | 题量与难度分母都从生成数据现算，但本地题库那一跳不在里面；不在浏览器里算对比度（那轮审计用的是不进仓库的临时脚本）；测试账号是真实注册的真实用户，只有配了管理 token 才自清理 |
+| UXE 设计契约：antd token 一致性、明暗对称、组件里的 raw hex、三组对比度 | `.uxe/scripts/check.py`（= `npm run uxe:check`，CI 与 `precheck` 都跑） | 组件里写死颜色、token 缺失、明暗不对称、对比度低于门槛 | 静态检查：它读 `src/constants/theme.ts` 的 token 与组件文件里的字面颜色，渲染出来的实际像素不在它手里 |
+| 内容正确性：答案本身、干扰项写的错法能不能真算出它显示的数字、简析里的数学、英文译文的意思 | **人读**（三轮对抗性复核 + 复核台账） | 只有人读能发现；机器一条都判断不了 | `check-flashcards` 甚至不知道"这道题的答案对不对"，台账只证明有人复核过这一版正文 |
+| 难度级别判得对不对（1–4 每一级的判定） | **人读**（判据与改级流程写在 `docs/difficulty-rubric.md`，含每级的真实例子） | 复核者按 rubric 独立复算 | rubric 判的是"预期工作量"而不是实测难度；机器只看"有没有、是不是 1–4、分布有没有区分度" |
+| 那 620 张指纹判定不了的卡的英文选项顺序 | **人读**（`sync-overlays.mjs --check` 打印的跳过清单只是入口） | —— | 339 张里真正"数字对不上"的只有 **20** 张，另外 **319** 张是中英指纹序列逐位相同却仍不可判定（**115** 张指纹重复、**204** 张某个选项没有数字）。这 20 张逐张读过：**19** 张是写法差异（中文 `.4` / 英文 `0.4`、字面 `H0` 被读成数字 0、`1,000,000` 被拆成 1/0/0、`万元` 对 `million`、英文把算式里的中间数字省掉），**1** 张（`csp-126`）是真的错位 |
+| README 里没有被那四条正则覆盖的数字与说法 | **无人**（写的人自己负责） | —— | 门禁只保证它认得的那几处，其余读起来一样可信 |
+
+关于上面英文覆盖层那两行，README 前面写的"the fingerprint now proves the order for 559 of the 898
+option cards"是错的，别再引用：559 是把 `--check` **没有报告**的张数当成"已证明"（898 − 339），
+但 339 只是"两侧都有数字却没能对齐"的那一堆，另外 281 张至少有一侧的四个选项里一个数字都没有、
+脚本根本不报告，
+所以真正被证明的是 **278** 张，剩下的 **620** 张全是人工判断。而这 620 张里就有 `csp-126` 这种
+活的错误：英文选项的顺序与中文不一致，`Answer: A` 指在"排序后每隔十条取一条"这条干扰项上
+（中文的 A 是"多次有放回抽样，记录每次的中位数"，英文简析自己也写着 systematic picking 不对），
+而门禁只看英文自己是否自洽，所以它一路绿灯。这类错误的共同形状是"结构自洽、语义错位"——
+只有人把两种语言对着读一遍才发现，`--check` 的跳过清单是它唯一的机器线索。
+
+判据本身要写在文件里、能被第二个人独立复算，而不是只存在于标注者脑子里：难度那一半在
+[docs/difficulty-rubric.md](docs/difficulty-rubric.md)，UI 那一半由 `.uxe/scripts/check.py`
+（`npm run uxe:check`）强制。
+
 ### Difficulty, and what tagging it revealed
 
 All 898 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { computeStreak, fetchCheckins } from '@/lib/checkins';
@@ -16,6 +16,28 @@ import { useThemePreference, type ThemePreference } from '@/contexts/theme-prefe
 import { Progress, Tag } from '@ant-design/react-native';
 import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+
+/** react-native-web 转发给 DOM 的键盘事件（这份类型在 RN 的 View/Pressable 里没有）。 */
+type WebKeyLike = { key?: string; code?: string; preventDefault?: () => void };
+
+/**
+ * 空格键要自己接住，Enter 不用——与自由练页（src/app/(tabs)/study.tsx）的 spaceKeyProps 同一条理由：
+ * RNW 的 PressResponder.isValidKeyPress 是 `Enter || (空格 && isButtonish)`，而 isButtonish 只对原生
+ * <button> 或 role=button 成立。下面这几行选项改成 role=radio 之后渲染的是 <div role="radio">，
+ * 空格会掉在地上并拿去滚动页面。这里只补空格，Enter 仍旧交给 Pressable，免得一次按键触发两次。
+ * 非 web 平台没有这套 DOM 键盘语义，原样返回空对象。
+ */
+const spaceKeyProps = (onPress: () => void) =>
+  Platform.OS === 'web'
+    ? {
+        onKeyDown: (e: WebKeyLike) => {
+          if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+            e.preventDefault?.();
+            onPress();
+          }
+        },
+      }
+    : {};
 
 export default function ProfileScreen() {
   const user = useSessionUser();
@@ -92,6 +114,58 @@ export default function ProfileScreen() {
   const total = checkedSet?.size ?? null;
   const streak = checkedSet ? computeStreak(checkedSet) : null;
   const milestones = milestoneStatus(maxStreak(checkedSet ?? new Set()));
+
+  // 三行选项各自的分组名：容器的 aria-label 与每个选项可读名里的"哪一组"用同一份文案
+  const goalGroup = t('profile.dailyGoal');
+  const languageGroup = t('profile.language');
+  const themeGroup = t('profile.theme');
+
+  /**
+   * 一行"同一时刻只能成立一个"的选项（每日目标 / 语言 / 主题）：容器 role=radiogroup，选项 role=radio。
+   *
+   * 为什么不是 accessibilityState={{ selected }}：react-native-web 的 createDOMProps 只映射 aria-* 名字和
+   * accessibilitySelected 这类单项别名，整个 accessibilityState 对象会被丢掉——改之前这三行在 DOM 上
+   * 是九个裸的 `<div tabindex="0">`，既没有角色也没有选中态，读屏软件听到的是一个不知道能不能点的方块。
+   * 为什么不是 aria-selected：那是 tab / option / gridcell 这类角色的状态，radio 上用它是假状态；
+   * 选中态走 aria-checked（与自由练页那排筛选 chip 同一套写法）。
+   *
+   * 可读名把"哪一行 + 哪个选项 + 选中没有"一次说完：读屏软件停在选项上不会自己念出这一行的标题。
+   * 每个选项自己是一个 Tab 停靠点（tabindex=0），没有做 roving tabindex 与方向键——
+   * 代价是这三行一共 9 次 Tab，好处是没有"选中项之外一个都进不去"的死角。
+   */
+  const optionChip = (opts: {
+    testID: string;
+    label: string;
+    group: string;
+    active: boolean;
+    onPress: () => void;
+    /** goal 是每日目标那种独立小方块，lang 是等宽的三等分块（语言与主题共用） */
+    variant: 'goal' | 'lang';
+  }) => (
+    <Pressable
+      key={opts.testID}
+      testID={opts.testID}
+      role="radio"
+      aria-checked={opts.active}
+      aria-label={t('flashcards.chipA11y', {
+        group: opts.group,
+        label: opts.label,
+        state: opts.active ? t('flashcards.chipSelected') : t('flashcards.chipUnselected'),
+      })}
+      tabIndex={0}
+      style={({ pressed }) => [
+        opts.variant === 'goal' ? styles.goalChip : styles.langChip,
+        {
+          backgroundColor: opts.active ? colors.primary : colors.backgroundElement,
+          borderColor: opts.active ? colors.primary : colors.border,
+        },
+        pressed && styles.pressed,
+      ]}
+      onPress={opts.onPress}
+      {...spaceKeyProps(opts.onPress)}>
+      <Text style={[styles.goalChipText, { color: opts.active ? '#fff' : colors.text }]}>{opts.label}</Text>
+    </Pressable>
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -221,13 +295,17 @@ export default function ProfileScreen() {
             {t('profile.poolUngradedHint')}
           </Text>
 
+          {/* 折叠开关：「展开/收起」这件事由 aria-expanded 表达，不塞进可读名里。
+              react-native-web 会丢掉 accessibilityState（改之前这里写的是 accessibilityState={{ expanded }}，
+              DOM 上只剩 <button aria-label="Show 15 decks">，展开与否一个字都没有）；role=button 渲染的是
+              真 <button>，空格键由浏览器自己按下去，不用补 onKeyDown。 */}
           <Pressable
             testID="pool-decks-toggle"
             style={({ pressed }) => [styles.poolDeckToggle, pressed && styles.pressed]}
             onPress={() => setDecksOpen((open) => !open)}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: decksOpen }}
-            accessibilityLabel={
+            role="button"
+            aria-expanded={decksOpen}
+            aria-label={
               decksOpen ? t('profile.poolDecksHide') : t('profile.poolDecksShow', { count: pool.decks.length })
             }>
             <Text style={[styles.poolSectionLabel, styles.poolSectionLabelFlat, { color: colors.textSecondary }]}>
@@ -261,86 +339,49 @@ export default function ProfileScreen() {
           <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
             {t('profile.goalHint')}
           </Text>
-          <View style={styles.goalRow}>
-            {DAILY_GOALS.map((g) => {
-              const active = goal === g;
-              return (
-                <Pressable
-                  key={g}
-                  style={({ pressed }) => [
-                    styles.goalChip,
-                    {
-                      backgroundColor: active ? colors.primary : colors.backgroundElement,
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => setGoal(g as DailyGoal)}
-                  accessibilityState={{ selected: active }}>
-                  <Text
-                    style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
-                    {t('profile.goalQuestions', { count: g })}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View role="radiogroup" aria-label={goalGroup} style={styles.goalRow}>
+            {DAILY_GOALS.map((g) =>
+              optionChip({
+                testID: `goal-${g}`,
+                label: t('profile.goalQuestions', { count: g }),
+                group: goalGroup,
+                active: goal === g,
+                onPress: () => setGoal(g as DailyGoal),
+                variant: 'goal',
+              }),
+            )}
           </View>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>{t('profile.language')}</Text>
-          <View style={styles.goalRow}>
-            {LOCALES.map((l: Locale) => {
-              const active = locale === l;
-              return (
-                <Pressable
-                  key={l}
-                  style={({ pressed }) => [
-                    styles.langChip,
-                    {
-                      backgroundColor: active ? colors.primary : colors.backgroundElement,
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => setLocale(l)}
-                  accessibilityLabel={LOCALE_META[l].nativeName}
-                  accessibilityState={{ selected: active }}>
-                  <Text
-                    style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
-                    {LOCALE_META[l].nativeName}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View role="radiogroup" aria-label={languageGroup} style={styles.goalRow}>
+            {LOCALES.map((l: Locale) =>
+              optionChip({
+                testID: `lang-${l}`,
+                label: LOCALE_META[l].nativeName,
+                group: languageGroup,
+                active: locale === l,
+                onPress: () => setLocale(l),
+                variant: 'lang',
+              }),
+            )}
           </View>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.backgroundElement }, Shadows.card]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>{t('profile.theme')}</Text>
-          <View style={styles.goalRow}>
-            {THEME_OPTIONS.map((opt) => {
-              const active = preference === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  style={({ pressed }) => [
-                    styles.langChip,
-                    {
-                      backgroundColor: active ? colors.primary : colors.backgroundElement,
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => setPreference(opt.value)}
-                  accessibilityState={{ selected: active }}>
-                  <Text
-                    style={[styles.goalChipText, { color: active ? '#fff' : colors.text }]}>
-                    {t(opt.labelKey)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View role="radiogroup" aria-label={themeGroup} style={styles.goalRow}>
+            {THEME_OPTIONS.map((opt) =>
+              optionChip({
+                testID: `theme-${opt.value}`,
+                label: t(opt.labelKey),
+                group: themeGroup,
+                active: preference === opt.value,
+                onPress: () => setPreference(opt.value),
+                variant: 'lang',
+              }),
+            )}
           </View>
         </View>
 

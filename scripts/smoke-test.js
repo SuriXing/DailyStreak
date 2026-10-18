@@ -289,6 +289,104 @@ async function ariaLabelOf(page, testID) {
 const horizontalOverflow = (page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
+/**
+ * 一个筛选 chip 的无障碍属性：role / aria-checked / aria-selected / tabindex / aria-label / 可见文案。
+ * RN Web 把 accessibilityLabel 渲染成 aria-label、把 role 渲染成 role；页面上没有这个 testID 时返回 null。
+ * selected 这里永远是 null 才对：选中态只走 aria-checked，因为 react-native-web 不认 accessibilityState
+ * （createDOMProps 只映射 aria-* 别名和 accessibilityChecked/Selected 这类单项别名，整个对象会被丢掉），
+ * 而 aria-selected 又不能用在 role=radio/checkbox 上——断言它为空就是在盯住这两个坑。
+ */
+async function chipA11y(page, testID) {
+  const el = page.locator(`[data-testid="${testID}"]`);
+  if ((await el.count()) === 0) return null;
+  const first = el.first();
+  return {
+    role: await first.getAttribute('role'),
+    checked: await first.getAttribute('aria-checked'),
+    selected: await first.getAttribute('aria-selected'),
+    tabIndex: await first.getAttribute('tabindex'),
+    label: (await first.getAttribute('aria-label')) ?? '',
+    text: (await first.innerText()).trim(),
+  };
+}
+
+/**
+ * chip 所在的组：往回找最近的 role=radiogroup / role=group，读出它的 role、aria-label 与组里 chip 的个数。
+ * "一行被读成一组"看的就是这个容器——只给每个 chip 加 role 的话，读屏软件仍然只会念孤立的选项。
+ */
+async function chipGroupA11y(page, testID) {
+  const el = page.locator(`[data-testid="${testID}"]`);
+  if ((await el.count()) === 0) return null;
+  return el.first().evaluate((node) => {
+    const group = node.closest('[role="radiogroup"],[role="group"]');
+    if (!group) return null;
+    return {
+      role: group.getAttribute('role'),
+      label: group.getAttribute('aria-label') ?? '',
+      chips: group.querySelectorAll('[role="radio"],[role="checkbox"]').length,
+    };
+  });
+}
+
+/**
+ * label 里说的选中态：true = 说"已选中"，false = 说"未选中"，null = 两样都没说。
+ * 判断顺序不能反：中文的「未选中」里含「选中」，英文的 "not selected" 里含 "selected"，
+ * 先判肯定式的话，每个没选中的 chip 都会被读成选中的，断言就全成了空话。
+ */
+function labelState(label) {
+  if (/未选中|not selected|sin seleccionar/.test(label)) return false;
+  if (/已选中|selected|seleccionado/.test(label)) return true;
+  return null;
+}
+
+/** 文本里有没有中文或英文的某个说法（与 assertI18n 同口径，只是返回布尔、不抛错）。 */
+const hasI18n = (text, zh, en) => text.includes(zh) || text.toLowerCase().includes(en.toLowerCase());
+
+/** 轮询等某个 chip 的 aria-checked 变成期望值（切换后重渲染是异步的，不睡固定时长）。 */
+async function waitForChipChecked(page, testID, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    const chip = await chipA11y(page, testID);
+    if (chip && chip.checked === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
+/** 轮询等某个 testID 的元素出现（换卡组会让整行 chip 换掉，等它渲染出来再断言）。 */
+async function waitForChip(page, testID, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    if ((await page.locator(`[data-testid="${testID}"]`).count()) > 0) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
+/** 当前焦点元素的 testID（焦点不在带 testID 的元素上就返回 null）。 */
+const focusedTestId = (page) =>
+  page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null);
+
+/**
+ * 从当前焦点一路按 Tab，直到 activeElement 命中某个 testID：返回按了几次，走不到返回 -1。
+ * 键盘可达就是这么证的——不是"元素有 tabindex"，而是真的用 Tab 走到了它身上。
+ */
+async function tabUntilTestId(page, testID, max = 80) {
+  for (let i = 1; i <= max; i += 1) {
+    await page.keyboard.press('Tab');
+    if ((await focusedTestId(page)) === testID) return i;
+  }
+  return -1;
+}
+
+/** 从当前焦点一路按 Tab，直到 activeElement 的文案命中正则（键盘走到某个按钮上）；返回按了几次，走不到返回 -1。 */
+async function tabUntilText(page, re, max = 30) {
+  for (let i = 1; i <= max; i += 1) {
+    await page.keyboard.press('Tab');
+    const text = await page.evaluate(() => (document.activeElement?.innerText ?? '').trim());
+    if (re.test(text)) return i;
+  }
+  return -1;
+}
+
 function clickI18n(page, zh, en) {
   return page.getByText(new RegExp(`${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).first().click();
 }
@@ -395,13 +493,14 @@ function clickI18n(page, zh, en) {
     `两档的题数相加 = 多选两档的题数（${onlyFirst} + ${onlySecond} = ${both}）`,
   );
   const chipSel = (d) => `[data-testid="difficulty-${d}"]`;
-  const chipSelected = (d) => page.locator(chipSel(d)).getAttribute('aria-selected');
+  // 选中态读 aria-checked：难度这一行是多选，chip 的 role 是 checkbox（aria-selected 不能用在 checkbox 上）
+  const chipSelected = (d) => page.locator(chipSel(d)).getAttribute('aria-checked');
   assert((await readProgress(page))?.[1] === pool, `默认「全部」时分母是整池 ${pool}`);
   assert((await chipSelected(first)) === 'false', `难度 ${first} 初始未选中`);
 
   await page.locator(chipSel(first)).click();
   assert(await waitForTotal(page, onlyFirst), `选中难度 ${first} 后分母变成 ${onlyFirst}（该档的题数）`);
-  assert((await chipSelected(first)) === 'true', `难度 ${first} 的 chip 显示为选中（aria-selected）`);
+  assert((await chipSelected(first)) === 'true', `难度 ${first} 的 chip 显示为选中（aria-checked）`);
   assert((await chipSelected('all')) === 'false', '选中一个档后「全部」不再是选中态');
 
   await page.locator(chipSel(second)).click();
@@ -456,7 +555,8 @@ function clickI18n(page, zh, en) {
   //     期望的档位序列由 expectedSortedSample 从卡组文件算出（稳定排序 = 文件顺序按档分组），
   //     不写死数字；每一步都用轮询等进度与标签到位，不睡固定时长。
   const sortChip = (id) => page.locator(`[data-testid="${id}"]`);
-  const sortSelected = (id) => sortChip(id).getAttribute('aria-selected');
+  // 顺序这一行是单选（role=radiogroup + radio），选中态同样读 aria-checked
+  const sortSelected = (id) => sortChip(id).getAttribute('aria-checked');
 
   const deckChip = page.getByText(SORT_DECK_LABEL).first();
   await deckChip.scrollIntoViewIfNeeded(); // 卡组那一行是横向滚动区，排在后面的卡组要先滚进来
@@ -523,6 +623,149 @@ function clickI18n(page, zh, en) {
   // 切回「全部卡组」，让后面的「下一张 = 2 / 整池」重新成立（换卡组也会重开会话）
   await page.getByText(/^(?:全部|All)$/).first().click();
   assert(await waitForTotal(page, pool), `排序检查完切回「全部卡组」，分母回到整池 ${pool}`);
+
+  // 4e. 筛选 chip 的无障碍与键盘：每一行读成一个组（radiogroup/group + aria-label），
+  //     每个 chip 有 role / aria-checked / tabindex 和"哪一行 + 哪个选项 + 选中没有"的可读名，
+  //     而且整条筛选只用键盘也能走通：Tab 聚焦 → Enter 切换（分母跟着变）→ 再 Tab 到「下一张」→ Enter（分子变）。
+  //     期望值一律从生成数据算（expectedDeckKeys / expectedDifficultyPool），一个数字都不写死。
+  const deckChipIds = ['deck-all', ...expectedDeckKeys().map((k) => `deck-${k}`)];
+  const groupOf = {
+    deck: { zh: '卡组筛选', en: 'Deck filter' },
+    kind: { zh: '题型筛选', en: 'Card type filter' },
+    difficulty: { zh: '难度分级筛选', en: 'Level filter' },
+    order: { zh: '顺序筛选', en: 'Order filter' },
+  };
+  const filterChips = [
+    ...deckChipIds.map((id) => ({ id, role: 'radio', group: groupOf.deck })),
+    { id: 'kind-all', role: 'radio', group: groupOf.kind },
+    { id: 'kind-quiz', role: 'radio', group: groupOf.kind },
+    { id: 'kind-concept', role: 'radio', group: groupOf.kind },
+    { id: 'difficulty-all', role: 'checkbox', group: groupOf.difficulty },
+    ...levels.map((d) => ({ id: `difficulty-${d}`, role: 'checkbox', group: groupOf.difficulty })),
+    { id: 'order-shuffle', role: 'radio', group: groupOf.order },
+    { id: 'order-asc', role: 'radio', group: groupOf.order },
+    { id: 'order-desc', role: 'radio', group: groupOf.order },
+  ];
+
+  // 一行一行地读：容器是 role=radiogroup（单选行）或 role=group（多选行），aria-label 说明这一行在筛什么，
+  // 组里的 chip 个数要与数据对得上（卡组 15 + 「全部」、题型 2 + 「全部」、难度 4 档 + 「全部」、顺序 3）。
+  const rowSpecs = [
+    { chip: 'deck-all', role: 'radiogroup', group: groupOf.deck, chips: deckChipIds.length },
+    { chip: 'kind-all', role: 'radiogroup', group: groupOf.kind, chips: 3 },
+    { chip: 'difficulty-all', role: 'group', group: groupOf.difficulty, chips: levels.length + 1 },
+    { chip: 'order-shuffle', role: 'radiogroup', group: groupOf.order, chips: 3 },
+  ];
+  for (const spec of rowSpecs) {
+    const row = await chipGroupA11y(page, spec.chip);
+    assert(row !== null, `${spec.group.zh} 那一行是一个读得出来的组（有 role 与 aria-label）`);
+    assert(
+      row.role === spec.role,
+      `${spec.group.zh} 的容器 role=${row.role}（${spec.role}：${spec.role === 'group' ? '可多选' : '单选'}，与这一行的行为一致）`,
+    );
+    assert(
+      hasI18n(row.label, spec.group.zh, spec.group.en),
+      `${spec.group.zh} 的 aria-label 说明了这一行在筛什么：${row.label}`,
+    );
+    assert(row.chips === spec.chips, `${spec.group.zh} 组里有 ${row.chips} 个 chip（期望 ${spec.chips}）`);
+  }
+
+  // 逐个 chip 读回来：role、tabindex=0（Tab 停得下来）、aria-checked，以及 label 里必须同时有
+  // 分组名、选项文案和"选中/未选中"，而且 label 说的选中态必须与 aria-checked 一致。
+  // 顺手断言 aria-selected 已经彻底不在（它不能用在 radio/checkbox 上，留着就是给读屏软件的假状态）。
+  const chipProblems = [];
+  for (const spec of filterChips) {
+    const chip = await chipA11y(page, spec.id);
+    if (!chip) {
+      chipProblems.push(`${spec.id}: 页面上没有这个 chip`);
+      continue;
+    }
+    if (chip.role !== spec.role) chipProblems.push(`${spec.id}: role=${chip.role} ≠ ${spec.role}`);
+    if (chip.tabIndex !== '0') chipProblems.push(`${spec.id}: tabindex=${chip.tabIndex} ≠ 0（键盘停不下来）`);
+    if (chip.selected !== null) chipProblems.push(`${spec.id}: 还留着 aria-selected=${chip.selected}`);
+    if (!hasI18n(chip.label, spec.group.zh, spec.group.en)) {
+      chipProblems.push(`${spec.id}: label 里没有分组名：${chip.label}`);
+    }
+    if (!chip.label.includes(chip.text)) {
+      chipProblems.push(`${spec.id}: label 里没有选项文案「${chip.text}」：${chip.label}`);
+    }
+    if (labelState(chip.label) !== (chip.checked === 'true')) {
+      chipProblems.push(`${spec.id}: aria-checked=${chip.checked} 与 label 说的不一致：${chip.label}`);
+    }
+  }
+  assert(
+    chipProblems.length === 0,
+    `每个筛选 chip 都有 role / aria-checked / tabindex=0，可读名里带分组名、选项与选中态，且没有 aria-selected（共 ${filterChips.length} 个）${chipProblems.length ? '：' + chipProblems[0] : ''}`,
+  );
+
+  // 键盘：从页面开头一路 Tab 走过去，看焦点能不能真的落到难度 chip 上（不是"它有 tabindex"这种间接证据）
+  await page.evaluate(() => document.body.focus());
+  const tabsToChip = await tabUntilTestId(page, `difficulty-${second}`);
+  assert(
+    tabsToChip > 0,
+    `只用 Tab 就能把焦点走到难度 ${second} 的 chip 上（从页面开头按了 ${tabsToChip} 次 Tab）`,
+  );
+  assert(
+    (await focusedTestId(page)) === `difficulty-${second}`,
+    `焦点确实落在它身上（document.activeElement = ${await focusedTestId(page)}）`,
+  );
+
+  // Enter：切换选中态，并且分母真的跟着筛（898 → 该档题数）
+  await page.keyboard.press('Enter');
+  assert(await waitForChipChecked(page, `difficulty-${second}`, 'true'), '在 chip 上按 Enter：aria-checked 变成 true');
+  assert(await waitForTotal(page, onlySecond), `按 Enter 真的筛了：分母从 ${pool} 变成难度 ${second} 的 ${onlySecond} 题`);
+  assert(
+    labelState((await chipA11y(page, `difficulty-${second}`)).label) === true,
+    '选中之后 label 说的是"已选中"（可读名与 aria-checked 同步）',
+  );
+
+  // 空格：role=radio/checkbox 在 RN Web 里渲染成 <div role="...">，RNW 只把空格当成"按下"处理原生 button / role=button，
+  // 所以这个键是页面自己接住的（src/app/(tabs)/study.tsx 的 spaceKeyProps，靠 onKeyDown + preventDefault）
+  await page.keyboard.press(' ');
+  assert(
+    await waitForChipChecked(page, `difficulty-${second}`, 'false'),
+    '在这个 chip 上按空格同样能切换（div 上的空格不会自己变成点击，页面接住了它）',
+  );
+  assert(await waitForTotal(page, pool), `空格取消选中后分母回到整池 ${pool}`);
+
+  await page.keyboard.press('Enter');
+  assert(await waitForTotal(page, onlySecond), `再按 Enter 又能选中（分母回到 ${onlySecond}），切换是可逆的`);
+
+  // 分子也是键盘改的：从 chip 继续 Tab 到「下一张」，按 Enter
+  const tabsToNext = await tabUntilText(page, /^(?:下一张|Next)$/);
+  assert(tabsToNext > 0, `从 chip 继续按 Tab 能走到「下一张」（按了 ${tabsToNext} 次）`);
+  await page.keyboard.press('Enter');
+  assert(await waitForProgress(page, 2, onlySecond), `在「下一张」上按 Enter：进度 2 / ${onlySecond}（分子也是键盘改的）`);
+
+  // 键盘走完一遍把筛选还原：点卡组的「全部」会连难度选择一起清掉（pickDeck 的既有行为），
+  // 顺便验证 chip 的 aria-checked 跟着复位——否则后面「下一张 = 2 / 整池」就不成立了。
+  await page.locator('[data-testid="deck-all"]').click();
+  assert(await waitForTotal(page, pool), `键盘检查完点回「全部卡组」，分母回到整池 ${pool}`);
+  assert(
+    await waitForChipChecked(page, `difficulty-${second}`, 'false'),
+    '切回全部卡组会把难度选择清掉，难度 chip 的 aria-checked 也跟着回到 false',
+  );
+
+  // 「分层」那一行只在 AMC10 概念卡组上出现（hasLevels = true），同样要能读成一组单选：
+  // 它的容器也是 radiogroup、也带 aria-label，chip 也是 role=radio + 可选中的可读名。
+  await page.locator('[data-testid="deck-arithmetic"]').click();
+  assert(await waitForChip(page, 'level-all'), '切到 AMC10 概念卡组后出现「分层」那一行');
+  const levelRow = await chipGroupA11y(page, 'level-all');
+  assert(
+    levelRow !== null && levelRow.role === 'radiogroup',
+    `分层行也是一个读得出来的组（role=${levelRow?.role}）`,
+  );
+  assert(
+    hasI18n(levelRow.label, '分层筛选', 'Tier filter'),
+    `分层组的 aria-label 说明了这一行在筛什么：${levelRow.label}`,
+  );
+  assert(levelRow.chips === 4, `分层行有 ${levelRow.chips} 个 chip（期望 4：全部 + 核心/提高/边界）`);
+  const levelCore = await chipA11y(page, 'level-core');
+  assert(
+    levelCore.role === 'radio' && labelState(levelCore.label) === false && hasI18n(levelCore.label, '分层筛选', 'Tier filter'),
+    `分层的 chip 带 role、选中态与可读名：${levelCore.label}`,
+  );
+  await page.locator('[data-testid="deck-all"]').click();
+  assert(await waitForTotal(page, pool), `分层行检查完切回「全部卡组」，分母回到整池 ${pool}`);
 
   // 5. 下一张 + 切到概念卡翻面
   await clickI18n(page, '下一张', 'Next');

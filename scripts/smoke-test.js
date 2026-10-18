@@ -371,6 +371,31 @@ function labelState(label) {
 /** 文本里有没有中文或英文的某个说法（与 assertI18n 同口径，只是返回布尔、不抛错）。 */
 const hasI18n = (text, zh, en) => text.includes(zh) || text.toLowerCase().includes(en.toLowerCase());
 
+/**
+ * 轮询等页面文本里出现某个中/英文说法，返回等到的文本（超时返回最后一次读到的文本）。
+ *
+ * 为什么要有它：切 Tab 之后目标屏是**第一次挂载**（懒挂载 + 该屏自己的数据），
+ * "点完睡 2500ms 再读一次文本"是拿运行时速度当承诺——慢机器、冷缓存、GC 停顿都会输给它，
+ * 而输掉的样子和"这个功能坏了"一模一样。仓库里其他断言早就是轮询（waitForTotal / waitForTestIdNumber …），
+ * 只有这一屏是读一次就判。
+ *
+ * 超时不是静默失败的：把当时的 URL 和页面开头打出来，才能一眼看出是"根本没导航过去"
+ * 还是"导航过去了但内容不对"——这两件事要修的地方完全不同。
+ */
+async function waitForI18n(page, zh, en, tries = 40) {
+  let text = '';
+  for (let i = 0; i < tries; i += 1) {
+    text = await page.locator('body').innerText();
+    if (hasI18n(text, zh, en)) return text;
+    await page.waitForTimeout(250);
+  }
+  console.log(
+    `⚠️ 等了 ${(tries * 250) / 1000}s 也没等到「${zh} / ${en}」；URL ${page.url()}；` +
+      `页面开头：${text.split('\n').filter(Boolean).slice(0, 4).join(' / ').slice(0, 160)}`,
+  );
+  return text;
+}
+
 /** 轮询等某个 chip 的 aria-checked 变成期望值（切换后重渲染是异步的，不睡固定时长）。 */
 async function waitForChipChecked(page, testID, expected, tries = 24) {
   for (let i = 0; i < tries; i += 1) {
@@ -418,6 +443,25 @@ async function tabUntilText(page, re, max = 30) {
 
 function clickI18n(page, zh, en) {
   return page.getByText(new RegExp(`${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).first().click();
+}
+
+/**
+ * 点导航项（底部 Tab 或桌面侧边栏）：**整串**匹配，不能用 clickI18n 那种子串正则。
+ *
+ * 子串正则会命中页面正文：/我的|Me/ 对 "Me" 是子串匹配，而 1462 张卡里真有 16 张的正文
+ * 带 "Me"（2 张概念卡 + 14 张选择题：amc10-0367 的 "Menelaus"、amc10-0483，以及
+ * stats-scenario-033 选项 A 的 "Men's overall admission rate…"、precalc-127 的 "Method" 等）。
+ * 这些卡片在 DOM 里排在底部 Tab 之前，.first() 就点到了卡片自己（选项被选中 / 卡片翻面），
+ * 导航根本不发生；而每次运行抽到的是哪张卡由乱序决定，所以它表现为"偶发失败、重跑就好"。
+ * 这一屏恰好在概念卡池里（564 张，其中 2 张命中 → 每次约 0.35%）。
+ *
+ * 桌面端侧边栏和（被隐藏的）底部 Tab 都叫「我的」，侧边栏在 DOM 里在前，.first() 仍是可见的那个。
+ */
+async function clickTab(page, zh, en) {
+  const tab = page.getByText(new RegExp(`^(?:${zh}|${en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`));
+  const found = await tab.count();
+  assert(found >= 1, `导航项「${zh} / ${en}」在页面上找得到（整串匹配到 ${found} 个）`);
+  await tab.first().click();
 }
 
 (async () => {
@@ -811,10 +855,14 @@ function clickI18n(page, zh, en) {
   assert(!(text.includes('点击卡片查看答案') || text.includes('Tap the card to reveal the answer')), '翻面后露出答案（隐藏翻卡提示）');
 
   // 6. 我的页
-  await clickI18n(page, '我的', 'Me');
-  await page.waitForTimeout(2500);
-  text = await page.locator('body').innerText();
-  assertI18n(text, '课程掌握度', 'Course mastery', '我的页渲染课程掌握度');
+  // 这一步曾经偶发失败（CI 红过一次、同提交重跑就过；本地也有人遇到过一次同样现象），两个原因叠在同一条断言上：
+  // (a) 点 Tab 用的是 /我的|Me/ 这种子串正则 + .first()，它会命中卡片正文里的 "Menelaus" / "Men's"
+  //     （见 clickTab 的注释），于是什么都没导航，后面必然读不到「课程掌握度」；
+  // (b) 即使导航对了，"睡 2500ms 再读一次文本"也是把渲染时机当承诺——这一屏是第一次挂载。
+  // 两处都改成"等目标状态"：整串匹配导航项 + 轮询等目标文案，超时把当时的 URL/页面打出来。
+  await clickTab(page, '我的', 'Me');
+  text = await waitForI18n(page, '课程掌握度', 'Course mastery');
+  assertI18n(text, '课程掌握度', 'Course mastery', `我的页渲染课程掌握度（URL ${page.url()}）`);
   assertI18n(text, '每日目标', 'Daily goal', '我的页渲染每日目标');
   assertI18n(text, '语言', 'Language', '我的页渲染语言切换');
   assertI18n(text, '主题', 'Theme', '我的页渲染主题切换');
@@ -953,7 +1001,8 @@ function clickI18n(page, zh, en) {
   //     这里不能像 6c 那样直接 goto '/profile'：整套布局挂在 Stack.Protected 里，
   //     带路径的整页加载会被路由守卫重置回首页（实测 goto '/profile' 后 URL 变成 '/'、
   //     且停在今日页），所以改成点侧边栏的「我的」做客户端跳转——探针验证过暗色下这一下点得动。
-  await clickI18n(page, '我的', 'Me');
+  //     这里同样用 clickTab 的整串匹配：这一屏的正文（今日贴卡）里也可能出现 "Me"。
+  await clickTab(page, '我的', 'Me');
   assert(
     await waitForTestIdNumber(page, 'pool-total', libraryTotal),
     `桌面端（1280px）题库概览的总题数同样是 ${libraryTotal}`,

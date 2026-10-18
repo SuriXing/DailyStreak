@@ -139,6 +139,8 @@ export const es: UiStrings = {
   'flashcards.difficultyLabel': 'Nivel {level}',
   'flashcards.order': 'Orden',
   'flashcards.shuffle': 'Mezclar',
+  'flashcards.orderAsc': 'Fácil primero',
+  'flashcards.orderDesc': 'Difícil primero',
   'flashcards.sourceAmc10': 'Notas AMC10 · recopilado por IA',
   'flashcards.sourceAiMcq': 'Ítem generado por IA',
   'flashcards.sourceLocalExam': 'Banco local (sin publicar)',

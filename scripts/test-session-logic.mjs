@@ -2,16 +2,21 @@
 /**
  * 练习页筛选/乱序逻辑的单元测试：src/lib/flashcard-session.ts。
  *
- * 为什么要有这个脚本：filterCards / availableDifficulties / availableKinds / shuffleCards
- * 这几块被改过好几次（拆出模块、加难度筛选、加题型筛选、确定性乱序、难度 0 的占位），
+ * 为什么要有这个脚本：filterCards / availableDifficulties / availableKinds / shuffleCards / orderCards
+ * 这几块被改过好几次（拆出模块、加难度筛选、加题型筛选、确定性乱序、难度 0 的占位、加难度排序），
  * 但一直没有单测，只有浏览器冒烟间接覆盖。冒烟要起 dev server、只走默认筛选，
  * 像"难度池为空时返回空数组""availableDifficulties 不把 0 当成一个难度"这类分支
  * 改坏了不会有人发现——而 0 那条已经真的坏过一次（见 726a1c9）。
  *
  * 这里把语义固化成断言：零依赖，只用 node:test + node:assert，不引入 jest/vitest。
  * 覆盖的是 lib 层能观察到的行为；"整卡组只有一种题型时那一行不显示""难度只有一档时不显示"
- * 是 UI 层语义（src/app/(tabs)/study.tsx 里的 showKinds / showDifficulty = xxx.length > 1），
- * 这里只断言 availableKinds / availableDifficulties 的返回值，不测渲染，也不测点选与翻面。
+ * "AMC10 卡组不显示排序开关"是 UI 层语义（src/app/(tabs)/study.tsx 里的
+ * showKinds / showDifficulty / showOrder），这里只断言 availableKinds / availableDifficulties
+ * 的返回值，不测渲染，也不测点选与翻面。
+ *
+ * orderCards 的三条语义是这次要锁住的重点：null = 不排序、缺难度的卡排在**末尾**
+ * （不是当成 0 排到最前）、同难度内部稳定。乱序与排序互斥是界面层的取舍（pickOrder 会关掉乱序），
+ * lib 层不做互斥，所以这里不测"两个同时为真会怎样"，只测排序函数自己。
  *
  * 难度筛选的 SessionFilter.difficulty 是"集合"而不是单个档（null / 空数组 = 不限），
  * 所以"多选是并集""空数组与 null 同义""集合里没有能命中的档就该是空池"这几条也在这里锁住：
@@ -85,7 +90,7 @@ process.emitWarning = (warning, ...rest) => {
 const loadTypeScript = (relativePath) => import(pathToFileURL(path.join(ROOT, relativePath)).href);
 const session = await loadTypeScript('src/lib/flashcard-session.ts');
 const { ALL_FLASHCARDS } = await loadTypeScript('src/data/flashcards.ts');
-const { availableDifficulties, availableKinds, cardKind, filterCards, shuffleCards } = session;
+const { availableDifficulties, availableKinds, cardKind, filterCards, orderCards, shuffleCards } = session;
 
 /* ------------------------------------------------------------------ *
  * 测试用卡池
@@ -154,7 +159,7 @@ const SUBJECT_DECKS = [
  * ------------------------------------------------------------------ */
 
 test('被测模块导出齐全（脚本真的加载了 flashcard-session.ts，而不是某个空壳）', () => {
-  for (const name of ['filterCards', 'availableDifficulties', 'availableKinds', 'cardKind', 'shuffleCards']) {
+  for (const name of ['filterCards', 'availableDifficulties', 'availableKinds', 'cardKind', 'shuffleCards', 'orderCards']) {
     assert.equal(typeof session[name], 'function', `${name} 应该是函数`);
   }
   assert.ok(ALL_FLASHCARDS.length > 0, '真实题库不该是空的');
@@ -530,15 +535,251 @@ test('shuffleCards：能配合筛选结果使用（先筛后洗，筛出来的�
 });
 
 /* ------------------------------------------------------------------ *
+ * orderCards
+ * ------------------------------------------------------------------ *
+ * 练习页的"按难度排序"开关（由易到难 / 由难到易）直接绑在这个函数上。
+ * 三条语义在这里锁死：null = 不排序；缺难度的卡排**末尾**（不是当成 0 排到最前）；
+ * 同一难度内部保持卡池原顺序（稳定）。最后两条各有专门的断言，因为它们都是"看不出错"的那种错：
+ * 把 AMC10 概念卡当成 0，界面上照样能翻卡，只是学生一开排序就先看到一堆词条。
+ */
+
+/** 一张卡的难度（按 orderCards 的口径：只有正整数算一档，缺字段与 0 都算"没有"）。 */
+const graded = (card) => (typeof card.difficulty === 'number' && card.difficulty > 0 ? card.difficulty : null);
+
+/** 排序结果的难度序列，写成 "d1,d2,-" 这种形状（"-" = 没有难度）便于断言。 */
+const difficultySeq = (cards) => cards.map((card) => graded(card) ?? '-').join(',');
+
+/** 排序结果的 id 序列，用于断言稳定性。 */
+const idSeq = (cards) => ids(cards).join(',');
+
+/** 一份专门用来测排序的卡池：难度乱序、有重复档、混着"没有难度"的卡（含 0 占位）。 */
+const ORDER_POOL = [
+  makeCard({ id: 'o-d3a', deck: 'precalc', difficulty: 3 }),
+  makeCard({ id: 'o-nodiff', deck: 'arithmetic' }), // 连字段都没有，等同 AMC10 概念卡
+  makeCard({ id: 'o-d1a', deck: 'precalc', difficulty: 1 }),
+  makeCard({ id: 'o-d0', deck: 'precalc', difficulty: 0 }), // 打包格式里"没有分级"的占位
+  makeCard({ id: 'o-d3b', deck: 'precalc', difficulty: 3 }),
+  makeCard({ id: 'o-d2', deck: 'precalc', difficulty: 2 }),
+];
+
+test('orderCards：null 表示不排序（原顺序、新数组、不改动入参）', () => {
+  const before = idSeq(ORDER_POOL);
+  const out = orderCards(ORDER_POOL, null);
+  assert.equal(idSeq(out), before, 'order: null 必须原样保持卡池顺序，而不是顺手排一遍');
+  assert.notEqual(out, ORDER_POOL, '应该是新数组，不是入参本身');
+  assert.equal(idSeq(ORDER_POOL), before, '入参卡池的顺序不该被改动');
+  assert.equal(out[0], ORDER_POOL[0], '不排序时元素还是原来的卡片对象（同一个引用）');
+});
+
+test('orderCards：difficulty-asc 按难度升序', () => {
+  assert.equal(
+    idSeq(orderCards(ORDER_POOL, 'difficulty-asc')),
+    'o-d1a,o-d2,o-d3a,o-d3b,o-nodiff,o-d0',
+    '1 档在前、3 档在后；两张没有难度的卡挂在末尾（0 也不算一档）',
+  );
+  assert.equal(
+    difficultySeq(orderCards(ORDER_POOL, 'difficulty-asc')),
+    '1,2,3,3,-,-',
+    '升序的难度序列（- = 没有难度）',
+  );
+});
+
+test('orderCards：difficulty-desc 按难度降序', () => {
+  assert.equal(
+    idSeq(orderCards(ORDER_POOL, 'difficulty-desc')),
+    'o-d3a,o-d3b,o-d2,o-d1a,o-nodiff,o-d0',
+    '降序是 3 → 2 → 1',
+  );
+  assert.equal(difficultySeq(orderCards(ORDER_POOL, 'difficulty-desc')), '3,3,2,1,-,-');
+});
+
+test('orderCards：没有 difficulty 的卡无论升序降序都排在末尾（不能当成 0 排到最前）', () => {
+  for (const order of ['difficulty-asc', 'difficulty-desc']) {
+    const out = orderCards(ORDER_POOL, order);
+    const firstMissing = out.findIndex((card) => graded(card) === null);
+    assert.notEqual(firstMissing, -1, `${order}：这份卡池本来就该有没难度的卡`);
+    assert.ok(
+      out.slice(firstMissing).every((card) => graded(card) === null),
+      `${order}：第一张没难度的卡之后不该再出现带分级的卡（缺难度的卡全在末尾）`,
+    );
+    assert.equal(
+      out.filter((card) => graded(card) === null).length,
+      2,
+      `${order}：缺难度的卡既不能丢、也不能被塞进某一档里`,
+    );
+    assert.notEqual(out[0].id, 'o-nodiff', `${order}：首张卡不能是没难度的卡`);
+    assert.notEqual(out[0].id, 'o-d0', `${order}：0（打包格式的占位）同样不是"最简单的一档"`);
+  }
+  // 全是没难度的卡时，排序是恒等操作（AMC10 概念卡整组就是这个形状）
+  const concepts = [
+    makeCard({ id: 'c1', deck: 'geometry', quiz: false }),
+    makeCard({ id: 'c2', deck: 'geometry', quiz: false }),
+    makeCard({ id: 'c3', deck: 'geometry', quiz: false }),
+  ];
+  assert.equal(idSeq(orderCards(concepts, 'difficulty-asc')), 'c1,c2,c3');
+  assert.equal(idSeq(orderCards(concepts, 'difficulty-desc')), 'c1,c2,c3');
+});
+
+test('orderCards：稳定排序——同一难度内部保持卡池原顺序', () => {
+  const cards = [
+    makeCard({ id: 'd2-first', difficulty: 2 }),
+    makeCard({ id: 'd1-first', difficulty: 1 }),
+    makeCard({ id: 'd2-second', difficulty: 2 }),
+    makeCard({ id: 'd1-second', difficulty: 1 }),
+    makeCard({ id: 'd3-only', difficulty: 3 }),
+    makeCard({ id: 'd2-third', difficulty: 2 }),
+  ];
+  assert.equal(
+    idSeq(orderCards(cards, 'difficulty-asc')),
+    'd1-first,d1-second,d2-first,d2-second,d2-third,d3-only',
+    '同档内按入参顺序，不被排序打乱（否则每次排序都会跳着显示，复习时无法接着看）',
+  );
+  assert.equal(
+    idSeq(orderCards(cards, 'difficulty-desc')),
+    'd3-only,d2-first,d2-second,d2-third,d1-first,d1-second',
+    '降序同样稳定：变化的是档与档的先后，不是同档内部的先后',
+  );
+  // 末尾那组"没有难度"的卡内部也要保持原顺序
+  const tail = [
+    makeCard({ id: 'n1' }),
+    makeCard({ id: 'n2' }),
+    makeCard({ id: 'd1', difficulty: 1 }),
+    makeCard({ id: 'n3' }),
+  ];
+  assert.equal(idSeq(orderCards(tail, 'difficulty-asc')), 'd1,n1,n2,n3', '缺难度的卡之间也按原顺序');
+  assert.equal(idSeq(orderCards(tail, 'difficulty-desc')), 'd1,n1,n2,n3');
+});
+
+test('orderCards：输出是输入的排列（不丢卡、不重复、元素还是原来的对象）', () => {
+  for (const order of ['difficulty-asc', 'difficulty-desc']) {
+    const out = orderCards(ORDER_POOL, order);
+    assert.equal(out.length, ORDER_POOL.length, `${order}：长度不变`);
+    assert.deepEqual([...ids(out)].sort(), [...ids(ORDER_POOL)].sort(), `${order}：元素集合不变`);
+    assert.equal(new Set(out).size, ORDER_POOL.length, `${order}：不能出现重复的卡片对象`);
+    assert.ok(out.every((card) => ORDER_POOL.includes(card)), `${order}：元素应该是原来的对象`);
+  }
+  const before = idSeq(ORDER_POOL);
+  orderCards(ORDER_POOL, 'difficulty-asc');
+  orderCards(ORDER_POOL, 'difficulty-desc');
+  assert.equal(idSeq(ORDER_POOL), before, '反复排序不该把入参改坏');
+});
+
+test('orderCards：空池 → 空数组；单元素与全同难度原样', () => {
+  assert.deepEqual(orderCards([], 'difficulty-asc'), []);
+  assert.deepEqual(orderCards([], 'difficulty-desc'), []);
+  assert.deepEqual(orderCards([], null), []);
+  const single = [makeCard({ id: 'solo', difficulty: 2 })];
+  assert.equal(idSeq(orderCards(single, 'difficulty-asc')), 'solo');
+  assert.equal(idSeq(orderCards(single, 'difficulty-desc')), 'solo');
+  const same = [1, 2, 3].map((n) => makeCard({ id: `same-${n}`, difficulty: 2 }));
+  assert.equal(idSeq(orderCards(same, 'difficulty-asc')), 'same-1,same-2,same-3');
+  assert.equal(idSeq(orderCards(same, 'difficulty-desc')), 'same-1,same-2,same-3');
+});
+
+test('orderCards：先用 shuffleCards 打乱再排序，结果仍是有序的（排序优先于乱序）', () => {
+  // 界面层让两个开关互斥，但 lib 层不做互斥：只要 order 传进来，排完就是有序的，
+  // 所以即使某天界面同时为真，学生看到的也是"有序"，而不是"洗过又排了一半"。
+  const shuffled = shuffleCards(ORDER_POOL, 20261015);
+  assert.notEqual(idSeq(shuffled), idSeq(ORDER_POOL), '这个种子应该真的打乱了顺序');
+  assert.equal(difficultySeq(orderCards(shuffled, 'difficulty-asc')), '1,2,3,3,-,-');
+  assert.equal(difficultySeq(orderCards(shuffled, 'difficulty-desc')), '3,3,2,1,-,-');
+});
+
+test('orderCards：真实题库上，练习册卡组升序得到的首尾就是该卡组的最低/最高档', () => {
+  const precalc = filterCards({ deck: 'precalc', level: null, difficulty: null, kind: 'quiz' });
+  const levels = availableDifficulties(precalc);
+  assert.ok(levels.length > 1, `precalc 卡组应该有多个难度档（${levels.join('/')}）`);
+  const [min, max] = [levels[0], levels[levels.length - 1]];
+
+  const asc = orderCards(precalc, 'difficulty-asc');
+  assert.equal(asc[0].difficulty, min, '由易到难的第一张是卡组里最低档');
+  assert.equal(asc[asc.length - 1].difficulty, max, '由易到难的最后一张是卡组里最高档');
+  assert.deepEqual(
+    asc.map((card) => card.difficulty),
+    [...asc].map((card) => card.difficulty).sort((a, b) => a - b),
+    '整条序列必须单调不减',
+  );
+  assert.equal(
+    idSeq(orderCards(asc, 'difficulty-asc')),
+    idSeq(asc),
+    '已经有序的卡池再排一次还是同样的顺序（稳定 + 幂等）',
+  );
+
+  const desc = orderCards(precalc, 'difficulty-desc');
+  assert.equal(desc[0].difficulty, max, '由难到易的第一张是最高档');
+  assert.equal(desc[desc.length - 1].difficulty, min);
+  assert.deepEqual(
+    desc.map((card) => card.difficulty),
+    [...desc].map((card) => card.difficulty).sort((a, b) => b - a),
+    '整条序列必须单调不增',
+  );
+  assert.equal(
+    idSeq(orderCards(desc, 'difficulty-desc')),
+    idSeq(desc),
+    '由难到易再排一次也是同样的顺序（幂等）',
+  );
+  assert.deepEqual([...ids(asc)].sort(), [...ids(precalc)].sort(), '排序不该丢卡或多卡');
+});
+
+test('orderCards：真实题库的混合卡池里，AMC10 概念卡整组挂在末尾且保持原顺序', () => {
+  // deck 不限 + 题型不限 = 练习册/情境题的选择题 + AMC10 概念卡，正是"排序时缺难度怎么办"的真实场景
+  const mixed = filterCards({ deck: null, level: null, difficulty: null, kind: null });
+  const gradedCount = mixed.filter((card) => graded(card) !== null).length;
+  const ungradedIds = ids(mixed.filter((card) => graded(card) === null));
+  assert.ok(gradedCount > 0 && ungradedIds.length > 0, '真实卡池里两种卡都该有');
+
+  for (const order of ['difficulty-asc', 'difficulty-desc']) {
+    const out = orderCards(mixed, order);
+    assert.ok(
+      out.slice(0, gradedCount).every((card) => graded(card) !== null),
+      `${order}：带分级的卡全在前面`,
+    );
+    assert.ok(
+      out.slice(gradedCount).every((card) => graded(card) === null),
+      `${order}：AMC10 概念卡（没有 difficulty）全在末尾，不会被当成 0 排到最前`,
+    );
+    assert.deepEqual(
+      ids(out.slice(gradedCount)),
+      ungradedIds,
+      `${order}：末尾那一组内部保持卡池原顺序`,
+    );
+    assert.deepEqual(
+      availableDifficulties(out),
+      availableDifficulties(mixed),
+      `${order}：排序不改变"有哪些档"，只改变先后`,
+    );
+  }
+});
+
+test('orderCards：真实数据上"按难度排序"与"难度筛选"可以叠用（先筛后排）', () => {
+  for (const deck of SUBJECT_DECKS) {
+    const pool = filterCards({ deck, level: null, difficulty: [3, 4], kind: 'quiz' });
+    if (pool.length === 0) continue;
+    const asc = orderCards(pool, 'difficulty-asc');
+    assert.ok(
+      asc.every((card) => card.difficulty === 3 || card.difficulty === 4),
+      `${deck}：排序不会把没选中的档混进来`,
+    );
+    assert.deepEqual(
+      asc.map((card) => card.difficulty),
+      [...asc].map((card) => card.difficulty).sort((a, b) => a - b),
+      `${deck}：筛出来的 3、4 档按升序排（3 全在 4 前面）`,
+    );
+  }
+});
+
+/* ------------------------------------------------------------------ *
  * 边界
  * ------------------------------------------------------------------ */
 
-test('边界：五个函数在空卡池上都不抛错', () => {
+test('边界：六个函数在空卡池上都不抛错', () => {
   assert.deepEqual(filterCards({ deck: null, level: null, difficulty: null, kind: null }, []), []);
   assert.deepEqual(availableDifficulties([]), []);
   assert.deepEqual(availableKinds(null, []), []);
   assert.deepEqual(availableKinds('precalc', []), []);
   assert.deepEqual(shuffleCards([], 0), []);
+  assert.deepEqual(orderCards([], 'difficulty-asc'), []);
+  assert.deepEqual(orderCards([], 'difficulty-desc'), []);
 });
 
 test('边界：单元素卡池', () => {
@@ -548,6 +789,8 @@ test('边界：单元素卡池', () => {
   assert.deepEqual(availableDifficulties(single), [1]);
   assert.deepEqual(availableKinds('precalc', single), ['quiz']);
   assert.deepEqual(ids(shuffleCards(single, 20261011)), ['solo']);
+  assert.deepEqual(ids(orderCards(single, 'difficulty-asc')), ['solo']);
+  assert.deepEqual(ids(orderCards(single, 'difficulty-desc')), ['solo']);
 });
 
 test('边界：难度筛选叠上未知 deck → 空数组（不抛错）', () => {

@@ -242,7 +242,9 @@ All 898 drill and scenario items carry a `difficulty` from 1 to 4, assigned agai
 `content/subject-banks/difficulty.json` and enforced by the gate. The levels are a rubric judgement, not an
 empirical calibration: nobody has answered these items and had their score recorded, so read them as "how much
 work this asks for", not as "how often students get it wrong". Two independent sets of reviewers graded the two
-families without seeing each other's work, which is what makes the comparison below worth anything.
+families without seeing each other's work, which is what makes the comparison below worth anything. The rubric
+itself, with a worked example at every level and the judgement calls that go wrong most often, is written out in
+[docs/difficulty-rubric.md](docs/difficulty-rubric.md).
 
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|

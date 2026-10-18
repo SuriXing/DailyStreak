@@ -223,7 +223,11 @@ inside them, which is language-neutral but only works when the numbers are disti
 measurement, not a running count - that fingerprint verified the order automatically for about 229 of the 890
 option cards and could not judge the rest, so those were compared by eye, and three swapped answers fell out of
 that reading (precalculus 031, 039 and 046 - in each case the English `Answer:` pointed at a distractor while the
-Chinese was right). A further hazard is specific to
+Chinese was right). A fourth, `csp-125`, was found only after the fingerprint itself was repaired: it had been
+reading both `10⁻⁶` and `10⁻²` as the number 10, concluded the two options were indistinguishable, and skipped the
+card, so nothing ever compared its Chinese `A` (10⁻⁶, the correct option) with its English `A` (3×10⁻²). With
+superscripts and signs normalised the fingerprint now proves the order for 553 of the 892 option cards; the other
+339 have options with no distinctive numbers and remain a by-eye job. A further hazard is specific to
 this repository's build: an item is not option-rotated when its explanation mentions A/B/C/D, so *writing* a
 letter reference into an explanation changes how the item is built. Adding references in the wrong order is
 therefore not a documentation slip but a content error, and it happened four times in one sitting before anyone

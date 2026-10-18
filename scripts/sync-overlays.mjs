@@ -29,11 +29,25 @@
  *    （2026-10-14 修好指纹并转正该卡。2026-10-17 实测：898 张带选项的卡里可判定 597 张
  *    ＝指纹唯一 278 + 逐位相同 319，需人读 20 张，某侧无数字 281 张。）
  * 用法：
- *   node scripts/sync-overlays.mjs --check        # 只报告差异，不写文件（CI 用）
+ *   node scripts/sync-overlays.mjs --check        # 只报告差异，不写文件（`npm run check:overlays`：precheck 与 CI 都跑）
  *   node scripts/sync-overlays.mjs --write        # 写入
  *   node scripts/sync-overlays.mjs --write --from=HEAD^   # 以某个 git 版本的中文卡为基准算置换
- * 注意：--check 的退出码只看 `src` 与需要重排的条数，**与上面那三类清单无关**；
- * 清单是给人读的，绿着不代表英文顺序是对的。
+ *
+ * 退出码就是门禁契约（2026-10-19 接进 precheck 与 CI，动这段之前先读这里）：
+ *   `--check` **只**在 `src 需要重算 > 0` 或 `选项顺序需重排 > 0` 时 exit 1，并逐张列出 id。
+ *   这两项是同一个意思——"有人改了中文卡，却没跑 --write"——一次本地命令就能修好，
+ *   所以适合做红灯；它们是**需要动手却没动手**的状态。
+ *   另外三张清单（可判定 / 需人读 / 某侧无数字）**永不进退出码**：需人读 20 张、某侧无数字
+ *   281 张都是**记录**（人读的结论写在 README 的保证表里），把它们做成红灯只会让门禁每天红、
+ *   然后所有人学会忽略它。也正因为这样，这里**不**再加 `--strict` / `--ci` 之类的第二个模式：
+ *   一个脚本两种退出条件，迟早出现"本地红、CI 绿、谁也说不出为什么"。
+ *
+ * 与 `check-flashcards` 的分工（两条检查都会因为 src 漂移而红，是有意的重叠）：
+ *   - `check-flashcards`（`checkFlashcardOverlay`）按 id 逐张重算哈希、比对英文答案字母与
+ *     `Correct option` 文本——**每种语言只跟它自己比**，所以英文选项整体被换位时它是绿的
+ *     （`Answer: A` 和 `Correct option` 会一起指错、互相作证，csp-126 就是这样漏了五张卡）。
+ *   - 本脚本用语言无关的数字指纹比较**中英两侧**的顺序，这是唯一能看见"英文顺序与中文不一致"
+ *     的地方；它的 src 计数与上面那条重叠，但它是"有修复手段"的那一侧（--write）。
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -120,6 +134,9 @@ const answerLetter = (back, label) => {
 const report = {
   srcUpdated: 0,
   reordered: 0,
+  /** 上面两项的卡 id：门禁红的时候要能点名，光给个数字没法下手。 */
+  srcUpdatedIds: [],
+  reorderedIds: [],
   aligned: 0,
   orphaned: [],
   orderAgrees: [],
@@ -206,6 +223,7 @@ for (const rel of OVERLAY_FILES) {
         .replace(/^Answer:\s*[A-D]/m, `Answer: ${zhAns}`)
         .replace(/\n\nCorrect option:\s*[\s\S]+$/, `\n\nCorrect option: ${permuted[zhIdx].slice(3)}`);
       report.reordered += 1;
+      report.reorderedIds.push(id);
       orderedByOverride = true;
     }
     const alignable =
@@ -225,7 +243,10 @@ for (const rel of OVERLAY_FILES) {
       const rebuiltBack = en.back
         .replace(/^Answer:\s*[A-D]/m, `Answer: ${zhAns}`)
         .replace(/\n\nCorrect option:\s*[\s\S]+$/, `\n\nCorrect option: ${newEn[zhIdx].slice(3)}`);
-      if (rebuiltFront !== en.front || rebuiltBack !== en.back) report.reordered += 1;
+      if (rebuiltFront !== en.front || rebuiltBack !== en.back) {
+        report.reordered += 1;
+        report.reorderedIds.push(id);
+      }
       front = rebuiltFront;
       back = rebuiltBack;
     } else if (zhSig.some(Boolean) && enSig.some(Boolean)) {
@@ -277,26 +298,19 @@ for (const rel of OVERLAY_FILES) {
       const rebuilt = nl.slice(0, nl.indexOf('back: ')) + tail;
       text = text.replace(nl, rebuilt);
     }
-    if (want !== en.src) report.srcUpdated += 1;
+    if (want !== en.src) {
+      report.srcUpdated += 1;
+      report.srcUpdatedIds.push(id);
+    }
   }
 
   if (touched > 0 && write) writeFileSync(abs, text);
   console.log(`${rel}: 需要更新 ${touched} 条${write && touched ? '（已写入）' : '（--check 模式，未写入）'}`);
 }
 
-console.log(`\nsrc 需要重算：${report.srcUpdated} 条；选项顺序需重排：${report.reordered} 条`);
-if (report.letterMismatch.length) {
-  console.log(`\n中英文简析提到的字母不一致（${report.letterMismatch.length} 条）：`);
-  for (const s of report.letterMismatch.slice(0, 20)) console.log('  - ' + s);
-}
-if (report.orphaned.length) {
-  console.log(`\n孤立 id（覆盖层里有、卡片里没有，${report.orphaned.length} 条）：`);
-  for (const s of report.orphaned) console.log('  - ' + s);
-}
-
 /**
- * 指纹的能力报告：分类列清单，别混成一句"跳过（N 条）"。
- * id 列表按每行 12 个折行，逐张列出来——需要一个不漏地人读时，这份清单就是入口。
+ * 需要动手的部分先说，而且点名到卡：这两项决定退出码，是三张记录清单之外唯一能当门禁的东西。
+ * （printIds 在这里之前定义，因为本段和末尾的能力报告都要用它。）
  */
 const printIds = (ids) => {
   const line = [];
@@ -310,6 +324,28 @@ const printIds = (ids) => {
   if (line.length) console.log('      ' + line.join(' '));
 };
 
+console.log(`\nsrc 需要重算：${report.srcUpdated} 条；选项顺序需重排：${report.reordered} 条`);
+if (report.srcUpdatedIds.length) {
+  console.log(`  中文改过、覆盖层没跟上（--write 会重算 src）：`);
+  printIds(report.srcUpdatedIds);
+}
+if (report.reorderedIds.length) {
+  console.log(`  英文选项顺序与中文不一致（--write 会按指纹重排）：`);
+  printIds(report.reorderedIds);
+}
+if (report.letterMismatch.length) {
+  console.log(`\n中英文简析提到的字母不一致（${report.letterMismatch.length} 条）：`);
+  for (const s of report.letterMismatch.slice(0, 20)) console.log('  - ' + s);
+}
+if (report.orphaned.length) {
+  console.log(`\n孤立 id（覆盖层里有、卡片里没有，${report.orphaned.length} 条）：`);
+  for (const s of report.orphaned) console.log('  - ' + s);
+}
+
+/**
+ * 指纹的能力报告：分类列清单，别混成一句"跳过（N 条）"。
+ * id 列表由上面的 printIds 折行输出——需要一个不漏地人读时，这份清单就是入口。
+ */
 const decidable = report.aligned + report.orderAgrees.length;
 const optionCards = decidable + report.needsHuman.length + report.bySideNoDigits.length;
 console.log(`\n── 指纹的能力报告（${optionCards} 张带选项的卡；概念卡没有选项行、不在这个口径里）──`);
@@ -326,5 +362,25 @@ console.log(
     `，其中两侧都没有数字 ${report.noDigitsWhy.bothSides} 张、只有一侧 ${report.noDigitsWhy.oneSide} 张）：`,
 );
 printIds(report.bySideNoDigits);
-console.log(`\n  （退出码只看 src 与需要重排的条数，和上面三张清单无关。）`);
-if (!write && (report.srcUpdated || report.reordered)) process.exitCode = 1;
+console.log(
+  `\n  （上面三张清单是记录，永不进退出码：红只看「src 重算」与「选项重排」两项。` +
+    `把它们做成红灯，${report.needsHuman.length + report.bySideNoDigits.length} 张卡会让门禁每天红一次，然后没人再看它。）`,
+);
+
+// 门禁结论：只有"需要动手却没动手"的两项算失败，且逐张点名过（见上面的 id 清单）。
+if (!write) {
+  if (report.srcUpdated || report.reordered) {
+    console.error(
+      `\n❌ 英文覆盖层与中文卡不对齐: src 需要重算 ${report.srcUpdated} 条、` +
+        `选项顺序需重排 ${report.reordered} 条——卡见上面点名的 id。`,
+    );
+    console.error('   → 跑 node scripts/sync-overlays.mjs --write，再重跑 npm run precheck。');
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `✅ 英文覆盖层对齐检查通过：${optionCards} 张带选项的卡里 ${decidable} 张可判定顺序，` +
+        `${report.needsHuman.length} 张需人读、${report.bySideNoDigits.length} 张某侧无数字（记录，不算失败）；` +
+        'src 与选项顺序都没有待办。',
+    );
+  }
+}

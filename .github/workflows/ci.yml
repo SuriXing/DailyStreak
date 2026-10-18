@@ -21,6 +21,11 @@ jobs:
         run: npm run i18n:check
       - name: Flashcard data integrity
         run: npm run check:flashcards
+      - name: 英文覆盖层对齐（src / 选项顺序）
+        # 只让两类红：src 需要重算、英文选项顺序需重排——都是"改了中文卡却没跑
+        # node scripts/sync-overlays.mjs --write"。另外两张清单（需人读 20 张 / 某侧无数字 281 张）
+        # 是记录，脚本本来就不把它们算进退出码；这里不要再包一层 || true，否则等于没接。
+        run: npm run check:overlays
       - name: 练习页筛选/乱序逻辑单元测试
         # CI 的 check job 是逐条跑命令（不是 npm run precheck），所以新测试必须在这里也加一步；
         # 需要 Node >= 22.15 的 module.registerHooks（上面的 node-version: 22 满足）。

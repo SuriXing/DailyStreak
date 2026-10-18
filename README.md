@@ -277,7 +277,7 @@ transcribed by hand.
 | Difficulty: every drill card must carry a 1-4; no deck of 40 cards or more may put more than nine tenths of its items on one level; and no deck may hold zero level-4 items | `check-flashcards.mjs` (`checkDifficulty` plus `checkDifficultyShape`) and the generators, which `throw` on a missing annotation | a missing annotation, a `0` or a `5`, a whole deck collapsed onto one level; or a deck's hardest tier hollowed out (`precalc-scenario` once held none, so the difficulty filter in that deck could not produce the top level at all while the gate stayed green, until somebody happened to look) | scenario difficulty is not asserted card by card (`checkDifficulty` demands a level only on the non-`-scenario` decks, and the scenario side is held by the builder throwing plus the product-versus-source diff); whether the level is right is not the machine's judgement; fewer than three level-4 items is one line on stderr rather than a failure (`LEVEL4_EMPTY` and `LEVEL4_THIN` are the engineering judgement "smallest usable number of hardest items", not a statistical result, and the summary line reports the hardest-tier total and the thinnest deck on every run). Also: lowering a deck's hardest tier usually pulls a min down in the Deck family table above, so a red here often drags a README drift along with it |
 | The README's bank counts: the decks-by-family table, the `N of M` column of the English coverage table, the sixteen percentages of the difficulty table, and the four prose sentences that name a total | `check-flashcards.mjs` (`checkReadmeBankCounts`, with the figures taken from `bank-stats.mjs`) | a hand-written number drifts after items are added; or a table header or a wording change stops parsing (that fails too, rather than letting the check lose its object) | it covers only the three tables and the four sentences it recognises. The rest of the README's numbers have no gate at all: "30 assertions" in the Quality Gates section and "132 KB instead of 321 KB" in the bundle paragraph both disagree with the scripts and the measurements today (148 assertion call sites in `smoke-test.js`; `deck-pack.ts` at 194 KB, the gzip blob at 145 KB, the plain deck modules at 583 KB) |
 | The English overlay is structurally self-consistent: four option letters, the same keyed answer letter as the Chinese, a `Correct option` matching the option it names character for character, no Chinese characters left, no orphan ids, and a `src` hashing the current Chinese `front+back`; scenario items must be covered in full | `check-flashcards.mjs` (`checkFlashcardOverlay`) | the Chinese is edited and the English does not follow (`src` stops matching); a scenario card with no entry | it validates structure and self-consistency, **not the meaning of the translation** - `Answer: A` and `Correct option` can be wrong together, each corroborating the other (`csp-126` did exactly that until 2026-10-17: its English options were permuted and both fields pointed at the same wrong method while the gate stayed green); a drill or concept card with no entry only reports a fraction rather than failing. `src` is also recomputed mechanically by `sync-overlays.mjs --write`, **including for the cards that script could not align**, so that hash witnesses that the script was run and not that a human read this version of the English |
-| The English option order corresponds to the Chinese letter by letter | the number fingerprint in `scripts/sync-overlays.mjs` (**a script a human runs: not in CI, not in `precheck`, not in a git hook**) | `--check` exits non-zero when it needs to reorder options or recompute `src` | measured today over 898 option cards: **597** are decidable (**278** with a unique fingerprint and matching multisets on both sides, which proves the order; **319** whose two fingerprint sequences already agree position by position, so the order was right to begin with - of those, **115** repeat a fingerprint, **48** have one option with no digits and **156** have both); **20** have numbers on both sides that do not line up at all, listed by id by `--check`, and **that is the real work queue**; **281** have no digits among one side's four options at all, where the fingerprint carries no information and the machine cannot judge (before the repair this group was **silently dropped**, and it is now its own bucket, because it is "unmeasured" rather than "checked and fine"). Another five (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint itself and are ordered by the explicit permutation in `scripts/overlay-order-overrides.json`; they sit inside the three groups above and are not counted again. **None of the three lists touches the exit code**, so a green `--check` does not mean the English order is right |
+| The English option order corresponds to the Chinese letter by letter | the number fingerprint in `scripts/sync-overlays.mjs` (= `npm run check:overlays`) | `--check` exits non-zero when it needs to reorder options or recompute `src` | measured today over 898 option cards: **597** are decidable (**278** with a unique fingerprint and matching multisets on both sides, which proves the order; **319** whose two fingerprint sequences already agree position by position, so the order was right to begin with - of those, **115** repeat a fingerprint, **48** have one option with no digits and **156** have both); **20** have numbers on both sides that do not line up at all, listed by id by `--check`, and **that is the real work queue**; **281** have no digits among one side's four options at all, where the fingerprint carries no information and the machine cannot judge (before the repair this group was **silently dropped**, and it is now its own bucket, because it is "unmeasured" rather than "checked and fine"). Another five (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint itself and are ordered by the explicit permutation in `scripts/overlay-order-overrides.json`; they sit inside the three groups above and are not counted again. **Only those first two counters reach the exit code** - they are the "somebody edited the Chinese and did not run `--write`" states, one command away from fixed - and since 2026-10-19 that exit code is a gate: `check:overlays` runs inside `precheck`, in both git hooks and in the CI check job. Neither of the two record lists does, on purpose; a green `--check` therefore still does not mean the English order is right, only that nothing was left half-done |
 | The zh/en/es UI dictionaries have identical key sets, and the course content is covered | `scripts/check-i18n.mjs` (147 keys, 17 entries / 17 skills / 3 courses) | a key is added only to `zh`, or a course item is left untranslated | it checks that keys exist and that the sets are equal, never what a translation says; the English card overlay is not here (it is in the two `check-flashcards` rows) |
 | The practice page's filter and sort semantics, and the identity "the tiers summed plus the ungraded items equal the total" over the real bank | `scripts/test-session-logic.mjs` (60 tests, needs Node 22.15 or newer) | the semantics of `filterCards` / `availableDifficulties` / `orderCards` / `summarizePool` are broken | it tests the lib layer's return values only: no rendering, no clicking, no flipping |
 | The local bank chain (`content/local/` → `public/local-deck.json` → the card pool → the difficulty filter) | the round trip in the same script (it really runs the generator in a temp directory) plus `build-local-bank.mjs` skipping an item whose annotation is misspelled | a generator parse regression, a difficulty marker written wrong | **it has never run in a browser**: there is no `public/local-deck.json` on this machine and no `.env.local` to switch `EXPO_PUBLIC_LOCAL_DECK=1` on (off by default), so the fetch → pool → render hop is covered by unit tests alone |
@@ -311,6 +311,21 @@ did not either. The shared shape of this class is "structurally consistent, sema
 reading the two languages side by side finds it, and the card stays on the twenty-card list after the fix, because
 the English writes `tenth` where the Chinese writes `10`, a rewriting the fingerprint cannot see, so `--check`
 still cannot judge it.
+
+Which half of `--check` became a gate was a decision, not a default. The script had always exited non-zero on its
+two actionable counters - `src` needing a recompute, and options needing a reorder - and never on the three lists
+it prints for a human, but nothing ran it, so "English options permuted against the Chinese" was the one class of
+defect that only surfaced when somebody happened to remember (`csp-126` was found by reading a list by hand, and
+five cards shipped this way earlier). It is now `npm run check:overlays`, sitting right after `check:flashcards` in
+`precheck`, in the pre-commit and pre-push hooks that call `precheck`, and as its own step in the CI check job; it
+costs about 0.35 s because it only reads files. The 20 cards needing a human and the 281 with no digits on one side
+stay out of the exit code deliberately: a gate that is red every day for 301 cards nobody has time to read is a
+gate everybody learns to ignore, and `precheck` would never be green again. Both failure modes were negative-tested
+before this landed: permuting one card's English option lines while moving `Answer:`/`Correct option` with them
+leaves `check-flashcards` green (that is the `csp-126` shape) and `check:overlays` fails naming the card, and
+editing a Chinese explanation without touching the English fails both. Swapping two English option lines on a
+card **with no digits on either side** fails neither: that is the 281-card blind spot, stated here rather than
+discovered later.
 
 The criterion itself has to be written into the repository where a second person can independently re-derive it,
 rather than existing only inside the annotator's head: the difficulty half is in
@@ -459,8 +474,9 @@ something the shipped deck depends on.
 ## Quality Gates
 
 ```bash
-npm run precheck           # 本地一键门禁: i18n completeness + 闪卡数据校验 + ruff + type check + lint + UXE 设计契约
+npm run precheck           # 本地一键门禁: i18n completeness + 闪卡数据校验 + 英文覆盖层对齐 + ruff + type check + lint + UXE 设计契约
 npm run check:flashcards   # 闪卡生成数据完整性校验（张数 / id 连续 / 选项 / 答案字母 / 来源字段 / 承接行）
+npm run check:overlays     # 英文覆盖层对齐（src 重算 / 选项顺序重排；"需人读"和"某侧无数字"只报不红）
 npm run typecheck          # tsc --noEmit
 npm run lint               # Expo ESLint
 npm run lint:py            # ruff 检查 .uxe/scripts（配置在 pyproject.toml）
@@ -470,7 +486,7 @@ npm run uxe:check          # UXE 设计契约检查（antd token 一致性 / 对
 
 `npm install` 自动把 git 钩子装到 `.git/hooks`（`scripts/install-hooks.js`，幂等）：
 
-- **pre-commit** — 运行 `npm run precheck`（快门禁：i18n / ruff / 类型 / lint / UXE 设计契约）。
+- **pre-commit** — 运行 `npm run precheck`（快门禁：i18n / 闪卡数据 / 英文覆盖层对齐 / ruff / 类型 / lint / UXE 设计契约）。
 - **pre-push** — 运行完整 `precheck` + `expo export -p web` 构建门禁，与 CI check job 对齐。
 
 单次跳过用 `--no-verify`（`git commit --no-verify` / `git push --no-verify`）。ruff 只需装一次：`python3 -m pip install --user ruff`。
@@ -488,7 +504,7 @@ npm run web &                     # dev server
 npm run smoke                     # 30 assertions, exits non-zero on failure
 ```
 
-CI (`.github/workflows/ci.yml`) runs i18n check, ruff, type check, lint, web export, and the smoke test on every push (smoke needs the `EXPO_PUBLIC_SUPABASE_*` repo secrets).
+CI (`.github/workflows/ci.yml`) runs i18n check, flashcard data integrity, English overlay alignment, ruff, type check, lint, web export, and the smoke test on every push (smoke needs the `EXPO_PUBLIC_SUPABASE_*` repo secrets).
 
 The repo also carries a UXE design contract (`.uxe/`) that audits surfaces, tokens, and AI-tell patterns on rendered output.
 

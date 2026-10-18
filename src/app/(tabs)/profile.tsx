@@ -177,7 +177,7 @@ export default function ProfileScreen() {
                   {
                     backgroundColor: colors.backgroundSelected,
                     borderColor: colors.primary,
-                    color: colors.primary,
+                    color: colors.primaryForeground,
                   },
                 ]}>
                 {t('flashcards.difficultyLabel', { level: grade.difficulty })}
@@ -233,7 +233,7 @@ export default function ProfileScreen() {
             <Text style={[styles.poolSectionLabel, styles.poolSectionLabelFlat, { color: colors.textSecondary }]}>
               {t('profile.poolDecks')}
             </Text>
-            <Text style={[styles.poolToggleText, { color: colors.primary }]}>
+            <Text style={[styles.poolToggleText, { color: colors.primaryForeground }]}>
               {decksOpen
                 ? t('profile.poolDecksHide')
                 : t('profile.poolDecksShow', { count: pool.decks.length })}

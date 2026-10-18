@@ -21,6 +21,12 @@ export const Colors = {
     // antd 语义色
     primary: '#1677ff',
     primaryHover: '#4096ff',
+    /**
+     * 主色当**文字/图标**用时取的颜色（链接、选中态导航项、难度徽章上的字）。
+     * 浅色下刻意与 primary 同值：#1677ff 放在 #ffffff 上只有 4.10:1（不达标），
+     * 但那要动浅色主题的品牌蓝与 tertiary 灰，属于另一件事，本次不动，见提交说明。
+     */
+    primaryForeground: '#1677ff',
     primaryText: '#ffffff',
     success: '#52c41a',
     error: '#ff4d4f',
@@ -45,8 +51,20 @@ export const Colors = {
     background: '#000000', // colorBgLayout
     backgroundElement: '#141414', // colorBgContainer
     backgroundSelected: '#111a2c', // colorPrimaryBg
-    primary: '#1677ff',
+    /**
+     * 暗色下 primary 只当**填充**色用（选中的 chip、头像底、进度条、徽章描边）：
+     * 原来的 #1677ff 配白字实测只有 4.10:1（低于正文 4.5:1），压深一档到 #1668dc 后
+     * 白字 5.19:1；当非文本用途（进度条/描边）对卡片底色仍有 3.55:1（要求 3:1）。
+     */
+    primary: '#1668dc',
     primaryHover: '#4096ff',
+    /**
+     * 主色当**文字/图标**用时取的颜色。暗色下 #1677ff 作文字只有 4.24:1（#111a2c 上）
+     * 与 4.49:1（#141414 上），两处都差一点，所以文字侧换成提亮过的 blue-5：
+     * 5.82:1（选中态底色）/ 6.16:1（卡片）/ 7.02:1（页面底色）。
+     * 只动文字一侧，填充仍是 primary，界面上看到的还是同一个蓝。
+     */
+    primaryForeground: '#4096ff',
     primaryText: '#ffffff',
     success: '#52c41a',
     error: '#ff4d4f',
@@ -65,6 +83,48 @@ export const Colors = {
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+/**
+ * antd 组件库自己的主题 token（Card / Tag / Button / Progress 用的就是这一套命名，
+ * 和上面的 Colors 不是一套）。@ant-design/react-native 的 Provider 会把这份对象
+ * **浅合并**到它的默认主题上，而默认主题是浅色的（fill_base: '#ffffff'）：
+ * 暗色下不给覆盖，今日页三张 <Card> 会保持白底，而卡片里的正文用的是 Colors.dark，
+ * 实测 #e0e0e0 on #ffffff = 1.32:1、#a6a6a6 on #ffffff = 2.43:1（等于看不见），
+ * <Tag> 也还是"白底 #888888 字"的 3.54:1。浅色下不传这份对象，antd 用默认主题。
+ *
+ * 只覆盖会露出浅色像素的键：底色/描边/文字/主色填充/幽灵按钮。
+ * 注意 antd 会拿这些值做十六进制字符串拼接（如 fill_tap + '4D'、color_text_base + '99'），
+ * 所以值必须是六位 hex，不能写成 rgba()。
+ */
+export const AntdDarkTheme = {
+  // 底色与描边
+  fill_base: Colors.dark.backgroundElement,
+  fill_body: Colors.dark.background,
+  fill_grey: '#1f1f1f',
+  fill_tap: '#262626',
+  fill_disabled: '#262626',
+  border_color_base: Colors.dark.border,
+  border_color_thin: Colors.dark.borderSecondary,
+  // 文字
+  color_text_base: Colors.dark.text,
+  color_text_base_inverse: Colors.dark.primaryText,
+  color_text_paragraph: Colors.dark.text,
+  color_text_caption: Colors.dark.textSecondary,
+  color_text_placeholder: Colors.dark.textTertiary,
+  color_text_disabled: '#595959',
+  color_icon_base: Colors.dark.textSecondary,
+  color_link: Colors.dark.primaryForeground,
+  // 主色：填充仍用 primary（白字 5.19:1），文字用 primaryForeground
+  brand_primary: Colors.dark.primary,
+  brand_primary_tap: '#0958d9',
+  primary_button_fill: Colors.dark.primary,
+  primary_button_fill_tap: '#0958d9',
+  ghost_button_color: Colors.dark.primaryForeground,
+  ghost_button_fill_tap: '#4096ff99',
+  brand_success: Colors.dark.success,
+  brand_warning: Colors.dark.warning,
+  brand_error: Colors.dark.error,
+} as const;
 
 export const Radius = {
   sm: 4,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import type { Session } from '@supabase/supabase-js';
@@ -6,7 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { I18nProvider } from '@/i18n';
 import { ThemePreferenceProvider, useThemePreference } from '@/contexts/theme-preference';
-import { Colors } from '@/constants/theme';
+import { AntdDarkTheme, Colors } from '@/constants/theme';
 import { Provider as AntdProvider } from '@ant-design/react-native';
 
 export default function RootLayout() {
@@ -34,12 +34,31 @@ export default function RootLayout() {
   }
 
   return (
-    <AntdProvider>
-      <ThemePreferenceProvider>
-        <I18nProvider>
+    <ThemePreferenceProvider>
+      <I18nProvider>
+        <AntdThemeProvider>
           <ThemedStack session={session} />
-        </I18nProvider>
-      </ThemePreferenceProvider>
+        </AntdThemeProvider>
+      </I18nProvider>
+    </ThemePreferenceProvider>
+  );
+}
+
+/**
+ * antd 组件（Card / Tag / Button / Progress）的配色也跟着主题走。
+ * 两件事值得写下来：
+ * 1. Provider 的 theme 是浅合并到 antd 默认主题上的，默认主题是浅色，所以只要暗色这一份覆盖；
+ *    浅色不传（undefined），antd 按原样渲染。
+ * 2. key={resolved} 不是装饰：antd 的 WithTheme 把 themeStyles(theme) 的结果缓存在组件实例里
+ *    （useCallback 依赖只有 themeStyles/styles，主题换了不会重算），换主题时只有让这棵子树
+ *    重挂载，已经渲染过的 Card/Tag 才会拿到新主题。代价是切主题会重挂一次当前路由，
+ *    换来的是"切过去就立刻是暗的"，不会出现黑页面里留着白卡片这种半截状态。
+ */
+function AntdThemeProvider({ children }: { children: ReactNode }) {
+  const { resolved } = useThemePreference();
+  return (
+    <AntdProvider key={resolved} theme={resolved === 'dark' ? AntdDarkTheme : undefined}>
+      {children}
     </AntdProvider>
   );
 }

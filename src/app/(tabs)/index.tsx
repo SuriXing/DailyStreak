@@ -234,7 +234,7 @@ export default function CheckinScreen() {
                 </Text>
                 {!loading && (
                   <Pressable onPress={load} disabled={busy}>
-                    <Text style={[styles.retryText, { color: colors.primary }]}>{t('common.retry')}</Text>
+                    <Text style={[styles.retryText, { color: colors.primaryForeground }]}>{t('common.retry')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -244,7 +244,7 @@ export default function CheckinScreen() {
               <View style={styles.progressHeader}>
                 <Text style={[styles.cardTitle, { color: colors.text }]}>{t('home.todayLesson')}</Text>
                 <Pressable onPress={() => router.push('/study')} accessibilityRole="link">
-                  <Text style={[styles.goStudy, { color: colors.primary }]}>{t('home.goStudy')} →</Text>
+                  <Text style={[styles.goStudy, { color: colors.primaryForeground }]}>{t('home.goStudy')} →</Text>
                 </Pressable>
               </View>
               {todayQuiz ? (

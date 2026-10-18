@@ -162,6 +162,8 @@ export interface UiStrings {
   'flashcards.difficultyLabel': DictValue;
   'flashcards.order': DictValue;
   'flashcards.shuffle': DictValue;
+  'flashcards.orderAsc': DictValue;
+  'flashcards.orderDesc': DictValue;
   'flashcards.sourceAmc10': DictValue;
   'flashcards.sourceAiMcq': DictValue;
   'flashcards.sourceLocalExam': string;

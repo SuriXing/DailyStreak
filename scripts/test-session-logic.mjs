@@ -22,6 +22,15 @@
  * 所以"多选是并集""空数组与 null 同义""集合里没有能命中的档就该是空池"这几条也在这里锁住：
  * 界面上的多选 chip 与冒烟里的分母断言都建立在这些语义上。
  *
+ * 最后一段管本地题库（content/local/ → public/local-deck.json → 卡池）：本地卡标了 `[难度 N]`
+ * 就跟内置题一样参与难度筛选与难度排序，没标的连 difficulty 字段都没有——既不是 0 档、
+ * 也不会被"难度 0"这个占位选到，更不会被某一档顺手捞进来。这一段还包含一次**往返**：
+ * 在临时目录里真的跑一遍 scripts/build-local-bank.mjs，把它写出来的 JSON 交给
+ * src/data/local-bank.ts 的 parseLocalDeck，再拿结果去跑 filterCards / availableDifficulties。
+ * 临时目录是必须的：生成器默认会覆盖 public/local-deck.json，那是开发者本机的文件、
+ * 不在仓库里（.gitignore），冲掉就真没了——所以往返测试用 LOCAL_BANK_SRC / LOCAL_BANK_OUT
+ * 覆写路径，并在前后断言那份文件一个字节都没动。
+ *
  * 直接跑 node 就能加载 src 下的 .ts：Node 22.18+ 默认剥离类型，但它既不认 tsconfig 的 "@/*"
  * 映射、也不给无扩展名的相对导入补扩展名，所以下面注册一个解析钩子补齐这两件事
  * （用 module.registerHooks，需要 Node >= 22.15；CI 的 node-version 22 与本地 Node 26 都满足）。
@@ -30,8 +39,10 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import os from 'node:os';
 import path from 'node:path';
-import { statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -90,6 +101,7 @@ process.emitWarning = (warning, ...rest) => {
 const loadTypeScript = (relativePath) => import(pathToFileURL(path.join(ROOT, relativePath)).href);
 const session = await loadTypeScript('src/lib/flashcard-session.ts');
 const { ALL_FLASHCARDS } = await loadTypeScript('src/data/flashcards.ts');
+const { parseLocalDeck } = await loadTypeScript('src/data/local-bank.ts');
 const { availableDifficulties, availableKinds, cardKind, filterCards, orderCards, shuffleCards, summarizePool } = session;
 
 /* ------------------------------------------------------------------ *
@@ -106,7 +118,7 @@ const CONCEPT_BACK = '斜率是纵坐标变化量与横坐标变化量之比。'
 let seq = 0;
 
 /** 造一张卡。quiz=false 造概念卡；level/difficulty 只在显式传入时才写字段。 */
-function makeCard({ id, deck = 'precalc', level, difficulty, quiz = true } = {}) {
+function makeCard({ id, deck = 'precalc', level, difficulty, quiz = true, source } = {}) {
   seq += 1;
   const card = {
     id: id ?? `fix-${seq}`,
@@ -114,7 +126,7 @@ function makeCard({ id, deck = 'precalc', level, difficulty, quiz = true } = {})
     category: 'unit-test',
     front: quiz ? QUIZ_FRONT : CONCEPT_FRONT,
     back: quiz ? QUIZ_BACK : CONCEPT_BACK,
-    source: quiz ? 'ai-mcq' : 'amc10-concept',
+    source: source ?? (quiz ? 'ai-mcq' : 'amc10-concept'),
     verified: true,
   };
   if (level !== undefined) card.level = level;
@@ -943,4 +955,339 @@ test('边界：真实数据上多选两档 = 两档各自题数之和（这就�
     count([]),
     '四档全选与"不限"结果相同——练习册/情境题的每张卡都带 1-4 的 rubric 分级，AMC10 概念卡本来就不是选择题',
   );
+});
+
+/* ------------------------------------------------------------------ *
+ * 本地题库（content/local/*.md → public/local-deck.json → 卡池）
+ * ------------------------------------------------------------------ *
+ * 本地题库以前不支持难度：卡上连 difficulty 字段都没有，于是练习页不显示难度标签，
+ * 难度筛选（选中任意一档）会把它们整批滤掉——那不是 bug，而是"没有分级"的正确表现。
+ * 现在难度变成可选的：标了 `[难度 N]` 的本地卡要和内置题走同一条路（标签、筛选、排序），
+ * 没标的老文件则必须**一字不差地**维持原样。这一段的断言就是这两句话。
+ *
+ * 口径上有三个容易写错的地方，都用构造卡池钉住：
+ * 1. 缺字段 ≠ 0：内置打包格式给"没有分级"写 0（0 能被 [0] 选中），本地题缺字段就不能被 [0] 选中；
+ * 2. 缺字段也不等于"最简单的题"：难度排序时它们挂末尾，不会被当成 1 档排到最前；
+ * 3. 有难度的本地卡不能凭空多出一个档位：本地只认 1-4，与内置 rubric 同口径。
+ */
+
+/** 本地风格卡池：两张标了难度、一张是老文件（连 difficulty 字段都没有）。 */
+const LOCAL_POOL = [
+  makeCard({ id: 'local-001', deck: 'local', difficulty: 4, source: 'local-exam' }),
+  makeCard({ id: 'local-002', deck: 'local', difficulty: 2, source: 'local-exam' }),
+  makeCard({ id: 'local-003', deck: 'local', source: 'local-exam' }), // 老文件：没标难度
+];
+
+test('本地卡池：标了难度的本地卡与内置题一样参与难度筛选，没标的既不变成 0 档、也不会被 [0] 选中', () => {
+  assert.deepEqual(availableDifficulties(LOCAL_POOL), [2, 4], '只有真标了难度的两张算一档');
+  assert.deepEqual(
+    ids(filterCards({ deck: 'local', level: null, difficulty: [4], kind: 'quiz' }, LOCAL_POOL)),
+    ['local-001'],
+  );
+  assert.deepEqual(
+    ids(filterCards({ deck: 'local', level: null, difficulty: [2, 4], kind: 'quiz' }, LOCAL_POOL)),
+    ['local-001', 'local-002'],
+    '多选按集合命中，顺序沿用卡池顺序（与内置卡池同一个函数）',
+  );
+  assert.deepEqual(
+    filterCards({ deck: 'local', level: null, difficulty: [1], kind: 'quiz' }, LOCAL_POOL),
+    [],
+    '没标难度的老题不会被"难度 1"顺手捞进来——它没有这个维度，而不是"最简单"',
+  );
+  assert.deepEqual(
+    filterCards({ deck: 'local', level: null, difficulty: [0], kind: 'quiz' }, LOCAL_POOL),
+    [],
+    '缺字段不是 0：内置打包格式的 0 占位卡能被 [0] 选中，本地老题连字段都没有、所以选不中',
+  );
+  assert.equal(
+    difficultySeq(orderCards(LOCAL_POOL, 'difficulty-asc')),
+    '2,4,-',
+    '本地卡按难度排序：标了难度的按档排，没标的挂末尾（"由易到难"不会先看到一堆没分级的题）',
+  );
+  assert.equal(difficultySeq(orderCards(LOCAL_POOL, 'difficulty-desc')), '4,2,-');
+});
+
+test('本地卡池：与内置题库混在一个池子里时（练习页"全部卡组"就是这个池子），难度筛选两边都命中', () => {
+  // study.tsx 的 pool 就是 [...ALL_FLASHCARDS, ...localDeck.cards]
+  const mixed = [...ALL_FLASHCARDS, ...LOCAL_POOL];
+  const builtinSummary = summarizePool();
+  const mixedSummary = summarizePool(mixed);
+
+  assert.equal(mixedSummary.total, ALL_FLASHCARDS.length + LOCAL_POOL.length);
+  assert.deepEqual(
+    mixedSummary.grades.map((g) => g.difficulty),
+    builtinSummary.grades.map((g) => g.difficulty),
+    '本地题只认 1-4，所以它不会让难度行多出内置数据里没有的档位',
+  );
+  for (const grade of builtinSummary.grades) {
+    const localHere = LOCAL_POOL.filter((card) => card.difficulty === grade.difficulty).length;
+    assert.equal(
+      mixedSummary.grades.find((g) => g.difficulty === grade.difficulty).count,
+      grade.count + localHere,
+      `难度 ${grade.difficulty} 的题数 = 内置题的张数 + 本地题里标了这一档的张数`,
+    );
+  }
+  assert.equal(
+    mixedSummary.ungraded,
+    builtinSummary.ungraded + 1,
+    '多出来的"没有分级"正好是本地那张老题，而不是被塞进某一档',
+  );
+  assert.equal(
+    mixedSummary.grades.reduce((n, g) => n + g.count, 0) + mixedSummary.ungraded,
+    mixedSummary.total,
+    '各档之和 + 没有分级 = 总题数这条恒等式在有本地题库时同样成立',
+  );
+
+  const d4 = ids(filterCards({ deck: null, level: null, difficulty: [4], kind: 'quiz' }, mixed));
+  const builtinD4 = ids(filterCards({ deck: null, level: null, difficulty: [4], kind: 'quiz' }));
+  assert.equal(d4.length, builtinD4.length + 1, '不选卡组时本地那张 4 档卡与内置的 4 档卡在同一个筛选结果里');
+  assert.ok(d4.includes('local-001'));
+  assert.ok(!d4.includes('local-003'), '同一池子里，没标难度的本地卡照旧被滤掉');
+});
+
+test('parseLocalDeck：难度只认 1-4 的整数，别的值当"没有分级"（手改过的 JSON 也挡得住）', () => {
+  assert.equal(typeof parseLocalDeck, 'function', 'local-bank.ts 应该导出这个纯函数（单测与往返测试都靠它）');
+  const base = {
+    deck: 'local',
+    category: '本地题库',
+    front: QUIZ_FRONT,
+    back: QUIZ_BACK,
+    source: 'local-exam',
+    verified: false,
+  };
+  const deck = parseLocalDeck({
+    label: '我的真题',
+    cards: [
+      { ...base, id: 'ok-2', difficulty: 2 },
+      { ...base, id: 'zero', difficulty: 0 },
+      { ...base, id: 'five', difficulty: 5 },
+      { ...base, id: 'float', difficulty: 2.5 },
+      { ...base, id: 'text', difficulty: '3' },
+      { ...base, id: 'none' },
+    ],
+  });
+  assert.ok(deck, '有 6 张能认的卡，不该返回 null');
+  assert.equal(deck.label, '我的真题');
+  assert.equal(deck.cards.length, 6, '难度认不出来只是"没有分级"，不该把整张卡丢掉');
+  assert.equal(deck.cards.find((card) => card.id === 'ok-2').difficulty, 2);
+  for (const id of ['zero', 'five', 'float', 'text', 'none']) {
+    const card = deck.cards.find((c) => c.id === id);
+    assert.equal(
+      'difficulty' in card,
+      false,
+      `${id}：认不出来的难度要删掉字段，而不是留 undefined 或原样带进去（否则卡片会显示一个筛选行里没有的档位）`,
+    );
+  }
+  assert.deepEqual(availableDifficulties(deck.cards), [2], '只有 2 是一档：0 / 5 / 2.5 / "3" 都不是');
+  assert.deepEqual(
+    ids(filterCards({ deck: 'local', level: null, difficulty: [5], kind: 'quiz' }, deck.cards)),
+    [],
+    '手改 JSON 塞进去的 5 档被挡住：界面上根本没有这一档，不能被它选中',
+  );
+  assert.equal(
+    deck.cards.every((card) => card.source === 'local-exam' && card.verified === false),
+    true,
+    'source / verified 由代码决定：JSON 里写什么都不算（本地题一律"本地题库 + 未核验"）',
+  );
+
+  // 空池 / 缺字段 / 条目不成形 → null（等同"没有本地题库"），不抛错
+  assert.equal(parseLocalDeck({ cards: [] }), null);
+  assert.equal(parseLocalDeck({}), null);
+  assert.equal(parseLocalDeck(null), null);
+  assert.equal(parseLocalDeck('nope'), null);
+  assert.equal(parseLocalDeck({ cards: [{ id: 'x' }] }), null, '缺 front/back 的条目被丢掉');
+  assert.equal(parseLocalDeck({ cards: [{ ...base, id: 'no-label' }] }).label, '本地题库', '没有 label 时用默认名');
+});
+
+/* ------------------------------------------------------------------ *
+ * 生成器往返：在临时目录里真跑一遍 scripts/build-local-bank.mjs
+ * ------------------------------------------------------------------ */
+
+const BUILDER = path.join(ROOT, 'scripts', 'build-local-bank.mjs');
+/** 开发者本机那份生成物：往返测试必须在它身上不留痕迹（它被 .gitignore 排除，冲掉就真没了）。 */
+const REPO_LOCAL_DECK = path.join(ROOT, 'public', 'local-deck.json');
+
+/** 在临时目录里跑一次生成器：LOCAL_BANK_SRC / LOCAL_BANK_OUT 覆写输入目录与输出文件。 */
+function runBuilder({ src, out }) {
+  const result = spawnSync(process.execPath, [BUILDER], {
+    env: { ...process.env, LOCAL_BANK_SRC: src, LOCAL_BANK_OUT: out },
+    encoding: 'utf8',
+  });
+  return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '', out };
+}
+
+/** 新建一个临时目录（调用方用 finally 删掉）。 */
+const tempDir = (prefix) => mkdtempSync(path.join(os.tmpdir(), `${prefix}-`));
+
+/** 只记"有没有变"需要的两个数：存在与否 + mtime + 大小。 */
+const statOrNull = (file) => {
+  try {
+    const s = statSync(file);
+    return { mtimeMs: s.mtimeMs, size: s.size };
+  } catch {
+    return null;
+  }
+};
+
+test('往返：本地 markdown → local-deck.json → 卡池，标了难度的带 difficulty、没标的老文件连字段都没有', () => {
+  const tmp = tempDir('local-bank-roundtrip');
+  const repoBefore = statOrNull(REPO_LOCAL_DECK);
+  try {
+    const src = path.join(tmp, 'content');
+    mkdirSync(src, { recursive: true });
+    // exam.md：两种标记顺序各写一遍，第三题（老写法）不写难度
+    writeFileSync(
+      path.join(src, 'exam.md'),
+      [
+        '# 我的真题',
+        '',
+        '1. 题干一？ A. 甲 B. 乙 C. 丙 D. 丁 [难度 3] [答案 B]',
+        '2. 题干二？ A. 甲 B. 乙 C. 丙 D. 丁 [答案 C] [难度：1]',
+        '3. 题干三？ A. 甲 B. 乙 C. 丙 D. 丁 [答案 A]',
+        '',
+      ].join('\n'),
+    );
+    // legacy.md：一个难度标记都没有，答案照旧放在 <文件名>-answers.md 里（加这个功能之前就是这么写的）
+    writeFileSync(path.join(src, 'legacy.md'), ['# 老文件', '', '41. 老题？ A 甲 B 乙 C 丙 D 丁', ''].join('\n'));
+    writeFileSync(path.join(src, 'legacy-answers.md'), ['|41|D|一句话解析|', ''].join('\n'));
+
+    const out = path.join(tmp, 'public', 'local-deck.json');
+    const run = runBuilder({ src, out });
+    assert.equal(run.status, 0, `生成器应该成功（stderr：${run.stderr.trim()}）`);
+    assert.ok(run.stdout.includes('✅'), `成功时打印 ✅：${run.stdout.trim().split('\n')[0]}`);
+    assert.ok(
+      run.stdout.includes('2 张带分级、2 张没有分级'),
+      `成功信息里要报清楚标了多少张：${run.stdout.trim().split('\n').slice(0, 2).join(' / ')}`,
+    );
+    assert.ok(existsSync(out), 'JSON 写在 LOCAL_BANK_OUT 指定的位置');
+
+    const raw = JSON.parse(readFileSync(out, 'utf8'));
+    assert.equal(raw.label, '我的真题', '第一个文件的 # 标题当卡组名');
+    assert.deepEqual(
+      raw.cards.map((card) => card.id),
+      ['local-exam-001', 'local-exam-002', 'local-exam-003', 'local-legacy-041'],
+      'id 里带文件名与题号（沿用原有规则），跨文件按文件名排序',
+    );
+    assert.deepEqual(
+      raw.cards.map((card) => card.difficulty),
+      [3, 1, undefined, undefined],
+      '[难度 3] / [难度：1] 都认；没标的两张在 JSON 里连 difficulty 键都没有（不是 0）',
+    );
+    for (const card of raw.cards) {
+      assert.equal(
+        'difficulty' in card,
+        card.id === 'local-exam-001' || card.id === 'local-exam-002',
+        `${card.id}：有难度才有这个键——写 0 会变成"难度 0"这个假档位`,
+      );
+    }
+
+    // 走到 App 那一端：JSON → parseLocalDeck → 卡池 → 练习页读的那几个函数
+    const deck = parseLocalDeck(raw);
+    assert.ok(deck);
+    assert.equal(deck.label, '我的真题');
+    assert.equal(deck.cards.length, 4);
+    assert.deepEqual(availableDifficulties(deck.cards), [1, 3], '往返之后难度还是 1 和 3');
+    assert.deepEqual(
+      ids(filterCards({ deck: 'local', level: null, difficulty: [3], kind: 'quiz' }, deck.cards)),
+      ['local-exam-001'],
+      '按难度 3 筛本地题：只剩标了 3 的那张（答案写在同行末尾的那张）',
+    );
+    assert.deepEqual(
+      ids(filterCards({ deck: 'local', level: null, difficulty: [1, 3], kind: 'quiz' }, deck.cards)),
+      ['local-exam-001', 'local-exam-002'],
+    );
+    assert.deepEqual(
+      filterCards({ deck: 'local', level: null, difficulty: [2], kind: 'quiz' }, deck.cards),
+      [],
+      '没标的本地题在任一档筛选下都不出现（它们不参与难度筛选，而不是被算成某一档）',
+    );
+    assert.equal(deck.cards.every((card) => cardKind(card) === 'quiz'), true, '本地题都是带选项的选择题');
+    assert.equal(
+      deck.cards.find((card) => card.id === 'local-legacy-041').back.includes('一句话解析'),
+      true,
+      '-answers.md 那条路径照旧（答案与简析都进 back）',
+    );
+    // 难度标记不能被留在题干/选项里
+    assert.equal(
+      deck.cards.some((card) => /\[难度/.test(card.front) || /\[难度/.test(card.back)),
+      false,
+      '标记要从题干里剥干净，不能变成选项文本的一部分',
+    );
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+  assert.deepEqual(
+    statOrNull(REPO_LOCAL_DECK),
+    repoBefore,
+    '往返测试只能写临时目录：开发者本机那份 public/local-deck.json 一个字节都不该动',
+  );
+});
+
+test('往返：难度标记写错时跳过那道题并打印原因（不是静默降级成"没有分级"）', () => {
+  const tmp = tempDir('local-bank-bad');
+  const repoBefore = statOrNull(REPO_LOCAL_DECK);
+  try {
+    const src = path.join(tmp, 'content');
+    mkdirSync(src, { recursive: true });
+    writeFileSync(
+      path.join(src, 'bad.md'),
+      [
+        '# 标错的文件',
+        '',
+        '1. 好题？ A. 甲 B. 乙 C. 丙 D. 丁 [难度 2] [答案 A]',
+        '2. 超范围？ A. 甲 B. 乙 C. 丙 D. 丁 [难度 5] [答案 A]',
+        '3. 读不出来？ A. 甲 B. 乙 C. 丙 D. 丁 [难度 难] [答案 A]',
+        '',
+      ].join('\n'),
+    );
+    const out = path.join(tmp, 'public', 'local-deck.json');
+    const run = runBuilder({ src, out });
+    assert.equal(run.status, 0, '还有一张好题，所以生成器照旧成功');
+    const raw = JSON.parse(readFileSync(out, 'utf8'));
+    assert.deepEqual(ids(raw.cards), ['local-bad-001'], '两张标错的直接跳过，不进卡池');
+    assert.equal(raw.cards[0].difficulty, 2);
+    assert.ok(run.stdout.includes('跳过 2 行'), `跳过要打印出来：${run.stdout.trim()}`);
+    assert.ok(
+      run.stdout.includes('难度 5 超出 1-4'),
+      '超范围要报出具体数值（否则用户不知道是哪张、错在哪）',
+    );
+    assert.ok(run.stdout.includes('难度标记读不出来'), '[难度 难] 这种也要报，不能当成"没标"');
+    assert.equal(
+      /\[难度/.test(JSON.stringify(raw.cards)),
+      false,
+      '认不出的标记不许混进题干或选项里',
+    );
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+  assert.deepEqual(statOrNull(REPO_LOCAL_DECK), repoBefore, '这一次同样只碰临时目录');
+});
+
+test('往返：目录不存在 / 目录是空的都"什么也没生成"（退出码 0），一条都解析不出来才报错', () => {
+  const tmp = tempDir('local-bank-empty');
+  try {
+    const emptySrc = path.join(tmp, 'empty');
+    mkdirSync(emptySrc, { recursive: true });
+    const emptyOut = path.join(tmp, 'out-empty', 'local-deck.json');
+    const emptyRun = runBuilder({ src: emptySrc, out: emptyOut });
+    assert.equal(emptyRun.status, 0, '空目录不是错误（加难度之前就是这个行为，不能改）');
+    assert.ok(emptyRun.stdout.includes('是空的'), `空目录给个 ℹ️ 提示：${emptyRun.stdout.trim()}`);
+    assert.equal(existsSync(emptyOut), false, '没解析出题就不该写文件');
+
+    const missingRun = runBuilder({ src: path.join(tmp, 'nope'), out: path.join(tmp, 'out-nope.json') });
+    assert.equal(missingRun.status, 0, '输入目录不存在同样不是错误');
+    assert.ok(missingRun.stdout.includes('没有'), `提示里要说清缺哪个目录：${missingRun.stdout.trim()}`);
+
+    const badSrc = path.join(tmp, 'bad');
+    mkdirSync(badSrc, { recursive: true });
+    writeFileSync(path.join(badSrc, 'bad.md'), '1. 只有坏标记？ A. 甲 B. 乙 C. 丙 D. 丁 [难度 9] [答案 A]\n');
+    const badOut = path.join(tmp, 'out-bad.json');
+    const badRun = runBuilder({ src: badSrc, out: badOut });
+    assert.equal(badRun.status, 1, '一条都解析不出来时退出码非 0（原有行为）');
+    assert.ok(badRun.stdout.includes('没有解析出任何题目'), `报错要说清原因：${badRun.stdout.trim()}`);
+    assert.ok(badRun.stdout.includes('难度 9 超出 1-4'), '跳过原因也要跟着打印');
+    assert.equal(existsSync(badOut), false);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });

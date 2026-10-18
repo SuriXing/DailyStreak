@@ -161,12 +161,12 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 
 ## Flashcard Question Bank
 
-The 1454 practice cards are generated data, not copy typed into the app:
+The 1456 practice cards are generated data, not copy typed into the app:
 
 | Decks | Cards | Source material | Generator |
 |---|---|---|---|
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
-| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 636 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
+| AP CSA, CSP, Precalculus, Calculus BC, Statistics | 638 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
 | 五科情境题（`*-scenario`） | 254 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
 
 Those numbers are not typed here by hand: `npm run bank:stats` computes every count in this
@@ -209,8 +209,8 @@ verbatim from an earlier item, and one stem that pre-emptively falsified its own
 with each other once, about whether the second batch of scenario items was weak as a whole or only in clusters,
 and the item-level grading settled it in favour of the narrower reading.
 
-What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (18 level-4 items across
-636, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
+What is still weak, stated plainly: the drill banks' hard tier is thin rather than absent (20 level-4 items across
+638, two to five per bank), and every one of them was written for this purpose rather than relabelled; the second
 batch of CSP scenario items leans on a handful of clusters that resolve to one concept despite a multi-clause
 stem - the clearest is two Create-task report items (48, 50), and three data-quality items (30, 31, 32)
 sit next to each other without overlapping exactly; the difficulty levels are rubric judgements with no student
@@ -234,7 +234,7 @@ alone; they are wording problems rather than wrong keys.
 
 ### Difficulty, and what tagging it revealed
 
-All 890 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
+All 892 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
 `content/subject-banks/difficulty.json` and enforced by the gate. The levels are a rubric judgement, not an
 empirical calibration: nobody has answered these items and had their score recorded, so read them as "how much
 work this asks for", not as "how often students get it wrong". Two independent sets of reviewers graded the two
@@ -242,7 +242,7 @@ families without seeing each other's work, which is what makes the comparison be
 
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
-| Drill banks (636 items, five subjects) | 44–71% | 16–40% | 8–16% | 2–4% |
+| Drill banks (638 items, five subjects) | 44–71% | 15–40% | 8–16% | 2–4% |
 | Scenario decks (254 items, five subjects) | 0–12% | 30–52% | 28–56% | 4–8% |
 
 The drill banks are still overwhelmingly level 1 and have little at the top; the scenario decks have almost
@@ -265,7 +265,7 @@ other two:
 | Layer | File | Cards | Status |
 |---|---|---|---|
 | AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 564 of 564 | complete |
-| Drill banks | `src/data/flashcard-i18n-drill.ts` | 636 of 636 | complete |
+| Drill banks | `src/data/flashcard-i18n-drill.ts` | 638 of 638 | complete |
 | Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 254 of 254 | required by the gate |
 
 `localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a

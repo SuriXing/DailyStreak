@@ -90,7 +90,7 @@ process.emitWarning = (warning, ...rest) => {
 const loadTypeScript = (relativePath) => import(pathToFileURL(path.join(ROOT, relativePath)).href);
 const session = await loadTypeScript('src/lib/flashcard-session.ts');
 const { ALL_FLASHCARDS } = await loadTypeScript('src/data/flashcards.ts');
-const { availableDifficulties, availableKinds, cardKind, filterCards, orderCards, shuffleCards } = session;
+const { availableDifficulties, availableKinds, cardKind, filterCards, orderCards, shuffleCards, summarizePool } = session;
 
 /* ------------------------------------------------------------------ *
  * 测试用卡池
@@ -159,7 +159,7 @@ const SUBJECT_DECKS = [
  * ------------------------------------------------------------------ */
 
 test('被测模块导出齐全（脚本真的加载了 flashcard-session.ts，而不是某个空壳）', () => {
-  for (const name of ['filterCards', 'availableDifficulties', 'availableKinds', 'cardKind', 'shuffleCards', 'orderCards']) {
+  for (const name of ['filterCards', 'availableDifficulties', 'availableKinds', 'cardKind', 'shuffleCards', 'orderCards', 'summarizePool']) {
     assert.equal(typeof session[name], 'function', `${name} 应该是函数`);
   }
   assert.ok(ALL_FLASHCARDS.length > 0, '真实题库不该是空的');
@@ -410,6 +410,117 @@ test('availableDifficulties：真实题库里是升序正整数，含 rubric 的
     [1, 2, 3, 4],
     'rubric 的四档 1-4 都应该在题库里出现过',
   );
+});
+
+/* ------------------------------------------------------------------ *
+ * summarizePool（「我的」页题库概览的数字来源）
+ * ------------------------------------------------------------------ *
+ * 这一块要锁住的只有一条：**没有分级的卡绝不能被算成某一档**。界面上"没有分级"那一行
+ * 是单列的，学生看到的是"四档各有几题 + 还有多少张没有档"；如果这里把打包格式的 0
+ * 或缺失字段当成 0 档，那一行就会凭空多出一个"难度 0"或者把 564 张概念卡并进 1 档，
+ * 而概览恰恰是"我到底有多少题可练、难度怎么分布"的唯一入口。所以 0 / 缺字段 / 空池
+ * 三条都在这里用构造卡池测，真实数据上再验证"四档之和 + 无分级 = 总题数"这个恒等式。
+ */
+
+/** 给 POOL 配一份卡组名单：summarizePool 的 decks 只管显示名与顺序，题数仍由 cards 数出来。 */
+const POOL_DECKS = [
+  { key: 'precalc', label: '微积分预备', hasLevels: false },
+  { key: 'arithmetic', label: '算术与数论', hasLevels: true },
+  { key: 'geometry', label: '几何', hasLevels: false },
+];
+
+test('summarizePool：0 与缺字段都只进"没有分级"，不会变成 0 档', () => {
+  const summary = summarizePool(POOL, POOL_DECKS);
+  assert.equal(summary.total, POOL.length);
+  assert.deepEqual(
+    summary.grades,
+    [
+      { difficulty: 2, count: 1 },
+      { difficulty: 3, count: 1 },
+      { difficulty: 4, count: 1 },
+    ],
+    '档位只列真实存在的 2/3/4：POOL 里那张 difficulty: 0 的占位卡不是一档',
+  );
+  assert.equal(summary.ungraded, 5, 'difficulty 0、没有 difficulty 字段、两张概念卡与一张混合卡都算"没有分级"');
+  const graded = summary.grades.reduce((n, g) => n + g.count, 0);
+  assert.equal(graded + summary.ungraded, summary.total, '各档之和 + 没有分级 = 总题数');
+  assert.deepEqual(
+    summary.decks.map((d) => [d.key, d.count]),
+    [
+      ['precalc', 4],
+      ['arithmetic', 3],
+      ['geometry', 1],
+    ],
+    '卡组题数按 deck 数出来，顺序沿用传进来的卡组名单',
+  );
+  assert.equal(summary.decks.reduce((n, d) => n + d.count, 0), summary.total, '各卡组之和 = 总题数');
+});
+
+test('summarizePool：空池 → 全 0（不抛错、也不编出一个 0 档）', () => {
+  const summary = summarizePool([], POOL_DECKS);
+  assert.deepEqual(summary.grades, []);
+  assert.equal(summary.total, 0);
+  assert.equal(summary.ungraded, 0);
+  assert.deepEqual(summary.decks.map((d) => d.count), [0, 0, 0]);
+});
+
+test('summarizePool：整池都没有分级时，档位是空的、题数全落在"没有分级"', () => {
+  const concepts = [
+    makeCard({ id: 'c1', deck: 'arithmetic', level: 'core', quiz: false }),
+    makeCard({ id: 'c2', deck: 'arithmetic', level: 'advance', quiz: false }),
+  ];
+  const summary = summarizePool(concepts, POOL_DECKS);
+  assert.deepEqual(summary.grades, []);
+  assert.equal(summary.ungraded, 2);
+  assert.equal(summary.total, 2);
+});
+
+test('summarizePool：真实题库上每档题数与难度筛选数出来的一致，且四档之和 + 无分级 = 总题数', () => {
+  const summary = summarizePool();
+  const countIn = (filter) => filterCards({ deck: null, level: null, difficulty: null, ...filter }).length;
+  assert.equal(summary.total, ALL_FLASHCARDS.length, '总题数就是整套题库的卡片数');
+  assert.deepEqual(
+    summary.grades.map((g) => g.difficulty),
+    availableDifficulties(ALL_FLASHCARDS),
+    '概览里的档位与练习页难度筛选行同源（列出来的档就是数据里真有的档）',
+  );
+  for (const grade of summary.grades) {
+    assert.ok(grade.count > 0, `难度 ${grade.difficulty} 列出来了就必须真有题`);
+    assert.equal(
+      grade.count,
+      countIn({ difficulty: [grade.difficulty] }),
+      `难度 ${grade.difficulty} 的题数与按该档筛出来的池子一致`,
+    );
+  }
+  const graded = summary.grades.reduce((n, g) => n + g.count, 0);
+  assert.equal(graded + summary.ungraded, summary.total, '四档之和 + 没有分级的题数 = 总题数（无分级的卡没被算进任何一档）');
+  assert.equal(
+    summary.ungraded,
+    ALL_FLASHCARDS.filter((card) => card.source === 'amc10-concept').length,
+    '"没有分级"那一行的题数就是 AMC10 概念卡的张数——界面正是这么标注的',
+  );
+  assert.ok(summary.ungraded > 0, '真实题库里确实有一批没有分级的卡，否则那一行没有意义');
+  assert.deepEqual(
+    summary.decks.map((d) => d.key),
+    [...AMC10_DECKS, ...SUBJECT_DECKS],
+    '卡组明细的顺序与练习页的卡组 chip 一致（AMC10 五个在前）',
+  );
+  assert.equal(summary.decks.reduce((n, d) => n + d.count, 0), summary.total, '各卡组题数之和 = 总题数');
+  for (const deck of [...AMC10_DECKS, ...SUBJECT_DECKS]) {
+    const row = summary.decks.find((d) => d.key === deck);
+    assert.ok(row, `${deck} 应该在卡组明细里`);
+    assert.equal(row.count, countIn({ deck }), `${deck} 的题数与按该卡组筛出来的池子一致`);
+  }
+  for (const deck of AMC10_DECKS) {
+    const row = summary.decks.find((d) => d.key === deck);
+    assert.ok(row.count > 0, `${deck} 不该是空卡组`);
+    assert.equal(
+      countIn({ deck, difficulty: summary.grades.map((g) => g.difficulty) }),
+      0,
+      `${deck} 整组是概念卡，按任何一个难度档去筛都该是空池（它们只出现在"没有分级"那一行）`,
+    );
+    assert.equal(countIn({ deck, kind: 'concept' }), row.count, `${deck} 整组都是概念卡，没有一张带选项`);
+  }
 });
 
 /* ------------------------------------------------------------------ *

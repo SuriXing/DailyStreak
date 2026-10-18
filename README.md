@@ -243,7 +243,7 @@ families without seeing each other's work, which is what makes the comparison be
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
 | Drill banks (636 items, five subjects) | 44–71% | 16–40% | 8–16% | 2–4% |
-| Scenario decks (254 items, five subjects) | 0–14% | 30–52% | 28–56% | 4–8% |
+| Scenario decks (254 items, five subjects) | 0–12% | 30–52% | 28–56% | 4–8% |
 
 The drill banks are still overwhelmingly level 1 and have little at the top; the scenario decks have almost
 nothing at the bottom and half their items at level 3. So the format difference is measured rather than asserted:

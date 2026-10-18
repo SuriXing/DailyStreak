@@ -162,4 +162,14 @@ export const en: UiStrings = {
   'flashcards.unverified': 'answer unchecked',
   'flashcards.verified': 'answer independently checked',
   'flashcards.provenanceNote': 'These cards come from AI-generated study material, not official exams; the answers were never checked one by one, so treat them as review prompts.',
+
+  // Accessibility copy for the filter chips: each row reads as a group, and a chip's name carries row + option + state
+  'flashcards.chipA11y': '{group}: {label} ({state})',
+  'flashcards.chipSelected': 'selected',
+  'flashcards.chipUnselected': 'not selected',
+  'flashcards.groupDeck': 'Deck filter',
+  'flashcards.groupKind': 'Card type filter',
+  'flashcards.groupDifficulty': 'Level filter, multi-select',
+  'flashcards.groupLevel': 'Tier filter',
+  'flashcards.groupOrder': 'Order filter',
 };

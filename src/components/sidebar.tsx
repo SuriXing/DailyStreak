@@ -117,12 +117,12 @@ export function Sidebar() {
               <Ionicons
                 name={item.icon}
                 size={18}
-                color={active ? colors.primary : colors.textSecondary}
+                color={active ? colors.primaryForeground : colors.textSecondary}
               />
               {!collapsed && (
                 <Text
                   numberOfLines={1}
-                  style={[styles.navLabel, { color: active ? colors.primary : colors.textSecondary }]}>
+                  style={[styles.navLabel, { color: active ? colors.primaryForeground : colors.textSecondary }]}>
                   {t(item.labelKey)}
                 </Text>
               )}

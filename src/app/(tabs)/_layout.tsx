@@ -19,7 +19,8 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        // 选中态是文字+图标：用 primaryForeground，暗色下拿填充色 primary 当文字只有 4.02:1
+        tabBarActiveTintColor: colors.primaryForeground,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
           backgroundColor: colors.background,

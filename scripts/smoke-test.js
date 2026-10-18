@@ -885,6 +885,18 @@ function clickI18n(page, zh, en) {
   );
   assert(bgBefore && darkApplied, '暗色主题生效（背景变黑）');
 
+  // 6b-2. 暗色下关键元素仍然可见。
+  // 这里刻意**不去浏览器里算对比度**：对比度由主题 token 决定，用 WCAG 公式实算的那份审计
+  // （临时脚本，不进仓库）才有意义；写成 DOM 断言只会得到一条脆断言——antd 的 WithTheme 把
+  // 样式缓存在组件实例里、主题是通过重挂载生效的，任何一次实现调整都会让"算出来的颜色"
+  // 与写死的期望值对不上，而这条断言本来想守的是"别把字藏起来换成变黑"。
+  for (const id of ['pool-card', 'pool-total']) {
+    assert(
+      await page.locator(`[data-testid="${id}"]`).first().isVisible(),
+      `暗色下 ${id} 仍然可见（不是靠隐藏文字换来的"变黑"）`,
+    );
+  }
+
   // 6c. 今日页新增：今日一课 + 本周概览（dark 下点击会被全屏层拦截，用 URL 导航）
   await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(2500);

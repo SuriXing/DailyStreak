@@ -203,7 +203,7 @@ export default function CheckinScreen() {
                 </Text>
               )}
               {milestoneHit !== null && (
-                <Text accessibilityLiveRegion="polite" style={[styles.milestone, { color: colors.warning }]}>
+                <Text accessibilityLiveRegion="polite" style={[styles.milestone, { color: colors.warningText }]}>
                   {t('home.milestone', { days: milestoneHit })}
                 </Text>
               )}

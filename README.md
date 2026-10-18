@@ -88,7 +88,7 @@ DailyStreak ships three locales: **中文 (zh, base)**, **English (en)**, and **
 - `src/i18n/content/{en,es}.ts` — translations of course content (lesson bodies, questions, options, explanations, skills, course descriptions). The Chinese text in `courses.ts` is the fallback whenever an overlay entry is missing.
 - `src/i18n/context.tsx` — `I18nProvider` + `useI18n()` (`t`, `locale`, `setLocale`, `formatDate`). Device language is detected via `expo-localization` on first launch; the manual choice from **Profile → Language** is persisted to AsyncStorage.
 - `src/i18n/core.ts` — `t()` with `{param}` interpolation, `Intl.PluralRules` plural forms (e.g. `study.remaining`), `Intl.DateTimeFormat` dates, and the course-content localizer.
-- `src/data/flashcard-i18n.ts`, `src/data/flashcard-i18n-scenario.ts` — per-card translations keyed by card id: the AMC 10 concept cards in the first file, the 260 scenario items in the second, kept apart so the two card families never move each other's text. `localizeFlashcard()` returns the Chinese card whenever the entry is missing, so a half-translated deck degrades card by card instead of breaking.
+- `src/data/flashcard-i18n.ts`, `src/data/flashcard-i18n-scenario.ts` — per-card translations keyed by card id: the AMC 10 concept cards in the first file, the 262 scenario items in the second, kept apart so the two card families never move each other's text. `localizeFlashcard()` returns the Chinese card whenever the entry is missing, so a half-translated deck degrades card by card instead of breaking.
 - `npm run i18n:check` — CI-friendly completeness audit: dictionary key parity across locales and full course-content coverage.
 - `npm run check:flashcards` — the deck gate; it also holds the overlay to a structural standard: an entry for every scenario card, the same four option letters, the same keyed answer letter as the Chinese, an English `Correct option` matching the option it names, no Chinese characters left, and no entry pointing at a card that does not exist.
 
@@ -161,13 +161,13 @@ Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
 
 ## Flashcard Question Bank
 
-The 1464 practice cards are generated data, not copy typed into the app:
+The 1466 practice cards are generated data, not copy typed into the app:
 
 | Decks | Cards | Source material | Generator |
 |---|---|---|---|
 | AMC 10（算术与数论 / 代数·函数·数列 / 几何 / 组合·概率 / 综合·策略） | 564 | the `2*-Flashcards-*.md` files of the AMC 10 material pack | `scripts/build-amc10-flashcards.js` |
 | AP CSA, CSP, Precalculus, Calculus BC, Statistics | 640 | the `*原创选择题*.md` banks plus their answer keys | `scripts/build-subject-decks.js` |
-| 五科情境题（`*-scenario`） | 260 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
+| 五科情境题（`*-scenario`） | 262 | authored for this repo: stimulus plus two to four reasoning steps per item | `scripts/build-subject-decks.js` |
 
 Those numbers are not typed here by hand: `npm run bank:stats` computes every count in this
 section from the generated data, and `npm run check:flashcards` fails when this table, the English
@@ -226,7 +226,7 @@ that reading (precalculus 031, 039 and 046 - in each case the English `Answer:` 
 Chinese was right). A fourth, `csp-125`, was found only after the fingerprint itself was repaired: it had been
 reading both `10⁻⁶` and `10⁻²` as the number 10, concluded the two options were indistinguishable, and skipped the
 card, so nothing ever compared its Chinese `A` (10⁻⁶, the correct option) with its English `A` (3×10⁻²). With
-superscripts and signs normalised the fingerprint settles 599 of the 900 option cards: 280 outright, where the four
+superscripts and signs normalised the fingerprint settles 601 of the 902 option cards: 282 outright, where the four
 numbers are distinct and the two multisets match so the script can re-derive the order, and another 319 because the
 two sides' fingerprint sequences already agree letter for letter, which is not a proof but is the order already
 being right. 20 cards have numbers on both sides that do not line up at all, and those are the ones a person has to
@@ -264,7 +264,7 @@ transcribed by hand.
 | Card shape: the count the file header declares equals the number of cards; ids are consecutive and equal the source item numbers; exactly four `A./B./C./D.` lines; no empty option and no leftover label; `答案：X` and `正确选项：…` agree character for character | `check-flashcards.mjs` (`parseCards` / `checkIdSequence` / `checkSubjectCard`) | hand-edited data, a parser regression, a gap in the source numbering | shape only: the option order, the stem text and whether the answer is right are all outside what it knows |
 | Concept cards (564 of them) carry no option lines, and `level` is one of `core`/`advance`/`boundary` only | the same (`checkConceptCard`) | an option block leaks into a concept card, a `level` is misspelled | it recognises three literal values; whether the level is the right one is not its question |
 | When a stem says 上题/上式/上述/前一题 (*the previous item / the formula above / the above / the preceding question*), `front` must open with `【承接上题】` (*carrying on from the last item*) | the same (`checkBackReference`) | the carry-over line is deleted | it knows those four words; word it differently and this check has no object left to look at |
-| `source` is valid, `verified` agrees with the ledger hash, and the ledger holds no orphan ids | the same (`checkProvenance`) plus `scripts/flashcard-verification.json` (1464 cards registered, 1464 actually verified right now) | `front`/`back` edited without updating the ledger → the gate fails outright and prints the old and the new hash | it proves that this version of the text was read through once, and nothing about the quality of that read - whether a distractor's stated mistake really produces the number it shows is not a judgement a machine makes |
+| `source` is valid, `verified` agrees with the ledger hash, and the ledger holds no orphan ids | the same (`checkProvenance`) plus `scripts/flashcard-verification.json` (1466 cards registered, 1466 actually verified right now) | `front`/`back` edited without updating the ledger → the gate fails outright and prints the old and the new hash | it proves that this version of the text was read through once, and nothing about the quality of that read - whether a distractor's stated mistake really produces the number it shows is not a judgement a machine makes |
 | The `FlashcardSource` union still carries `'amc10-concept'` / `'ai-mcq'` | the same (`checkSourceUnion`) | a literal is deleted → the provenance label in the UI silently takes the wrong branch | it compares two strings; whether the source is actually filled in correctly is not in its hands (see the row above) |
 | The generated data stays in step with the `content/` sources | the same (`checkDeckSourceSync`: both generators rebuilt into a temp directory and compared character for character) | a source is edited and the generator chain is not re-run | it proves the products equal what the current sources rebuild to, and nothing about whether the items inside those sources are right |
 | The bundle's packed blob matches the deck data, and app code may not import a plain deck module | the same (re-pack, compare the unpacked content, plus `checkNoPlainDeckImport`) | cards are edited without a re-pack, or somebody imports a plain module back into the app | packing saves size and defeats `grep`, and that is all it does - the 194 KB the script prints is nothing but the length of `deck-pack.ts` |
@@ -277,7 +277,7 @@ transcribed by hand.
 | Difficulty: every drill card must carry a 1-4; no deck of 40 cards or more may put more than nine tenths of its items on one level; and no deck may hold zero level-4 items | `check-flashcards.mjs` (`checkDifficulty` plus `checkDifficultyShape`) and the generators, which `throw` on a missing annotation | a missing annotation, a `0` or a `5`, a whole deck collapsed onto one level; or a deck's hardest tier hollowed out (`precalc-scenario` once held none, so the difficulty filter in that deck could not produce the top level at all while the gate stayed green, until somebody happened to look) | scenario difficulty is not asserted card by card (`checkDifficulty` demands a level only on the non-`-scenario` decks, and the scenario side is held by the builder throwing plus the product-versus-source diff); whether the level is right is not the machine's judgement; fewer than three level-4 items is one line on stderr rather than a failure (`LEVEL4_EMPTY` and `LEVEL4_THIN` are the engineering judgement "smallest usable number of hardest items", not a statistical result, and the summary line reports the hardest-tier total and the thinnest deck on every run). Also: lowering a deck's hardest tier usually pulls a min down in the Deck family table above, so a red here often drags a README drift along with it |
 | The README's bank counts: the decks-by-family table, the `N of M` column of the English coverage table, the sixteen percentages of the difficulty table, and the four prose sentences that name a total | `check-flashcards.mjs` (`checkReadmeBankCounts`, with the figures taken from `bank-stats.mjs`) | a hand-written number drifts after items are added; or a table header or a wording change stops parsing (that fails too, rather than letting the check lose its object) | it covers only the three tables and the four sentences it recognises. The rest of the README's numbers have no gate at all: "30 assertions" in the Quality Gates section and "132 KB instead of 321 KB" in the bundle paragraph both disagree with the scripts and the measurements today (148 assertion call sites in `smoke-test.js`; `deck-pack.ts` at 194 KB, the gzip blob at 145 KB, the plain deck modules at 583 KB) |
 | The English overlay is structurally self-consistent: four option letters, the same keyed answer letter as the Chinese, a `Correct option` matching the option it names character for character, no Chinese characters left, no orphan ids, and a `src` hashing the current Chinese `front+back`; scenario items must be covered in full | `check-flashcards.mjs` (`checkFlashcardOverlay`) | the Chinese is edited and the English does not follow (`src` stops matching); a scenario card with no entry | it validates structure and self-consistency, **not the meaning of the translation** - `Answer: A` and `Correct option` can be wrong together, each corroborating the other (`csp-126` did exactly that until 2026-10-17: its English options were permuted and both fields pointed at the same wrong method while the gate stayed green); a drill or concept card with no entry only reports a fraction rather than failing. `src` is also recomputed mechanically by `sync-overlays.mjs --write`, **including for the cards that script could not align**, so that hash witnesses that the script was run and not that a human read this version of the English |
-| The English option order corresponds to the Chinese letter by letter | the number fingerprint in `scripts/sync-overlays.mjs` (= `npm run check:overlays`) | `--check` exits non-zero when it needs to reorder options or recompute `src` | measured today over 900 option cards: **599** are decidable (**280** with a unique fingerprint and matching multisets on both sides, which proves the order; **319** whose two fingerprint sequences already agree position by position, so the order was right to begin with - of those, **115** repeat a fingerprint, **48** have one option with no digits and **156** have both); **20** have numbers on both sides that do not line up at all, listed by id by `--check`, and **that is the real work queue**; **281** have no digits among one side's four options at all, where the fingerprint carries no information and the machine cannot judge (before the repair this group was **silently dropped**, and it is now its own bucket, because it is "unmeasured" rather than "checked and fine"). Another five (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint itself and are ordered by the explicit permutation in `scripts/overlay-order-overrides.json`; they sit inside the three groups above and are not counted again. **Only those first two counters reach the exit code** - they are the "somebody edited the Chinese and did not run `--write`" states, one command away from fixed - and since 2026-10-19 that exit code is a gate: `check:overlays` runs inside `precheck`, in both git hooks and in the CI check job. Neither of the two record lists does, on purpose; a green `--check` therefore still does not mean the English order is right, only that nothing was left half-done |
+| The English option order corresponds to the Chinese letter by letter | the number fingerprint in `scripts/sync-overlays.mjs` (= `npm run check:overlays`) | `--check` exits non-zero when it needs to reorder options or recompute `src` | measured today over 902 option cards: **601** are decidable (**282** with a unique fingerprint and matching multisets on both sides, which proves the order; **319** whose two fingerprint sequences already agree position by position, so the order was right to begin with - of those, **115** repeat a fingerprint, **48** have one option with no digits and **156** have both); **20** have numbers on both sides that do not line up at all, listed by id by `--check`, and **that is the real work queue**; **281** have no digits among one side's four options at all, where the fingerprint carries no information and the machine cannot judge (before the repair this group was **silently dropped**, and it is now its own bucket, because it is "unmeasured" rather than "checked and fine"). Another five (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint itself and are ordered by the explicit permutation in `scripts/overlay-order-overrides.json`; they sit inside the three groups above and are not counted again. **Only those first two counters reach the exit code** - they are the "somebody edited the Chinese and did not run `--write`" states, one command away from fixed - and since 2026-10-19 that exit code is a gate: `check:overlays` runs inside `precheck`, in both git hooks and in the CI check job. Neither of the two record lists does, on purpose; a green `--check` therefore still does not mean the English order is right, only that nothing was left half-done |
 | The zh/en/es UI dictionaries have identical key sets, and the course content is covered | `scripts/check-i18n.mjs` (147 keys, 17 entries / 17 skills / 3 courses) | a key is added only to `zh`, or a course item is left untranslated | it checks that keys exist and that the sets are equal, never what a translation says; the English card overlay is not here (it is in the two `check-flashcards` rows) |
 | The practice page's filter and sort semantics, and the identity "the tiers summed plus the ungraded items equal the total" over the real bank | `scripts/test-session-logic.mjs` (60 tests, needs Node 22.15 or newer) | the semantics of `filterCards` / `availableDifficulties` / `orderCards` / `summarizePool` are broken | it tests the lib layer's return values only: no rendering, no clicking, no flipping |
 | The local bank chain (`content/local/` → `public/local-deck.json` → the card pool → the difficulty filter) | the round trip in the same script (it really runs the generator in a temp directory) plus `build-local-bank.mjs` skipping an item whose annotation is misspelled | a generator parse regression, a difficulty marker written wrong | **it has never run in a browser**: there is no `public/local-deck.json` on this machine and no `.env.local` to switch `EXPO_PUBLIC_LOCAL_DECK=1` on (off by default), so the fetch → pool → render hop is covered by unit tests alone |
@@ -292,8 +292,8 @@ About the two overlay rows above: the README used to say "the fingerprint now pr
 option cards", and that sentence is gone, replaced by the three groups `--check` computes today. 559 was 898 minus
 the 339 cards `--check` listed for manual review, which counts "not reported" as "proved" - and that 339 was only
 the pile where both sides had numbers that would not line up, while the remaining 281 have no digits among one
-side's four options and were never reported at all. The current readings are **599 decidable / 20 needing a human /
-281 with no digits on one side**: within the 599, 280 have a unique fingerprint that proves the order and 319 have
+side's four options and were never reported at all. The current readings are **601 decidable / 20 needing a human /
+281 with no digits on one side**: within the 601, 282 have a unique fingerprint that proves the order and 319 have
 fingerprint sequences that agree position by position, so the order was right already (not a proof, but right,
 which is why they are no longer raised as a problem); the **20** are the real work queue, because they are the one
 class where the machine has evidence of a mismatch, and `--check` lists them by id; the 281 are a different matter -
@@ -334,7 +334,7 @@ rather than existing only inside the annotator's head: the difficulty half is in
 
 ### Difficulty, and what tagging it revealed
 
-All 900 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
+All 902 drill and scenario items carry a `difficulty` from 1 to 4, assigned against the rubric written into
 `content/subject-banks/difficulty.json` and enforced by the gate. The levels are a rubric judgement, not an
 empirical calibration: nobody has answered these items and had their score recorded, so read them as "how much
 work this asks for", not as "how often students get it wrong". Two independent sets of reviewers graded the two
@@ -345,15 +345,17 @@ itself, with a worked example at every level and the judgement calls that go wro
 | Deck family | Level 1 | Level 2 | Level 3 | Level 4 |
 |---|---|---|---|---|
 | Drill banks (640 items, five subjects) | 44–71% | 15–40% | 8–16% | 3–4% |
-| Scenario decks (260 items, five subjects) | 0–12% | 30–52% | 28–56% | 7–8% |
+| Scenario decks (262 items, five subjects) | 2–12% | 30–52% | 28–56% | 7–8% |
 
 The drill banks are still overwhelmingly level 1 and have little at the top; the scenario decks have almost
 nothing at the bottom and half their items at level 3. So the format difference is measured rather than asserted:
 the content written to require two to four steps really does require them, and the material generated in bulk as
-one-line questions really is one-line. The two level-1 items added to the CSA scenario deck are the same fix at
-the other end of the scale: it was the one scenario deck with nothing at level 1, so anyone warming up had to
-start at level 2. Each asks one thing only - how `+` associates once a string appears, and how many passes a loop
-whose variable doubles makes - while still carrying code as the stimulus. The statistics drill bank now has fourteen items at level 3 or 4, so a
+one-line questions really is one-line. The level-1 items added to the CSA and the precalculus scenario decks are the same
+fix at the other end of the scale: those were the two scenario decks with nothing at level 1, so anyone warming up
+in them had to start at level 2. The CSA pair asks one thing each - how `+` associates once a string appears, and
+how many passes a loop whose variable doubles makes - while still carrying code as the stimulus; the precalculus
+pair asks how far 135° is in radians (one conversion formula) and which kind of sequence 405, 270, 180, 120, 80 is
+(one ratio to check), each behind a stem that supplies the situation rather than replacing it. The statistics drill bank now has fourteen items at level 3 or 4, so a
 "hard practice" filter over it draws on fourteen rather than on one. Closing the gap further needs new items - a
 condition that must be checked before the routine applies, a method the student must choose, several interacting
 facts held at once - not a relabelling of what is there. The four items added to the precalculus scenario deck
@@ -376,7 +378,7 @@ other two:
 |---|---|---|---|
 | AMC 10 concept cards | `src/data/flashcard-i18n.ts` | 564 of 564 | complete |
 | Drill banks | `src/data/flashcard-i18n-drill.ts` | 640 of 640 | complete |
-| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 260 of 260 | required by the gate |
+| Scenario decks | `src/data/flashcard-i18n-scenario.ts` | 262 of 262 | required by the gate |
 
 `localizeFlashcard()` falls through the layers and returns the Chinese card whenever an entry is missing, so a
 half-translated deck degrades card by card rather than breaking. The gate enforces full coverage only for the

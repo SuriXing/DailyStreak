@@ -368,6 +368,10 @@ block — eighteen questions never reached the app. The builder now refuses to w
 question would be dropped, and the check requires ids to run `deck-001…deck-120`, so a missing number
 cannot hide. Cards whose stem says "上题/上式" also carry the referenced question as an inlined
 `【承接上题】` line, because cards are shown one at a time and free practice shuffles by default.
+No card relies on that inlining any more: on 2026-10-15 the nineteen stems that used to say "上题/上式"
+were rewritten to restate the setting they need in the stem itself, so each of those cards is a
+self-contained single question and the inlining stays in the builder as a backstop rather than as
+something the shipped deck depends on.
 
 ## Quality Gates
 

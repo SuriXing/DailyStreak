@@ -13,17 +13,27 @@
  *
  * 这个脚本**只做位移和哈希**，不碰任何英文句子：一句英文该怎么改是人的判断。
  *
- * 对齐靠"选项行里的数字"这个语言无关的指纹。它的能力边界必须说清：
- *  - 指纹唯一且两侧多重集一致时，脚本能**证明**英文顺序与中文一致，不一致就转正；
- *  - 一侧选项里没有数字（纯文字选项）时，脚本无法判断，只能跳过——这类卡只能靠人读；
+ * 对齐靠"选项行里的数字"这个语言无关的指纹。它的能力边界必须说清，而且**要分类报**：
+ * 把判定不了的卡混成一句"跳过（N 条）"，读的人拿不到任何线索，也就没法据此干活（2026-10-17 改）。
+ * 每一类要做什么事完全不同：
+ *  - 可判定：指纹唯一、两侧多重集一致。脚本能**证明**英文顺序与中文一致，不一致就转正；
+ *  - 顺序已一致（指纹序列逐位相同）：指纹重复或某行没有数字，够不上"证明"，但每一行读到的数字
+ *    都落在同一个位置，说明顺序本来就是对的——视为通过，不再当问题报；
+ *  - 需人读：两侧都有数字、多重集却真对不上。这是机器唯一能给出"有问题"证据的一类，
+ *    也是真正可操作的工作队列，脚本逐张列 id；
+ *  - 某侧无数字：至少一侧的四个选项里一个数字都没有。指纹没有信息，机器既不能证明一致、
+ *    也不能报警。这类**不是"已通过"，只是"量不出来"**，别把它读成绿灯。
  *  - 上标与负号必须先归一化，否则 `10⁻⁶` 与 `10⁻²` 都会被读成 "10"，指纹重复导致整张卡被跳过。
  *    csp-125 就是这样漏掉的：中文 A 是 10⁻⁶（正确答案），英文 A 却是 3×10⁻²，
  *    英文读者看到的答案指向干扰项，而门禁只校验英文自洽、看不出两种语言的顺序错位。
- *    （2026-10-14 修好指纹并转正该卡；当前 892 张带选项的卡里 553 张可被指纹判定，339 张只能人读。）
+ *    （2026-10-14 修好指纹并转正该卡。2026-10-17 实测：898 张带选项的卡里可判定 597 张
+ *    ＝指纹唯一 278 + 逐位相同 319，需人读 20 张，某侧无数字 281 张。）
  * 用法：
  *   node scripts/sync-overlays.mjs --check        # 只报告差异，不写文件（CI 用）
  *   node scripts/sync-overlays.mjs --write        # 写入
  *   node scripts/sync-overlays.mjs --write --from=HEAD^   # 以某个 git 版本的中文卡为基准算置换
+ * 注意：--check 的退出码只看 `src` 与需要重排的条数，**与上面那三类清单无关**；
+ * 清单是给人读的，绿着不代表英文顺序是对的。
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -97,7 +107,30 @@ const answerLetter = (back, label) => {
   return m ? m[1] : null;
 };
 
-const report = { srcUpdated: 0, reordered: 0, skipped: [], letterMismatch: [] };
+/**
+ * 判定不了时**不能混成一堆**：三类要做的事完全不同，所以要分开记、分开打。
+ * 分类完全按下面 `alignable` 的真实判据走（它要求四个选项、两侧每个选项都有数字、
+ * 多重集一致、且四个指纹互不相同）：
+ *   orderAgrees    两侧指纹序列逐位相同 → 顺序已经和中文一致，视为通过，不需要动作；
+ *   needsHuman     两侧都有数字却对不上 → 多重集真的不一致，机器只有这一类能报警，必须逐张人读；
+ *   bySideNoDigits 至少一侧四个选项一个数字都没有 → 指纹没有信息，机器判不了（不是通过）。
+ * 这里的 `aligned` 是能证明一致的张数，与 orderAgrees / needsHuman / bySideNoDigits 合起来
+ * 就是全部带选项的卡（概念卡没有选项行、不计入，与改前一致）。
+ */
+const report = {
+  srcUpdated: 0,
+  reordered: 0,
+  aligned: 0,
+  orphaned: [],
+  orderAgrees: [],
+  needsHuman: [],
+  bySideNoDigits: [],
+  /** 为什么这一桶够不上"证明"（互斥，三项之和 = orderAgrees.length）。 */
+  orderAgreesWhy: { dup: 0, blank: 0, both: 0 },
+  /** 哪一侧没有数字（两项之和 = bySideNoDigits.length）。 */
+  noDigitsWhy: { bothSides: 0, oneSide: 0 },
+  letterMismatch: [],
+};
 
 for (const rel of OVERLAY_FILES) {
   const abs = path.join(root, rel);
@@ -125,7 +158,7 @@ for (const rel of OVERLAY_FILES) {
   for (const [id, en] of entries) {
     const zh = now.get(id);
     if (!zh) {
-      report.skipped.push(`${id}（覆盖层里有、卡片里没有）`);
+      report.orphaned.push(`${id}（覆盖层里有、卡片里没有）`);
       continue;
     }
     const want = srcOf(zh.front, zh.back);
@@ -151,6 +184,8 @@ for (const rel of OVERLAY_FILES) {
     const zhSig = zhNow.map(sig);
     const enSig = enOpts.map(sig);
     const override = ORDER_OVERRIDES[id];
+    // 显式置换过的卡，顺序是"按表定的"而不是"指纹证出来的"，下面分类时要按前者算。
+    let orderedByOverride = false;
     // 显式置换：只有在"换了之后逐字母指纹才对上、而现在对不上"时才应用，因此可以重复运行。
     if (
       Array.isArray(override) &&
@@ -171,6 +206,7 @@ for (const rel of OVERLAY_FILES) {
         .replace(/^Answer:\s*[A-D]/m, `Answer: ${zhAns}`)
         .replace(/\n\nCorrect option:\s*[\s\S]+$/, `\n\nCorrect option: ${permuted[zhIdx].slice(3)}`);
       report.reordered += 1;
+      orderedByOverride = true;
     }
     const alignable =
       zhNow.length === 4 &&
@@ -180,6 +216,7 @@ for (const rel of OVERLAY_FILES) {
       zhSig.slice().sort().join('|') === enSig.slice().sort().join('|') &&
       new Set(zhSig).size === 4;
     if (alignable) {
+      report.aligned += 1;
       const newEn = zhSig.map((s) => `${'ABCD'[zhSig.indexOf(s)]}. ${enOpts[enSig.indexOf(s)].slice(3)}`);
       const head = en.front.split('\n').filter((l) => !/^[A-D]\. /.test(l));
       const zhAns = answerLetter(zh.back, 'zh');
@@ -192,8 +229,26 @@ for (const rel of OVERLAY_FILES) {
       front = rebuiltFront;
       back = rebuiltBack;
     } else if (zhSig.some(Boolean) && enSig.some(Boolean)) {
-      // 两边都有数字却对不上，才是真的可疑；纯文字选项（没有数字）不算问题。
-      report.skipped.push(`${id}（中文与英文选项里的数字对不上，需人工核对）`);
+      // 两侧都至少有一个选项带数字，但指纹没能证明顺序。这里必须再分两种，因为要做的事不同：
+      if (orderedByOverride || zhSig.join('|') === enSig.join('|')) {
+        // 每一行读到的数字都落在同一个位置：英文顺序本来就和中文一致，不需要动作。
+        // （被显式置换过的卡按置换表定序，置换的前提就是"换完逐字母对上"，同属这一类。）
+        report.orderAgrees.push(id);
+        const dup = new Set(zhSig).size < 4;
+        const blank = zhSig.some((s) => !s) || enSig.some((s) => !s);
+        if (dup && blank) report.orderAgreesWhy.both += 1;
+        else if (dup) report.orderAgreesWhy.dup += 1;
+        else report.orderAgreesWhy.blank += 1;
+      } else {
+        // 多重集真的对不上：机器唯一能给出"有问题"证据的一类，逐张人读。
+        report.needsHuman.push(id);
+      }
+    } else if (zhNow.length === 4 && enOpts.length === 4) {
+      // 至少一侧的四个选项里一个数字都没有，指纹没有信息可用，机器判不了。
+      // 改前这类是**静默丢掉**的：读的人以为"没报就是没问题"，其实是从没量过。
+      report.bySideNoDigits.push(id);
+      if (!zhSig.some(Boolean) && !enSig.some(Boolean)) report.noDigitsWhy.bothSides += 1;
+      else report.noDigitsWhy.oneSide += 1;
     }
     if (answerLetter(back, 'en') !== answerLetter(zh.back, 'zh') && enOpts.length === 4) {
       // 顺序没变但答案字母对不上：只可能是中文答案变了，英文答案跟着走。
@@ -234,8 +289,42 @@ if (report.letterMismatch.length) {
   console.log(`\n中英文简析提到的字母不一致（${report.letterMismatch.length} 条）：`);
   for (const s of report.letterMismatch.slice(0, 20)) console.log('  - ' + s);
 }
-if (report.skipped.length) {
-  console.log(`\n跳过（${report.skipped.length} 条）：`);
-  for (const s of report.skipped.slice(0, 20)) console.log('  - ' + s);
+if (report.orphaned.length) {
+  console.log(`\n孤立 id（覆盖层里有、卡片里没有，${report.orphaned.length} 条）：`);
+  for (const s of report.orphaned) console.log('  - ' + s);
 }
+
+/**
+ * 指纹的能力报告：分类列清单，别混成一句"跳过（N 条）"。
+ * id 列表按每行 12 个折行，逐张列出来——需要一个不漏地人读时，这份清单就是入口。
+ */
+const printIds = (ids) => {
+  const line = [];
+  for (const id of ids) {
+    line.push(id);
+    if (line.length === 12) {
+      console.log('      ' + line.join(' '));
+      line.length = 0;
+    }
+  }
+  if (line.length) console.log('      ' + line.join(' '));
+};
+
+const decidable = report.aligned + report.orderAgrees.length;
+const optionCards = decidable + report.needsHuman.length + report.bySideNoDigits.length;
+console.log(`\n── 指纹的能力报告（${optionCards} 张带选项的卡；概念卡没有选项行、不在这个口径里）──`);
+console.log(`  可判定，不需要人看：${decidable} 张`);
+console.log(`    指纹唯一且两侧多重集一致（能证明顺序）：${report.aligned} 张`);
+console.log(
+  `    指纹序列逐位相同（顺序本来就一致，视为通过）：${report.orderAgrees.length} 张` +
+    `（其中只有指纹重复 ${report.orderAgreesWhy.dup} 张、只有某行没数字 ${report.orderAgreesWhy.blank} 张、两者都有 ${report.orderAgreesWhy.both} 张）`,
+);
+console.log(`\n  需人读（两侧都有数字却对不上，这才是真实工作队列）：${report.needsHuman.length} 张`);
+printIds(report.needsHuman);
+console.log(
+  `\n  某侧无数字（指纹没有信息，既不能证明一致也不能报警；${report.bySideNoDigits.length} 张` +
+    `，其中两侧都没有数字 ${report.noDigitsWhy.bothSides} 张、只有一侧 ${report.noDigitsWhy.oneSide} 张）：`,
+);
+printIds(report.bySideNoDigits);
+console.log(`\n  （退出码只看 src 与需要重排的条数，和上面三张清单无关。）`);
 if (!write && (report.srcUpdated || report.reordered)) process.exitCode = 1;

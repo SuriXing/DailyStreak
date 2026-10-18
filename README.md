@@ -226,8 +226,21 @@ that reading (precalculus 031, 039 and 046 - in each case the English `Answer:` 
 Chinese was right). A fourth, `csp-125`, was found only after the fingerprint itself was repaired: it had been
 reading both `10⁻⁶` and `10⁻²` as the number 10, concluded the two options were indistinguishable, and skipped the
 card, so nothing ever compared its Chinese `A` (10⁻⁶, the correct option) with its English `A` (3×10⁻²). With
-superscripts and signs normalised the fingerprint now proves the order for 559 of the 898 option cards; the other
-339 have options with no distinctive numbers and remain a by-eye job. A further hazard is specific to
+superscripts and signs normalised the fingerprint settles 597 of the 898 option cards: 278 outright, where the four
+numbers are distinct and the two multisets match so the script can re-derive the order, and another 319 because the
+two sides' fingerprint sequences already agree letter for letter, which is not a proof but is the order already
+being right. 20 cards have numbers on both sides that do not line up at all, and those are the ones a person has to
+read - the only group the tool can hand somebody. The remaining 281 have no digits in one side's four options at
+all, where the fingerprint carries no information: the tool can neither call them consistent nor raise a flag, so
+they are unmeasured rather than cleared. The 559 that used to stand in this sentence was 898 minus the 339
+`--check` listed for review, which counts "not reported" as "proved"; `--check` now prints those three groups
+separately instead of one "skipped (N)" line, with the ids of the two a person has to act on, and it says in the
+same breath that none of it affects its exit code. A fifth wrong key, `csp-126`, came out of reading the 20-card
+list by hand rather than out of the tool: its English options were permuted against the Chinese, so `Answer: A`
+pointed at the
+systematic-picking distractor that the English explanation itself calls wrong, and the card is still on the list
+after the fix in this commit, because the English writes `tenth` where the Chinese writes `10` - which is exactly
+why the fingerprint could not see it in the first place. A further hazard is specific to
 this repository's build: an item is not option-rotated when its explanation mentions A/B/C/D, so *writing* a
 letter reference into an explanation changes how the item is built. Adding references in the wrong order is
 therefore not a documentation slip but a content error, and it happened four times in one sitting before anyone
@@ -261,8 +274,8 @@ alone; they are wording problems rather than wrong keys.
 | 简析不得把错法挂在正确答案的字母上 | 同上（`checkBriefLetterReferences`） | 简析里出现"字母 + 漏/忘/误/把/当成…"且那个字母就是答案字母 | 判据故意窄：只认那一组错法动词、字母后紧跟"正确/成立"就豁免；不检查英文简析里的字母引用；字母指向**另一个干扰项**（写错了是哪个干扰项）它看不出来 |
 | 难度：练习册每张必须有 1–4；≥40 张的卡组不能有单一级别超过九成 | `check-flashcards.mjs`（`checkDifficulty`）+ 生成器（缺标注直接 `throw`） | 缺标注、标成 0/5、整组一个级别 | 情境题的难度不是逐卡断言的（`checkDifficulty` 只对非 `-scenario` 卡组要求存在，缺标注靠"生成器抛错 + 产物同步比对"兜住）；级别判得对不对机器不管 |
 | README 的题库计数：按族题数表、英文覆盖表的 `N of M`、难度区间表 16 个百分比、正文里点名总数的四句 | `check-flashcards.mjs`（`checkReadmeBankCounts`，数字现取自 `bank-stats.mjs`） | 加题后手写数字漂移；表头或措辞改到解析不出来（这也算失败，免得检查失去对象） | 只覆盖它认得的那三张表与那四句话。README 里其它数字没有门禁：`Quality Gates` 段的 "30 assertions" 与 bundle 段的 "132 KB / 321 KB" 都已经对不上现在的脚本与实测（`smoke-test.js` 里 125 处断言调用点；`deck-pack.ts` 194 KB、gzip 块 145 KB、明文卡组模块 583 KB） |
-| 英文覆盖层结构自洽：四个选项字母、答案字母与中文一致、`Correct option` 与它指向的选项逐字一致、无残留中文、无孤立 id、`src` 与当前中文 `front+back` 的哈希一致；情境题必须全覆盖 | `check-flashcards.mjs`（`checkFlashcardOverlay`） | 中文改了英文没跟上（`src` 对不上）；情境题缺条目 | 只校验结构与自洽，**不校验译文的意思**——`Answer: A` 与 `Correct option` 可以互相印证地一起写错成同一条错方法（`csp-126` 现在就是这样）；练习册与概念卡缺条目只报比例、不是失败。另外 `src` 是人跑 `sync-overlays.mjs --write` 时机械重算的，**对它没能对齐的那些卡也会刷新**，所以这个哈希证明的是"跑过脚本"，不是"这一版英文被人读过" |
-| 英文选项顺序与中文逐字母对应 | `scripts/sync-overlays.mjs` 的数字指纹（**人跑的脚本：不在 CI、不在 `precheck`、不在 git 钩子里**） | `--check` 在需要重排顺序或重算 `src` 时退出码非 0 | 实测 898 张带选项的卡里指纹只能判定 **278** 张（另有 5 张靠 `scripts/overlay-order-overrides.json` 的显式置换）；**339** 张被列进"需人工核对"（其中 319 张中英指纹序列逐位相同，只是指纹重复或某个选项没有数字，脚本"绝不猜"）；**281** 张至少有一侧的四个选项里一个数字都没有，脚本连报都不报、静默跳过。**跳过多少张不影响退出码**，所以它绿着不代表英文顺序是对的 |
+| 英文覆盖层结构自洽：四个选项字母、答案字母与中文一致、`Correct option` 与它指向的选项逐字一致、无残留中文、无孤立 id、`src` 与当前中文 `front+back` 的哈希一致；情境题必须全覆盖 | `check-flashcards.mjs`（`checkFlashcardOverlay`） | 中文改了英文没跟上（`src` 对不上）；情境题缺条目 | 只校验结构与自洽，**不校验译文的意思**——`Answer: A` 与 `Correct option` 可以互相印证地一起写错成同一条错方法（`csp-126` 在 2026-10-17 之前就是这样：英文选项整体错位、两个字段一起指向那条错方法，而门禁全绿）；练习册与概念卡缺条目只报比例、不是失败。另外 `src` 是人跑 `sync-overlays.mjs --write` 时机械重算的，**对它没能对齐的那些卡也会刷新**，所以这个哈希证明的是"跑过脚本"，不是"这一版英文被人读过" |
+| 英文选项顺序与中文逐字母对应 | `scripts/sync-overlays.mjs` 的数字指纹（**人跑的脚本：不在 CI、不在 `precheck`、不在 git 钩子里**） | `--check` 在需要重排顺序或重算 `src` 时退出码非 0 | 实测 898 张带选项的卡：**597** 张可判定（**278** 张指纹唯一且两侧多重集一致；**319** 张两侧指纹序列逐位相同、顺序本来就一致，其中只有指纹重复 **115** 张、只有某行没数字 **48** 张、两者都有 **156** 张）；**20** 张两侧都有数字却多重集对不上，`--check` 逐张列出 id，**这一类才是真实工作队列**；**281** 张至少有一侧的四个选项里一个数字都没有，指纹没有信息、机器判不了（改前这类是**静默丢掉**的，现在单列一桶——它不是"判过没问题"，是"没量过"）。另有 5 张（`precalc-scenario-033/034/040/041/042`）的指纹本身定不了序，靠 `scripts/overlay-order-overrides.json` 的显式置换定序，已含在上面三类里、不额外计数。**这三张清单一张都不影响退出码**，所以它绿着不代表英文顺序是对的 |
 | UI 词典 zh/en/es 键集一致、课程内容覆盖齐全 | `scripts/check-i18n.mjs`（147 keys，17 条目 / 17 技能 / 3 课程） | 新增键只改 `zh`、课程条目漏译 | 只查键的存在与集合相等，不查译文语义；英文卡片覆盖层不在这里（在 `check-flashcards` 那两行） |
 | 练习页筛选/排序语义，以及真实题库的恒等式"各档之和 + 没有分级 = 总题数" | `scripts/test-session-logic.mjs`（60 个 test，需要 Node ≥22.15） | `filterCards` / `availableDifficulties` / `orderCards` / `summarizePool` 的语义被改坏 | 只测 lib 层的返回值：不测渲染、不测点选、不测翻面 |
 | 本地题库链路（`content/local/` → `public/local-deck.json` → 卡池 → 难度筛选） | 同一支脚本里的往返测试（在临时目录真跑一遍生成器）+ `build-local-bank.mjs` 自己跳过写错标注的题 | 生成器解析回归、难度标记写错 | **浏览器里没跑过**：本机 `public/` 下没有 `local-deck.json`，也没有 `.env.local` 去打开 `EXPO_PUBLIC_LOCAL_DECK=1`（默认关），所以 fetch → 卡池 → 渲染那一跳只有单测覆盖 |
@@ -270,18 +283,25 @@ alone; they are wording problems rather than wrong keys.
 | UXE 设计契约：antd token 一致性、明暗对称、组件里的 raw hex、三组对比度 | `.uxe/scripts/check.py`（= `npm run uxe:check`，CI 与 `precheck` 都跑） | 组件里写死颜色、token 缺失、明暗不对称、对比度低于门槛 | 静态检查：它读 `src/constants/theme.ts` 的 token 与组件文件里的字面颜色，渲染出来的实际像素不在它手里 |
 | 内容正确性：答案本身、干扰项写的错法能不能真算出它显示的数字、简析里的数学、英文译文的意思 | **人读**（三轮对抗性复核 + 复核台账） | 只有人读能发现；机器一条都判断不了 | `check-flashcards` 甚至不知道"这道题的答案对不对"，台账只证明有人复核过这一版正文 |
 | 难度级别判得对不对（1–4 每一级的判定） | **人读**（判据与改级流程写在 `docs/difficulty-rubric.md`，含每级的真实例子） | 复核者按 rubric 独立复算 | rubric 判的是"预期工作量"而不是实测难度；机器只看"有没有、是不是 1–4、分布有没有区分度" |
-| 那 620 张指纹判定不了的卡的英文选项顺序 | **人读**（`sync-overlays.mjs --check` 打印的跳过清单只是入口） | —— | 339 张里真正"数字对不上"的只有 **20** 张，另外 **319** 张是中英指纹序列逐位相同却仍不可判定（**115** 张指纹重复、**204** 张某个选项没有数字）。这 20 张逐张读过：**19** 张是写法差异（中文 `.4` / 英文 `0.4`、字面 `H0` 被读成数字 0、`1,000,000` 被拆成 1/0/0、`万元` 对 `million`、英文把算式里的中间数字省掉），**1** 张（`csp-126`）是真的错位 |
+| 指纹判定不了的 **301** 张卡的英文选项顺序 | **人读**（`sync-overlays.mjs --check` 现在把三类分开打印，"需人读"与"某侧无数字"两桶逐张列 id） | —— | **20** 张"两侧都有数字却对不上"是脚本能报警、因而能交给人读的那一类，**它就是真实工作队列**；**281** 张"某侧无数字"脚本无从判断，工具给不出线索，只能靠人把两种语言对着读一遍。这 20 张本次逐张读过：**19** 张是写法差异（中文 `.4` 对英文 `0.4`、字面 `H0` 被读成数字 0、`1,000,000` 被拆成 1/0/0、`χ²` 的上标被读成 2、`万元` 对 `million`、英文把算式里的中间数字省掉），**1** 张（`csp-126`）是真的错位、已在本提交修好（修完它仍在清单里：英文把中文的 `10` 写成 `tenth`，指纹照样看不见） |
 | README 里没有被那四条正则覆盖的数字与说法 | **无人**（写的人自己负责） | —— | 门禁只保证它认得的那几处，其余读起来一样可信 |
 
-关于上面英文覆盖层那两行，README 前面写的"the fingerprint now proves the order for 559 of the 898
-option cards"是错的，别再引用：559 是把 `--check` **没有报告**的张数当成"已证明"（898 − 339），
-但 339 只是"两侧都有数字却没能对齐"的那一堆，另外 281 张至少有一侧的四个选项里一个数字都没有、
-脚本根本不报告，
-所以真正被证明的是 **278** 张，剩下的 **620** 张全是人工判断。而这 620 张里就有 `csp-126` 这种
-活的错误：英文选项的顺序与中文不一致，`Answer: A` 指在"排序后每隔十条取一条"这条干扰项上
-（中文的 A 是"多次有放回抽样，记录每次的中位数"，英文简析自己也写着 systematic picking 不对），
-而门禁只看英文自己是否自洽，所以它一路绿灯。这类错误的共同形状是"结构自洽、语义错位"——
-只有人把两种语言对着读一遍才发现，`--check` 的跳过清单是它唯一的机器线索。
+关于上面英文覆盖层那两行：README 前面那句"the fingerprint now proves the order for 559 of the 898
+option cards"已经删掉，换成了 `--check` 现算的三类数字。559 是把 **没被报告**的张数当成"已证明"
+（898 − 339），而 339 只是"两侧都有数字却没能对齐"的那一堆，另外 281 张至少有一侧的四个选项里
+一个数字都没有、脚本根本不报告。现在的口径是**可判定 597 张 / 需人读 20 张 / 某侧无数字 281 张**：
+597 里 278 张是指纹唯一、能证明顺序，319 张是两侧指纹序列逐位相同、顺序本来就一致（够不上"证明"，
+但确实是对的，所以不再当问题报）；**20 张才是真实工作队列**——机器只有在这一类上有"对不上"的证据，
+`--check` 把它们逐张列出来；281 张属于另一回事，脚本对它们不是"判过、没问题"，而是"一个数字都没有、
+判不了"，所以它们既不在队列里、也不是绿灯。
+
+这 20 张里就有一个 `csp-126` 这样活的错误：英文选项的顺序与中文不一致，`Answer: A` 指在"排序后
+每隔十条取一条"这条干扰项上（中文的 A 是"多次有放回抽样，记录每次的中位数"，英文简析自己也写着
+systematic picking 不对），而门禁只看英文自己是否自洽，所以它一路绿灯。本提交把它修好了：英文选项行
+按中文逐字母重排（A 放回抽样、B 等距抽取、C 中心极限定理、D 分组取中位数），`Answer: A` 与
+`Correct option` 跟着指向正确的 A，中文一个字没动、`src` 也就没动。这类错误的共同形状是"结构自洽、
+语义错位"——只有人把两种语言对着读一遍才发现；它修完仍留在那 20 张的清单里，因为英文把中文的
+`10` 写成 `tenth`，指纹看不见这种改写，`--check` 也就仍旧判不了它。
 
 判据本身要写在文件里、能被第二个人独立复算，而不是只存在于标注者脑子里：难度那一半在
 [docs/difficulty-rubric.md](docs/difficulty-rubric.md)，UI 那一半由 `.uxe/scripts/check.py`

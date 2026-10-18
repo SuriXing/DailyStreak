@@ -12,9 +12,9 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const NAV = [
-  { path: '/', labelKey: 'tabs.checkin' as TKey, icon: 'flame' as const },
-  { path: '/study', labelKey: 'tabs.study' as TKey, icon: 'albums' as const },
-  { path: '/profile', labelKey: 'tabs.profile' as TKey, icon: 'person' as const },
+  { path: '/', labelKey: 'tabs.checkin' as TKey, icon: 'flame' as const, testID: 'sidebar-nav-checkin' },
+  { path: '/study', labelKey: 'tabs.study' as TKey, icon: 'albums' as const, testID: 'sidebar-nav-study' },
+  { path: '/profile', labelKey: 'tabs.profile' as TKey, icon: 'person' as const, testID: 'sidebar-nav-profile' },
 ] as const;
 
 const COLLAPSE_KEY = 'dailystreak.sidebar.collapsed';
@@ -22,7 +22,20 @@ const SIDEBAR_WIDE = 224;
 const SIDEBAR_NARROW = 64;
 
 /** 桌面端左侧导航（宽度 ≥900px 时替代底部 Tab），可折叠为图标栏。
- *  采用 antd Layout.Sider 的结构：品牌头 + 顶部菜单 + 底部用户卡片。 */
+ *  采用 antd Layout.Sider 的结构：品牌头 + 顶部菜单 + 底部用户卡片。
+ *
+ *  可达性：react-native-web 的 createDOMProps 只认 aria-* 名字和 accessibilityChecked/Selected 这类
+ *  单项别名，`accessibilityState={{ selected }}` 整个对象会被丢掉——改之前这一栏每一项在 DOM 上都是
+ *  裸的 `<div tabindex="0" aria-label="Me">`，既没有角色也没有"当前在哪一页"，读屏软件完全看不出来。
+ *  这里按每个元素**实际是干什么的**换成真正会落到 DOM 上的写法：
+ *  - 导航项是跳转 → role="link"，当前那一条再加 aria-current="page"。不用 aria-selected：
+ *    它是 tab/option/gridcell 这类角色的状态，放在链接上是假状态；底部 Tab（expo-router 自己渲染的
+ *    role="tab" + aria-selected）是另一套语义，两边各自成立。role="link" 在 RNW 里不换标签
+ *    （propsToAccessibilityComponent 的 roleComponents 里没有 link），仍旧是那个 div，只是带上了角色。
+ *  - 折叠 / 切换主题 / 退出登录是动作 → role="button"：读屏软件才会念成按钮，空格键也由 RNW 的
+ *    PressResponder 接管（isValidKeyPress 只对 <button> 或 role=button 认空格，Enter 任何角色都认）。
+ *  - 折叠按钮不写 aria-expanded：它开合的是这一栏自己的宽度，不是一块能展开阅读的内容区，
+ *    可读名里已经写了 expand/collapse 两个方向。 */
 export function Sidebar() {
   const colors = useTheme();
   const router = useRouter();
@@ -87,9 +100,11 @@ export function Sidebar() {
           </View>
         )}
         <Pressable
+          testID="sidebar-collapse"
+          role="button"
           style={({ pressed }) => [styles.collapseBtn, pressed && styles.pressed]}
           onPress={toggle}
-          accessibilityLabel={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}>
+          aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}>
           <Ionicons
             name={collapsed ? 'chevron-forward' : 'chevron-back'}
             size={16}
@@ -105,6 +120,9 @@ export function Sidebar() {
           return (
             <Pressable
               key={item.path}
+              testID={item.testID}
+              role="link"
+              aria-current={active ? 'page' : undefined}
               style={({ pressed }) => [
                 styles.navItem,
                 { backgroundColor: active ? colors.backgroundSelected : 'transparent' },
@@ -112,8 +130,7 @@ export function Sidebar() {
                 pressed && styles.pressed,
               ]}
               onPress={() => router.push(item.path)}
-              accessibilityLabel={t(item.labelKey)}
-              accessibilityState={{ selected: active }}>
+              aria-label={t(item.labelKey)}>
               <Ionicons
                 name={item.icon}
                 size={18}
@@ -155,13 +172,15 @@ export function Sidebar() {
         </View>
 
         <Pressable
+          testID="sidebar-theme-toggle"
+          role="button"
           style={({ pressed }) => [
             styles.action,
             collapsed && styles.actionCollapsed,
             pressed && styles.pressed,
           ]}
           onPress={() => setPreference(resolved === 'dark' ? 'light' : 'dark')}
-          accessibilityLabel={t('sidebar.toggleTheme')}>
+          aria-label={t('sidebar.toggleTheme')}>
           <Ionicons
             name={resolved === 'dark' ? 'sunny-outline' : 'moon-outline'}
             size={16}
@@ -175,13 +194,15 @@ export function Sidebar() {
         </Pressable>
 
         <Pressable
+          testID="sidebar-signout"
+          role="button"
           style={({ pressed }) => [
             styles.action,
             collapsed && styles.actionCollapsed,
             pressed && styles.pressed,
           ]}
           onPress={onSignOut}
-          accessibilityLabel={t('profile.signOut')}>
+          aria-label={t('profile.signOut')}>
           <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
           {!collapsed && (
             <Text style={[styles.actionText, { color: colors.textSecondary }]}>{t('profile.signOut')}</Text>

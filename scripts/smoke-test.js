@@ -307,6 +307,25 @@ async function waitForTestIdCount(page, prefix, expected, tries = 24) {
   return false;
 }
 
+/** 读某个 testID 元素上的一个属性：元素不在返回 null，属性不在也返回 null。 */
+async function testIdAttr(page, testID, attr) {
+  const el = page.locator(`[data-testid="${testID}"]`);
+  if ((await el.count()) === 0) return null;
+  return el.first().getAttribute(attr);
+}
+
+/**
+ * 轮询等某个 testID 的属性变成期望值；expected 传 null 表示"这个属性不该存在"（读不到）。
+ * 属性是跟着一次重渲染才更新的（点一下 → setState → 提交），所以和文件里其他断言一样等状态，不睡固定时长。
+ */
+async function waitForTestIdAttr(page, testID, attr, expected, tries = 24) {
+  for (let i = 0; i < tries; i += 1) {
+    if ((await testIdAttr(page, testID, attr)) === expected) return true;
+    await page.waitForTimeout(250);
+  }
+  return false;
+}
+
 /** 某个元素的可读 label（RN Web 把 accessibilityLabel 渲染成 aria-label）。 */
 async function ariaLabelOf(page, testID) {
   const el = page.locator(`[data-testid="${testID}"]`);
@@ -366,6 +385,27 @@ function labelState(label) {
   if (/未选中|not selected|sin seleccionar/.test(label)) return false;
   if (/已选中|selected|seleccionado/.test(label)) return true;
   return null;
+}
+
+/**
+ * 一个"由状态决定长相"的控件（侧边栏导航项、折叠开关、动作按钮）在 DOM 上的可达性属性。
+ * current 是 aria-current（导航里的当前项）、expanded 是 aria-expanded（开合开关）、
+ * selected 是 aria-selected（只有 tab/option 这类角色才该有；链接和按钮上一旦出现就是假状态）。
+ * 页面上没有这个 testID 时返回 null。
+ */
+async function controlA11y(page, testID) {
+  const el = page.locator(`[data-testid="${testID}"]`);
+  if ((await el.count()) === 0) return null;
+  const first = el.first();
+  return {
+    role: await first.getAttribute('role'),
+    tabIndex: await first.getAttribute('tabindex'),
+    label: (await first.getAttribute('aria-label')) ?? '',
+    current: await first.getAttribute('aria-current'),
+    expanded: await first.getAttribute('aria-expanded'),
+    selected: await first.getAttribute('aria-selected'),
+    text: (await first.innerText()).trim(),
+  };
 }
 
 /** 文本里有没有中文或英文的某个说法（与 assertI18n 同口径，只是返回布尔、不抛错）。 */
@@ -919,9 +959,23 @@ async function clickTab(page, zh, en) {
     `"没有分级"一行有可读的 label（含张数 ${conceptCards}）：${ungradedLabel}`,
   );
 
-  // 卡组明细：默认收起（不把这一页撑长），展开后逐个卡组与生成数据比对，再收起
+  // 卡组明细：默认收起（不把这一页撑长），展开后逐个卡组与生成数据比对，再收起。
+  // 「收起/展开」这个状态必须真的在 DOM 上：改之前这里写的是 accessibilityState={{ expanded }},
+  // 而 react-native-web 会把整个 accessibilityState 丢掉——实测展开前后都是
+  // <button aria-label="Show 15 decks">，除了可读名换了句话，aria-expanded 一次都没出现过。
+  const decksToggle = await controlA11y(page, 'pool-decks-toggle');
+  assert(decksToggle !== null, '题库概览里有卡组明细的折叠开关');
+  assert(decksToggle.role === 'button', `折叠开关的 role 是 button（不是裸 div）：${decksToggle.role}`);
+  assert(
+    await waitForTestIdAttr(page, 'pool-decks-toggle', 'aria-expanded', 'false'),
+    '卡组明细默认收起：aria-expanded="false"（不是只靠按钮文案说"展开"）',
+  );
   assert((await countTestIds(page, 'pool-deck-count-')) === 0, '卡组明细默认收起（页面上没有 15 行卡组）');
   await page.locator('[data-testid="pool-decks-toggle"]').click();
+  assert(
+    await waitForTestIdAttr(page, 'pool-decks-toggle', 'aria-expanded', 'true'),
+    '点开后 aria-expanded 变成 "true"（状态跟着 DOM 走，不是只改可读名）',
+  );
   assert(
     await waitForTestIdCount(page, 'pool-deck-count-', deckKeys.length),
     `展开后列出全部 ${deckKeys.length} 个卡组`,
@@ -946,6 +1000,93 @@ async function clickTab(page, zh, en) {
   );
   await page.locator('[data-testid="pool-decks-toggle"]').click();
   assert(await waitForTestIdCount(page, 'pool-deck-count-', 0), '再点一次收起卡组明细（折叠是可逆的）');
+  assert(
+    await waitForTestIdAttr(page, 'pool-decks-toggle', 'aria-expanded', 'false'),
+    '收起后 aria-expanded 回到 "false"（两个方向都进 DOM）',
+  );
+
+  // 6a-2. 我的页三行"同一时刻只能成立一个"的选项（每日目标 / 语言 / 主题）。
+  //       改之前这三行用的是 accessibilityState={{ selected }}，RNW 丢掉整个对象，于是九个选项在 DOM 上
+  //       都是裸的 <div tabindex="0">：没有 role、没有选中态，读屏软件听到的是一个不知道能不能点的方块。
+  //       现在每行是 role=radiogroup + aria-label，每个选项是 role=radio + aria-checked，
+  //       可读名里带"哪一行 + 哪个选项 + 选中没有"，并且不出现 aria-selected（它在 radio 上是假状态）。
+  //       选项 testID 与 DAILY_GOALS / LOCALES / THEME_OPTIONS 一一对应（3 / 3 / 3 个）。
+  const radioRows = [
+    { name: '每日目标', en: 'Daily goal', chips: ['goal-3', 'goal-5', 'goal-10'] },
+    { name: '语言', en: 'Language', chips: ['lang-zh', 'lang-en', 'lang-es'] },
+    { name: '主题', en: 'Theme', chips: ['theme-system', 'theme-light', 'theme-dark'] },
+  ];
+  for (const row of radioRows) {
+    const group = await chipGroupA11y(page, row.chips[0]);
+    assert(group !== null, `${row.name} 那一行是一个读得出来的组（有 role 与 aria-label）`);
+    assert(
+      group.role === 'radiogroup',
+      `${row.name} 的容器 role=${group.role}（这一行同一时刻只有一个能成立，所以是单选组）`,
+    );
+    assert(
+      hasI18n(group.label, row.name, row.en),
+      `${row.name} 的 aria-label 说明了这一行是什么：${group.label}`,
+    );
+    assert(group.chips === row.chips.length, `${row.name} 组里有 ${group.chips} 个选项（期望 ${row.chips.length}）`);
+    const problems = [];
+    let checked = 0;
+    for (const id of row.chips) {
+      const chip = await chipA11y(page, id);
+      if (!chip) {
+        problems.push(`${id}: 页面上没有这个选项`);
+        continue;
+      }
+      if (chip.role !== 'radio') problems.push(`${id}: role=${chip.role} ≠ radio`);
+      if (chip.tabIndex !== '0') problems.push(`${id}: tabindex=${chip.tabIndex} ≠ 0（键盘停不下来）`);
+      if (chip.selected !== null) problems.push(`${id}: 还留着 aria-selected=${chip.selected}`);
+      if (chip.checked !== 'true' && chip.checked !== 'false') {
+        problems.push(`${id}: aria-checked=${chip.checked}（选中态没进 DOM）`);
+      }
+      if (chip.checked === 'true') checked += 1;
+      if (!hasI18n(chip.label, row.name, row.en)) {
+        problems.push(`${id}: 可读名里没有这一行的名字：${chip.label}`);
+      }
+      if (!chip.label.includes(chip.text)) {
+        problems.push(`${id}: 可读名里没有选项文案「${chip.text}」：${chip.label}`);
+      }
+      if (labelState(chip.label) !== (chip.checked === 'true')) {
+        problems.push(`${id}: aria-checked=${chip.checked} 与可读名说的不一致：${chip.label}`);
+      }
+    }
+    assert(
+      problems.length === 0,
+      `${row.name} 的每个选项都是 role=radio + aria-checked + tabindex=0，可读名带组名/选项/选中态，且没有 aria-selected（共 ${row.chips.length} 个）${problems.length ? '：' + problems[0] : ''}`,
+    );
+    assert(checked === 1, `${row.name} 恰好一个选项是 aria-checked="true"（实际 ${checked} 个）`);
+  }
+
+  // 点击与键盘都要能改选中态。这里只动「每日目标」：切语言会把整个界面换掉、主题在第 6b 段单独验，
+  // 而目标只是个本地偏好。先读出当前选中的那个，切到另一个，再按空格切回来（结束时不留下副作用）。
+  const goalIds = radioRows[0].chips;
+  const checkedGoal = (
+    await Promise.all(goalIds.map(async (id) => ((await chipA11y(page, id))?.checked === 'true' ? id : null)))
+  ).find(Boolean);
+  assert(goalIds.includes(checkedGoal), `每日目标有一项是选中的（${checkedGoal}）`);
+  const otherGoal = goalIds.find((id) => id !== checkedGoal);
+  await page.locator(`[data-testid="${otherGoal}"]`).click();
+  assert(await waitForChipChecked(page, otherGoal, 'true'), `点「${otherGoal}」：它的 aria-checked 变成 true`);
+  assert(
+    await waitForChipChecked(page, checkedGoal, 'false'),
+    `同时原来的「${checkedGoal}」回到 false（一行只有一个选中，不是各自独立勾选）`,
+  );
+  // 空格：role=radio 在 RNW 里渲染成 <div role="radio">，RNW 只把空格当成原生 button / role=button 的"按下"，
+  // 所以这个键由页面自己接住（src/app/(tabs)/profile.tsx 的 spaceKeyProps，靠 onKeyDown + preventDefault）。
+  // 按空格要落在**没选中**的那个上：radio 不像 checkbox 能被空格取消，落在已选中的那个上是空操作。
+  await page.locator(`[data-testid="${checkedGoal}"]`).focus();
+  await page.keyboard.press(' ');
+  assert(
+    await waitForChipChecked(page, checkedGoal, 'true'),
+    '在另一个选项上按空格同样能选中它（div 上的空格不会自己变成点击，页面接住了它）',
+  );
+  assert(
+    await waitForChipChecked(page, otherGoal, 'false'),
+    `空格选中「${checkedGoal}」之后「${otherGoal}」让位（键盘与点击走的是同一条单选规则）`,
+  );
 
   // 移动端视口（390px）下不横向溢出：展开过的卡组行收起后也不该剩下一根被撑出去的横条
   const mobileOverflow = await horizontalOverflow(page);
@@ -997,12 +1138,73 @@ async function clickTab(page, zh, en) {
   // 侧边栏导航项应包含 今日 / 自由练 / 我的（无需点击，避免 dark 全屏层与深链抖动）
   assert(/(Today|今日)[\s\S]*(Practice|自由练)[\s\S]*(Me|我的)/.test(text), '桌面端侧边栏含 今日 / 自由练 / 我的');
 
+  // 7a. 侧边栏的可达性：导航项是跳转（role=link + 当前那条 aria-current="page"），底部三个动作是
+  //     role=button。改之前这一栏每一项都是裸的 <div tabindex="0" aria-label="Me">——既没有角色也没有
+  //     "现在在哪一页"（写的是 accessibilityState={{ selected }}，RNW 把整个对象丢掉，DOM 上一个属性都没留下）。
+  //     aria-selected 这里必须为空：它是 tab/option 这类角色的状态，链接的"当前项"是 aria-current
+  //     （底部 Tab 由 expo-router 自己渲染成 role="tab" + aria-selected，那是另一套，各自成立）。
+  const sidebarNav = ['sidebar-nav-checkin', 'sidebar-nav-study', 'sidebar-nav-profile'];
+  const navProblems = [];
+  const currentNav = [];
+  for (const id of sidebarNav) {
+    const item = await controlA11y(page, id);
+    if (!item) {
+      navProblems.push(`${id}: 桌面视口下没有这个导航项`);
+      continue;
+    }
+    if (item.role !== 'link') navProblems.push(`${id}: role=${item.role} ≠ link（裸 div 没有角色）`);
+    if (item.tabIndex !== '0') navProblems.push(`${id}: tabindex=${item.tabIndex}（键盘停不下来）`);
+    if (!item.label) navProblems.push(`${id}: 没有可读名（折叠成图标栏时文字不渲染，名字只能来自 aria-label）`);
+    if (item.selected !== null) navProblems.push(`${id}: 还留着 aria-selected=${item.selected}`);
+    if (item.current === 'page') currentNav.push(id);
+  }
+  assert(
+    navProblems.length === 0,
+    `三个导航项都是 role=link + tabindex=0 + 有可读名，且没有 aria-selected（链接的当前态是 aria-current）${navProblems.length ? '：' + navProblems[0] : ''}`,
+  );
+  assert(
+    currentNav.length === 1 && currentNav[0] === 'sidebar-nav-checkin',
+    `只有当前路由那一项带 aria-current="page"，即「今日」（实际：${currentNav.join(' / ') || '一个都没有'}）`,
+  );
+
+  const actionProblems = [];
+  for (const id of ['sidebar-collapse', 'sidebar-theme-toggle', 'sidebar-signout']) {
+    const action = await controlA11y(page, id);
+    if (!action) {
+      actionProblems.push(`${id}: 页面上没有这个入口`);
+      continue;
+    }
+    if (action.role !== 'button') actionProblems.push(`${id}: role=${action.role} ≠ button`);
+    if (!action.label) actionProblems.push(`${id}: 没有可读名`);
+    if (action.current !== null || action.selected !== null) {
+      actionProblems.push(`${id}: 带了 aria-current=${action.current} / aria-selected=${action.selected}（动作没有"选中"这回事）`);
+    }
+  }
+  assert(
+    actionProblems.length === 0,
+    `侧边栏三个动作（折叠 / 切主题 / 退出登录）都是带可读名的 role=button，不带当前项或选中态${actionProblems.length ? '：' + actionProblems[0] : ''}`,
+  );
+  // 键盘：只用 Tab 焦点要能走到「退出登录」上（只走到它，不按 Enter/空格——那会真的登出）
+  await page.evaluate(() => document.body.focus());
+  const tabsToSignOut = await tabUntilTestId(page, 'sidebar-signout');
+  assert(tabsToSignOut > 0, `只用 Tab 就能把焦点走到侧边栏的退出登录上（从页面开头按了 ${tabsToSignOut} 次 Tab）`);
+
   // 7b. 桌面视口下的题库概览：宽屏有左侧边栏、卡片 maxWidth 760，数字与移动端一致才算"两种视口没有差异"。
   //     这里不能像 6c 那样直接 goto '/profile'：整套布局挂在 Stack.Protected 里，
   //     带路径的整页加载会被路由守卫重置回首页（实测 goto '/profile' 后 URL 变成 '/'、
   //     且停在今日页），所以改成点侧边栏的「我的」做客户端跳转——探针验证过暗色下这一下点得动。
   //     这里同样用 clickTab 的整串匹配：这一屏的正文（今日贴卡）里也可能出现 "Me"。
   await clickTab(page, '我的', 'Me');
+  // aria-current 得跟着路由走：点完「我的」，当前项从「今日」挪到「我的」，旧的那条必须把属性摘掉——
+  // 只加不删的话读屏软件会念出两个"当前页"。
+  assert(
+    await waitForTestIdAttr(page, 'sidebar-nav-profile', 'aria-current', 'page'),
+    '切到「我的」之后，侧边栏的「我的」成了 aria-current="page"',
+  );
+  assert(
+    await waitForTestIdAttr(page, 'sidebar-nav-checkin', 'aria-current', null),
+    '「今日」不再是当前路由，它的 aria-current 被摘掉（当前项只会有一个）',
+  );
   assert(
     await waitForTestIdNumber(page, 'pool-total', libraryTotal),
     `桌面端（1280px）题库概览的总题数同样是 ${libraryTotal}`,

@@ -218,21 +218,40 @@ data behind them; and the browser smoke test cannot run in every environment, so
 inspection rather than by execution when the network to Supabase is unavailable.
 
 The English overlay deserves its own paragraph, because this is where the corrections keep coming from. The
-script that aligns it (`scripts/sync-overlays.mjs`) matches English option lines to Chinese ones by the numbers
-inside them, which is language-neutral but only works when the numbers are distinctive: in one audit - a one-off
-measurement, not a running count - that fingerprint verified the order automatically for about 229 of the 890
+script that aligns it (`scripts/sync-overlays.mjs`) matches English option lines to Chinese ones by a
+language-neutral fingerprint taken from inside them (the numbers first, and since 2026-10-21 the identifiers as
+well), which only works when that material is distinctive: in one audit - a one-off measurement, not a running
+count - the number fingerprint verified the order automatically for about 229 of the 890
 option cards and could not judge the rest, so those were compared by eye, and three swapped answers fell out of
 that reading (precalculus 031, 039 and 046 - in each case the English `Answer:` pointed at a distractor while the
 Chinese was right). A fourth, `csp-125`, was found only after the fingerprint itself was repaired: it had been
 reading both `10⁻⁶` and `10⁻²` as the number 10, concluded the two options were indistinguishable, and skipped the
 card, so nothing ever compared its Chinese `A` (10⁻⁶, the correct option) with its English `A` (3×10⁻²). With
-superscripts and signs normalised the fingerprint settles 601 of the 902 option cards: 282 outright, where the four
-numbers are distinct and the two multisets match so the script can re-derive the order, and another 319 because the
-two sides' fingerprint sequences already agree letter for letter, which is not a proof but is the order already
-being right. 20 cards have numbers on both sides that do not line up at all, and those are the ones a person has to
-read - the only group the tool can hand somebody. The remaining 281 have no digits in one side's four options at
-all, where the fingerprint carries no information: the tool can neither call them consistent nor raise a flag, so
-they are unmeasured rather than cleared. The 559 that used to stand in this sentence was 898 minus the 339
+superscripts and signs normalised the number fingerprint settled 601 of the 902 option cards, and since 2026-10-21
+the fingerprint is no longer numbers alone: language-neutral **identifiers** are folded into the same signature -
+`substring`, `ArrayList`, `toUpperCase`, `length()`, `int[]`, `Math.random`, `java.util.ArrayList` - but only in
+shapes both languages write verbatim (dotted paths, camel-case and Pascal-case names carrying a second capital,
+call-with-parens, all-caps constants and acronyms, array types, and a closed vocabulary of primitive types and JDK
+class names). Bare English words are deliberately *not* tokens: `for`, `while`, `static` and `finally` are prose on the English
+side and code on the Chinese side of the same cards, and taking them as words raises the decidable count by two
+(660 to 662) while pushing three already-decidable cards into the human queue as false alarms - `csa-scenario-010`
+(the Chinese writes 静态字段, the English `static field`), `csa-scenario-040` and `csa-scenario-050` (`finally`
+sitting on a different option) - which dilutes the one list where the machine claims to have evidence; a keyword is
+a token only when it is written as code (`for (`). One normalisation runs the other way and is kept: an acronym's
+plural falls back to its stem (`SDs` → `SD`), because the Chinese writes `SD` where the English writes `SDs`, and
+without it `stats-080` and `csp-033` fall out of the decidable group (660 → 658, 20 → 22). A second filter makes
+the English side structurally unable to manufacture a mismatch: an identifier only counts if it also appears
+somewhere among that card's Chinese options - measured, that removed 102 spurious regressions and cost nothing,
+while instead constraining the keywords to code context dropped the decidable count to 652, below the 660 that no
+keyword at all gives. The combined fingerprint now settles **660** of the 902: **304** outright,
+where the four fingerprints are distinct and the two multisets match so the script can re-derive the order, and
+another **356** because the two sides' fingerprint sequences already agree letter for letter, which is not a proof
+but is the order already being right. **20** cards have fingerprints on both sides that do not line up at all - the
+same twenty as before, not one card fell out of the decidable group into it - and those are the ones a person has to
+read. The remaining **222** have neither a digit nor an identifier among one side's four options, where the
+fingerprint carries no information: 202 of them have nothing in either language (plain prose options) and 20 have
+English identifiers that the Chinese translated into words, which the same-side filter drops rather than guesses
+about. The 559 that used to stand in this sentence was 898 minus the 339
 `--check` listed for review, which counts "not reported" as "proved"; `--check` now prints those three groups
 separately instead of one "skipped (N)" line, with the ids of the two a person has to act on, and it says in the
 same breath that none of it affects its exit code. A fifth wrong key, `csp-126`, came out of reading the 20-card
@@ -277,7 +296,7 @@ transcribed by hand.
 | Difficulty: every drill card must carry a 1-4; no deck of 40 cards or more may put more than nine tenths of its items on one level; and **no deck may hold zero level-4 *or* zero level-1 items** | `check-flashcards.mjs` (`checkDifficulty` plus `checkDifficultyShape`) and the generators, which `throw` on a missing annotation | a missing annotation, a `0` or a `5`, a whole deck collapsed onto one level; or a deck's hardest tier hollowed out (`precalc-scenario` once held none, so the difficulty filter in that deck could not produce the top level at all while the gate stayed green, until somebody happened to look); or the mirror defect at the warm-up end (`csa-scenario` at `0/23/25/4` and `precalc-scenario` at `0/28/22/4` within the same two days, so a student who wanted a warm-up in those decks had to start at level 2) | scenario difficulty is not asserted card by card (`checkDifficulty` demands a level only on the non-`-scenario` decks, and the scenario side is held by the builder throwing plus the product-versus-source diff); whether the level is right is not the machine's judgement; fewer than three items at either end is one line on stderr rather than a failure (`LEVEL1_EMPTY`/`LEVEL1_THIN` and `LEVEL4_EMPTY`/`LEVEL4_THIN` are the engineering judgement "smallest usable number of items in that tier", not a statistical result, and the summary line reports both ends' totals and thinnest deck on every run, so the decks sitting at one or two level-1 items print a warning today). Also: moving items out of either end usually pulls a min down in the Deck family table above, so a red here often drags a README drift along with it |
 | The README's bank counts: the decks-by-family table, the `N of M` column of the English coverage table, the sixteen percentages of the difficulty table, and the four prose sentences that name a total | `check-flashcards.mjs` (`checkReadmeBankCounts`, with the figures taken from `bank-stats.mjs`) | a hand-written number drifts after items are added; or a table header or a wording change stops parsing (that fails too, rather than letting the check lose its object) | it covers only the three tables and the four sentences it recognises. The rest of the README's numbers have no gate at all: "30 assertions" in the Quality Gates section and "132 KB instead of 321 KB" in the bundle paragraph both disagree with the scripts and the measurements today (148 assertion call sites in `smoke-test.js`; `deck-pack.ts` at 194 KB, the gzip blob at 145 KB, the plain deck modules at 583 KB) |
 | The English overlay is structurally self-consistent: four option letters, the same keyed answer letter as the Chinese, a `Correct option` matching the option it names character for character, no Chinese characters left, no orphan ids, and a `src` hashing the current Chinese `front+back`; scenario items must be covered in full | `check-flashcards.mjs` (`checkFlashcardOverlay`) | the Chinese is edited and the English does not follow (`src` stops matching); a scenario card with no entry | it validates structure and self-consistency, **not the meaning of the translation** - `Answer: A` and `Correct option` can be wrong together, each corroborating the other (`csp-126` did exactly that until 2026-10-17: its English options were permuted and both fields pointed at the same wrong method while the gate stayed green); a drill or concept card with no entry only reports a fraction rather than failing. `src` is also recomputed mechanically by `sync-overlays.mjs --write`, **including for the cards that script could not align**, so that hash witnesses that the script was run and not that a human read this version of the English |
-| The English option order corresponds to the Chinese letter by letter | the number fingerprint in `scripts/sync-overlays.mjs` (= `npm run check:overlays`) | `--check` exits non-zero when it needs to reorder options or recompute `src` | measured today over 902 option cards: **601** are decidable (**282** with a unique fingerprint and matching multisets on both sides, which proves the order; **319** whose two fingerprint sequences already agree position by position, so the order was right to begin with - of those, **115** repeat a fingerprint, **48** have one option with no digits and **156** have both); **20** have numbers on both sides that do not line up at all, listed by id by `--check`, and **that is the real work queue**; **281** have no digits among one side's four options at all, where the fingerprint carries no information and the machine cannot judge (before the repair this group was **silently dropped**, and it is now its own bucket, because it is "unmeasured" rather than "checked and fine"). Another five (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint itself and are ordered by the explicit permutation in `scripts/overlay-order-overrides.json`; they sit inside the three groups above and are not counted again. **Only those first two counters reach the exit code** - they are the "somebody edited the Chinese and did not run `--write`" states, one command away from fixed - and since 2026-10-19 that exit code is a gate: `check:overlays` runs inside `precheck`, in both git hooks and in the CI check job. Neither of the two record lists does, on purpose; a green `--check` therefore still does not mean the English order is right, only that nothing was left half-done |
+| The English option order corresponds to the Chinese letter by letter | the number-plus-identifier fingerprint in `scripts/sync-overlays.mjs` (= `npm run check:overlays`) | `--check` exits non-zero when it needs to reorder options or recompute `src` | measured today over 902 option cards: **660** are decidable (**304** with a unique fingerprint and matching multisets on both sides, which proves the order - **282** of those were provable on numbers alone before 2026-10-21 and **22** more are provable only because identifiers joined the signature; **356** whose two fingerprint sequences already agree position by position, so the order was right to begin with - of those, **122** repeat a fingerprint, **56** have one option with no signal at all and **178** have both); **20** have fingerprints on both sides that do not line up at all, listed by id by `--check`, and **that is the real work queue** (the same twenty cards as before identifiers were added, so the wider fingerprint bought no false alarms); **222** have neither a digit nor an identifier among one side's four options, where the fingerprint carries no information and the machine cannot judge (before the repair this group was **silently dropped**, and it is now its own bucket, because it is "unmeasured" rather than "checked and fine"). Another five (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint itself and are ordered by the explicit permutation in `scripts/overlay-order-overrides.json`; they sit inside the three groups above and are not counted again. **Only those first two counters reach the exit code** - they are the "somebody edited the Chinese and did not run `--write`" states, one command away from fixed - and since 2026-10-19 that exit code is a gate: `check:overlays` runs inside `precheck`, in both git hooks and in the CI check job. Neither of the two record lists does, on purpose; a green `--check` therefore still does not mean the English order is right, only that nothing was left half-done |
 | The zh/en/es UI dictionaries have identical key sets, and the course content is covered | `scripts/check-i18n.mjs` (147 keys, 17 entries / 17 skills / 3 courses) | a key is added only to `zh`, or a course item is left untranslated | it checks that keys exist and that the sets are equal, never what a translation says; the English card overlay is not here (it is in the two `check-flashcards` rows) |
 | The practice page's filter and sort semantics, and the identity "the tiers summed plus the ungraded items equal the total" over the real bank | `scripts/test-session-logic.mjs` (60 tests, needs Node 22.15 or newer) | the semantics of `filterCards` / `availableDifficulties` / `orderCards` / `summarizePool` are broken | it tests the lib layer's return values only: no rendering, no clicking, no flipping |
 | The local bank chain (`content/local/` → `public/local-deck.json` → the card pool → the difficulty filter) | the round trip in the same script (it really runs the generator in a temp directory) plus `build-local-bank.mjs` skipping an item whose annotation is misspelled | a generator parse regression, a difficulty marker written wrong | **it has never run in a browser**: there is no `public/local-deck.json` on this machine and no `.env.local` to switch `EXPO_PUBLIC_LOCAL_DECK=1` on (off by default), so the fetch → pool → render hop is covered by unit tests alone |
@@ -285,20 +304,24 @@ transcribed by hand.
 | The UXE design contract: antd token consistency, light/dark symmetry, raw hex in components, three contrast groups | `.uxe/scripts/check.py` (= `npm run uxe:check`, run by both CI and `precheck`) | a hard-coded colour in a component, a missing token, an asymmetric light/dark pair, contrast below the threshold | a static check: it reads the tokens in `src/constants/theme.ts` and the literal colours in the component files, and the pixels that actually render are not in its hands |
 | Whether the content is correct: the answers themselves, whether a distractor's stated mistake really produces the number it displays, the mathematics in the explanations, the meaning of the English translation | **a human read** (three adversarial review passes plus the verification ledger) | only a person reading can find these; not one of them is a machine judgement | `check-flashcards` does not even know whether an item's answer is right, and the ledger proves only that somebody reviewed this version of the text |
 | Whether a difficulty level is right (each of the four judgements) | **a human read** (the criterion and the re-grade procedure are in `docs/difficulty-rubric.md`, with a real example at every level) | a reviewer recomputes independently against the rubric | the rubric grades expected work rather than measured difficulty; the machine asks only whether a level exists, whether it is 1-4, and whether the distribution has any spread |
-| The English option order for the **301** cards the fingerprint cannot decide | **a human read** (`sync-overlays.mjs --check` now prints the three groups separately and lists the ids in both the "needs a human" and the "no digits on one side" buckets) | - | the **20** cards with numbers on both sides that do not line up are the class the script can flag and therefore hand to a person, and they are the real work queue; for the **281** with no digits on one side the script has nothing to say and no lead to give, so somebody has to read the two languages side by side. All twenty were read card by card: **19** are notation differences (Chinese `.4` against English `0.4`, the literal `H0` read as the number 0, `1,000,000` split into 1/0/0, the superscript of `χ²` read as 2, `万元` against million, an English sentence that drops a number the Chinese states) and **1** (`csp-126`) was a real misalignment, since fixed (and still on the list after the fix, because the English writes `tenth` where the Chinese writes `10`, which the fingerprint cannot see) |
+| The English option order for the **242** cards the fingerprint cannot decide | **a human read** (`sync-overlays.mjs --check` now prints the three groups separately and lists the ids in both the "needs a human" and the "no signal on one side" buckets) | - | the **20** cards with fingerprints on both sides that do not line up are the class the script can flag and therefore hand to a person, and they are the real work queue; for the **222** with no signal on one side the script has nothing to say and no lead to give, so somebody has to read the two languages side by side. All twenty were read card by card: **19** are notation differences (Chinese `.4` against English `0.4`, the literal `H0` read as the number 0, `1,000,000` split into 1/0/0, the superscript of `χ²` read as 2, `万元` against million, an English sentence that drops a number the Chinese states) and **1** (`csp-126`) was a real misalignment, since fixed (and still on the list after the fix, because the English writes `tenth` where the Chinese writes `10`, which the fingerprint cannot see) |
 | The README numbers and claims that those four regexes do not cover | **nobody** (whoever writes them is responsible) | - | the gate guarantees only the places it recognises; everything else is exactly as trustworthy as it reads |
 
 About the two overlay rows above: the README used to say "the fingerprint now proves the order for 559 of the 898
 option cards", and that sentence is gone, replaced by the three groups `--check` computes today. 559 was 898 minus
 the 339 cards `--check` listed for manual review, which counts "not reported" as "proved" - and that 339 was only
-the pile where both sides had numbers that would not line up, while the remaining 281 have no digits among one
-side's four options and were never reported at all. The current readings are **601 decidable / 20 needing a human /
-281 with no digits on one side**: within the 601, 282 have a unique fingerprint that proves the order and 319 have
-fingerprint sequences that agree position by position, so the order was right already (not a proof, but right,
-which is why they are no longer raised as a problem); the **20** are the real work queue, because they are the one
-class where the machine has evidence of a mismatch, and `--check` lists them by id; the 281 are a different matter -
-the script has not "checked them and found nothing wrong", it has "found not one number it can judge", so they are
-neither in the queue nor a green light.
+the pile where both sides had numbers that would not line up (that figure has since moved on), while the remaining
+281 cards had no digits among one side's four options and were never reported at all. The current readings, after
+identifiers joined the fingerprint on 2026-10-21, are **660 decidable / 20 needing a human / 222 with no signal on
+one side** (the numbers were 601 / 20 / 281, the same twenty cards in the middle, and
+the 59 that moved were moved by identifiers alone: 49 of them CSA or CSP, the two code-heaviest families; three of
+those 59 - `csa-043`, `csa-047`, `csa-077` - went all the way from "no information" to "provable", which is the only
+status under which a swapped pair goes red). Within the 660, 304 have a unique fingerprint that proves the order and
+356 have fingerprint sequences that agree position by position, so the order was right already (not a proof, but
+right, which is why they are no longer raised as a problem); the **20** are the real work queue, because they are
+the one class where the machine has evidence of a mismatch, and `--check` lists them by id; the 222 are a different
+matter - the script has not "checked them and found nothing wrong", it has "found not one digit and not one
+identifier it can judge", so they are neither in the queue nor a green light.
 
 One of those twenty was a live error of exactly this shape: `csp-126`'s English options were out of order against
 the Chinese, so `Answer: A` landed on the "sort the data and take every tenth record" distractor (the Chinese A is
@@ -318,13 +341,20 @@ it prints for a human, but nothing ran it, so "English options permuted against 
 defect that only surfaced when somebody happened to remember (`csp-126` was found by reading a list by hand, and
 five cards shipped this way earlier). It is now `npm run check:overlays`, sitting right after `check:flashcards` in
 `precheck`, in the pre-commit and pre-push hooks that call `precheck`, and as its own step in the CI check job; it
-costs about 0.35 s because it only reads files. The 20 cards needing a human and the 281 with no digits on one side
-stay out of the exit code deliberately: a gate that is red every day for 301 cards nobody has time to read is a
+costs about 0.35 s because it only reads files. The 20 cards needing a human and the 222 with no signal on one side
+stay out of the exit code deliberately: a gate that is red every day for 242 cards nobody has time to read is a
 gate everybody learns to ignore, and `precheck` would never be green again. Both failure modes were negative-tested
 before this landed: permuting one card's English option lines while moving `Answer:`/`Correct option` with them
 leaves `check-flashcards` green (that is the `csp-126` shape) and `check:overlays` fails naming the card, and
 editing a Chinese explanation without touching the English fails both. Swapping two English option lines on a
-card **with no digits on either side** fails neither: that is the 281-card blind spot, stated here rather than
+card **with no digits on either side** used to fail neither, and that was the blind spot this sentence was writing
+down; after identifiers joined the fingerprint it fails `check:overlays` whenever the two swapped lines carry
+different identifiers - negative-tested on `csa-077`, whose four options are `int` / `boolean` / `double` /
+`String`: swapping the first two lines while leaving `Answer: C` and `Correct option: double` untouched (nothing
+inside the English card contradicts itself, so `check-flashcards` stays green and the old fingerprint said nothing)
+is now a red naming `csa-077`, and `--write` puts the file back to its HEAD bytes. What remains blind is the 222-card
+group: two options that share a fingerprint, or two options with no fingerprint at all, are indistinguishable to any
+content-based comparison, so a swap between them is still invisible - the residual is stated here rather than
 discovered later.
 
 The criterion itself has to be written into the repository where a second person can independently re-derive it,
@@ -481,7 +511,7 @@ something the shipped deck depends on.
 ```bash
 npm run precheck           # 本地一键门禁: i18n completeness + 闪卡数据校验 + 英文覆盖层对齐 + ruff + type check + lint + UXE 设计契约
 npm run check:flashcards   # 闪卡生成数据完整性校验（张数 / id 连续 / 选项 / 答案字母 / 来源字段 / 承接行）
-npm run check:overlays     # 英文覆盖层对齐（src 重算 / 选项顺序重排；"需人读"和"某侧无数字"只报不红）
+npm run check:overlays     # 英文覆盖层对齐（src 重算 / 选项顺序重排；"需人读"和"某侧无信号"只报不红）
 npm run typecheck          # tsc --noEmit
 npm run lint               # Expo ESLint
 npm run lint:py            # ruff 检查 .uxe/scripts（配置在 pyproject.toml）

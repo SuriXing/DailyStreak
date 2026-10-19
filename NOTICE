@@ -17,7 +17,7 @@ statement that Expo owns the content.
 
 Question-bank provenance
 ------------------------
-Composition as of 2026-10-22. Every count below is what `npm run bank:stats` computes from the
+Composition as of 2026-10-18. Every count below is what `npm run bank:stats` computes from the
 generated data (src/data/subject-decks/*.ts, src/data/amc10-flashcards.ts, src/data/flashcard-i18n*.ts,
 scripts/flashcard-verification.json). That script is also the single source of truth the README's
 tables are checked against, so these figures can be re-derived with one command instead of trusted.
@@ -103,7 +103,7 @@ paper.
 "Verified" means: the answer was put through an independent recomputation pass — on 2026-09-19,
 sixteen sharded AI passes with hand recomputation of every flagged item, plus human-driven spot
 checks — and the card's current text still hashes to the version that was checked
-(scripts/flashcard-verification.json: 1466 registered, 1466 verified as of 2026-10-22). It does not
+(scripts/flashcard-verification.json: 1466 registered, 1466 verified as of 2026-10-18). It does not
 mean a human expert read the card, and editing a card's text silently returns it to unverified until
 somebody reworks it. Local items are marked unverified because this repository has not checked them.
 
@@ -120,7 +120,7 @@ English says the same thing":
   missing entry on a concept or drill card is reported as a fraction rather than failing.
 - Option *order* across the two languages is only partly machine-checkable. `sync-overlays.mjs
   --check` compares English option lines to Chinese ones by a language-neutral fingerprint (numbers,
-  and since 2026-10-21 also identifiers such as dotted paths, camel/Pascal names, `name(` forms,
+  and since 2026-10-18 also identifiers such as dotted paths, camel/Pascal names, `name(` forms,
   ALL_CAPS, `int[]` and a closed list of primitive and JDK types). Over the 902 option cards it
   decides 660 — 304 outright, where the four fingerprints are distinct and the two multisets match,
   and another 356 whose fingerprint sequences already agree position by position, which is not a

@@ -730,6 +730,11 @@ checkDeckSourceSync();
  */
 function checkDeckSourceSync() {
   const dir = mkdtempSync(path.join(tmpdir(), 'deck-sync-'));
+  // 门禁必须只读：跑生成器之前记下会被它顺带重写的产物哈希，跑完再比一次。
+  // （曾经的 bug：生成器在被跑到临时目录时仍然重写了真实的 deck-pack.ts，
+  // 于是门禁会改工作区，且打包结果依赖运行环境的 zlib 版本。）
+  const watched = ['src/data/deck-pack.ts'];
+  const before = new Map(watched.map((rel) => [rel, sha1Text(read(rel))]));
   try {
     execFileSync(process.execPath, [path.join(root, 'scripts/build-subject-decks.js')], {
       env: { ...process.env, SUBJECT_DECKS_OUT: dir },
@@ -743,6 +748,11 @@ function checkDeckSourceSync() {
       ['src/data/amc10-flashcards.ts', path.join(dir, 'amc10-flashcards.ts')],
       ...SUBJECT_DECKS.map((d) => [`src/data/subject-decks/${d}.ts`, path.join(dir, `${d}.ts`)]),
     ];
+    for (const rel of watched) {
+      if (sha1Text(read(rel)) !== before.get(rel)) {
+        problems.push(`${rel} 在门禁运行期间被改写了 → 门禁必须是只读的（生成器跑到临时目录时不该打包）`);
+      }
+    }
     const stale = pairs.filter(([rel, tmp]) => read(rel) !== readFileSync(tmp, 'utf8'));
     if (stale.length) {
       problems.push(

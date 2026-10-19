@@ -484,5 +484,12 @@ export const SUBJECT_FLASHCARDS = [
 );
 console.log(`wrote index.ts total=${generated.reduce((a, g) => a + g.count, 0)} cards`);
 
-// 卡组数据变了就顺手刷新 bundle 里的压缩块，别让它悄悄过期
-execFileSync(process.execPath, [path.join(__dirname, 'pack-decks.mjs')], { stdio: 'inherit' });
+// 卡组数据变了就顺手刷新 bundle 里的压缩块，别让它悄悄过期。
+// 但只在"写到默认位置"时这么做：check-flashcards 的"源↔产物同步"检查会把本脚本跑到临时目录
+// 去比对（SUBJECT_DECKS_OUT），那时**绝不能**碰真实的 deck-pack.ts——否则门禁就变成了会改工作区
+// 的写操作，而且打包结果依赖运行环境的 zlib 版本，本地看起来"没变"、CI 上却会写出不同字节。
+if (!process.env.SUBJECT_DECKS_OUT) {
+  execFileSync(process.execPath, [path.join(__dirname, 'pack-decks.mjs')], { stdio: 'inherit' });
+} else {
+  console.log('（临时目录模式：跳过打包，不触碰 src/data/deck-pack.ts）');
+}

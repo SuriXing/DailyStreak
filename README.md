@@ -549,6 +549,8 @@ The repo also carries a UXE design contract (`.uxe/`) that audits surfaces, toke
 
 Content provenance is documented in [NOTICE](NOTICE): which parts of the question bank came from a
 third-party study pack, which were written here, and why no MAA or College Board material is included.
+NOTICE also records the bank's current composition (quoted from `npm run bank:stats`, not hand-kept)
+and how far the English overlay's alignment is machine-checked, together with the part that is not.
 The MIT licence covers this repository's own work and cannot cover anyone else's.
 
 If you want to practise with your own copies of real exam questions, put them in `content/local/`. That

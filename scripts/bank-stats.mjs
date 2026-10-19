@@ -31,7 +31,7 @@
  * 把 README 里这些表与句子的数字与这里算出来的逐个比对；不一致就失败，并让开发者跑
  * npm run bank:stats。
  */
-import { readFileSync, readdirSync, statSync, realpathSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -397,7 +397,11 @@ export function countAssertionCallSites(source) {
 export function computeBundleStats(root = DEFAULT_ROOT) {
   const abs = (rel) => path.join(root, rel);
 
-  const packBytes = statSync(abs(PACK_REL)).size;
+  // 体积一律按"行尾归一化（CRLF→LF）后的字节数"计算：同一个 blob 在 Windows / macOS /
+  // Linux 上检出后字节数可能不同（core.autocrlf、.gitattributes），而 README 里的数字必须
+  // 在每台机器、每个 CI runner 上都算得一样，否则门禁本身就成了不可复现的东西。
+  const normalizedBytes = (rel) => Buffer.byteLength(readFileSync(abs(rel), 'utf8').replace(/\r\n/g, '\n'));
+  const packBytes = normalizedBytes(PACK_REL);
   const packSrc = readFileSync(abs(PACK_REL), 'utf8');
   const b64 = packSrc.match(/DECK_PACK_BASE64\s*=\s*'([A-Za-z0-9+/=]+)'/);
   if (!b64) throw new Error(`${PACK_REL}: 找不到 DECK_PACK_BASE64 字面量（打包格式改过了？）`);
@@ -415,7 +419,7 @@ export function computeBundleStats(root = DEFAULT_ROOT) {
       .map((f) => `${PLAIN_DECK_DIR}/${f}`),
     AMC10_REL,
   ];
-  const plainBytes = plainFiles.reduce((a, rel) => a + statSync(abs(rel)).size, 0);
+  const plainBytes = plainFiles.reduce((a, rel) => a + normalizedBytes(rel), 0);
 
   const assertions = countAssertionCallSites(readFileSync(abs(SMOKE_REL), 'utf8'));
 

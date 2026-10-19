@@ -1053,7 +1053,9 @@ function checkReadmeBankCounts() {
       if (got !== String(want)) {
         problems.push(
           `${README_REL}: 「${pattern.name}」的${pattern.labels[i]}写的是 ${got}，实际 ${want}` +
-            `（体积 = 文件字节数 /1024 取整，来自 ${bundle.pack.file} 与 ${bundle.plain.files.length} 个明文卡组模块；` +
+            `（体积 = 行尾归一化后的字节数 /1024 取整：打包块 ${bundle.pack.bytes} 字节、` +
+            `明文模块 ${bundle.plain.bytes} 字节、相差 ${bundle.saving.bytes} 字节；` +
+            `来自 ${bundle.pack.file} 与 ${bundle.plain.files.length} 个明文卡组模块；` +
             `断言数 = ${bundle.assertions.file} 里 assert/assertI18n/assertLabel 的调用点）${README_ADVICE}`,
         );
       }

@@ -16,7 +16,10 @@
  *   7. 题干重复：归一化后同一题干出现在两张卡上即失败（复制粘贴式重复）。
  *   8. README 里的题库计数（按族题数表、英文覆盖表、难度区间表、以及几处正文里的总数）
  *      必须与 scripts/bank-stats.mjs 现算的结果一致——手写的计数每次加题都会漂移一次，
- *      而漂移后的数字读起来和真的一样。
+ *      而漂移后的数字读起来和真的一样。同一支检查还管 README 里另外两类"自述数字"：
+ *      打包段落的三个体积（打包块 / 明文卡组模块 / 省下的体积）和两处冒烟测试断言数
+ *      （命令块里那一行、以及门禁表格里的总数与逐项分解），全部取自
+ *      scripts/bank-stats.mjs 的 computeBundleStats()；措辞解析不到同样算失败。
  *   9. 难度分布的形状：两端对称——每个卡组的最弱档（level 1）与最难档（level 4）为 0 道都
  *      失败（难度筛选点不出这一档），少于 3 道只警告；摘要行每次都报两端的总数与最薄的卡组。
  *
@@ -34,7 +37,7 @@ import path from 'node:path';
 
 import { SUBJECT_DECKS as SCENARIO_DECKS, readCards } from './lib/deck-cards.mjs';
 import { buildPack, renderPackModule } from './pack-decks.mjs';
-import { computeBankStats, difficultyRanges } from './bank-stats.mjs';
+import { computeBankStats, computeBundleStats, difficultyRanges } from './bank-stats.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SUBJECT_DECKS = SCENARIO_DECKS;
@@ -840,6 +843,43 @@ const README_PROSE_PATTERNS = [
 /** 英文破折号在 README 里是 U+2013；手滑写成 "-" 不该让比较失败。 */
 const normalizeDash = (s) => s.replace(/[–—]/g, '-');
 
+/**
+ * README 里"自述数字"的两类句子：打包段落的体积，和冒烟测试的断言数。
+ *
+ * 与表格不同，这些是散文，只能按固定措辞反解数字。措辞变了就报"解析不到"——一条失去
+ * 对象的检查比一条失败的检查更糟，因为它从此静默通过。产出口是
+ * `node scripts/bank-stats.mjs --md=bundle`（体积句 + 命令块那行）与 `--md` 之外的报表。
+ *
+ * 历史：体积句写的是 "132 KB instead of 321 KB"（真值 196 / 586 / 390），命令块写的是
+ * "30 assertions"（真值 152 个调用点），门禁表格里还写着 148 = 121+20+7。三处都没人管，
+ * 因为它们不在题库计数里，而"没人管的自述数字"正是漂移了三个月也读不出异常的那一类。
+ */
+const README_BUNDLE_PATTERNS = [
+  {
+    name: 'The packed form is N KB instead of N KB of plain object literals',
+    re: /The packed form is (\d+) KB instead of (\d+) KB of plain\s+object literals, which takes about (\d+) KB off the web bundle/g,
+    expected: (bundle) => [bundle.pack.kb, bundle.plain.kb, bundle.saving.kb],
+    labels: ['打包块', '明文卡组模块', '省下的体积'],
+  },
+  {
+    name: 'npm run smoke ... N assertion call sites',
+    re: /npm run smoke\s+#\s*(\d+) assertion call sites?, exits non-zero on failure/g,
+    expected: (bundle) => [bundle.assertions.callSites],
+    labels: ['断言调用点总数'],
+  },
+  {
+    name: 'Playwright, N assertion call sites - `assert(...)` N, `assertI18n` N, `assertLabel` N',
+    re: /Playwright, (\d+) assertion call sites - `assert\(\.\.\.\)` (\d+), `assertI18n` (\d+), `assertLabel` (\d+)/g,
+    expected: (bundle) => [
+      bundle.assertions.callSites,
+      bundle.assertions.byName.assert,
+      bundle.assertions.byName.assertI18n,
+      bundle.assertions.byName.assertLabel,
+    ],
+    labels: ['总数', 'assert(...)', 'assertI18n', 'assertLabel'],
+  },
+];
+
 function checkReadmeBankCounts() {
   const lines = read(README_REL).split('\n');
   const stats = computeBankStats(root);
@@ -990,6 +1030,31 @@ function checkReadmeBankCounts() {
       if (got !== expected[i]) {
         problems.push(
           `${README_REL}: 「${snippet}」写的是 ${got}，实际 ${expected[i]}${README_ADVICE}`,
+        );
+      }
+    });
+  }
+
+  // 5) 体积句与冒烟断言数（README 里另外两类"自述数字"）
+  const bundle = computeBundleStats(root);
+  for (const pattern of README_BUNDLE_PATTERNS) {
+    const matches = [...text.matchAll(pattern.re)];
+    if (matches.length !== 1) {
+      problems.push(
+        `${README_REL}: 解析不到「${pattern.name}」（匹配到 ${matches.length} 处）→ ` +
+          '措辞改过之后这个数字就不再受门禁保护；要么把措辞改回去，要么同步更新 ' +
+          'scripts/check-flashcards.mjs 里的 README_BUNDLE_PATTERNS；' +
+          '要贴的句子由 `node scripts/bank-stats.mjs --md=bundle` 直接印出来',
+      );
+      continue;
+    }
+    pattern.expected(bundle).forEach((want, i) => {
+      const got = matches[0][i + 1];
+      if (got !== String(want)) {
+        problems.push(
+          `${README_REL}: 「${pattern.name}」的${pattern.labels[i]}写的是 ${got}，实际 ${want}` +
+            `（体积 = 文件字节数 /1024 取整，来自 ${bundle.pack.file} 与 ${bundle.plain.files.length} 个明文卡组模块；` +
+            `断言数 = ${bundle.assertions.file} 里 assert/assertI18n/assertLabel 的调用点）${README_ADVICE}`,
         );
       }
     });

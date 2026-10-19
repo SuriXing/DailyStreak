@@ -3,34 +3,149 @@ DailyStreak — content provenance and licence scope
 
 Licence scope
 -------------
-The MIT licence in LICENSE covers the source code of this project and the content written for it: the
-question text of the scenario decks and of the drill items added since, the English translations, the
-difficulty rubric and the documentation.
+The MIT licence in LICENSE covers the work written for this project: the source code, the scenario
+text and the drill items authored here (see "Question-bank provenance"), the English translations, the
+difficulty annotations, the verification ledger, the gates and the documentation.
+
+It does not, and cannot, cover text that came from somewhere else. The 564 AMC 10 concept-card
+source entries and 600 of the 640 AP drill items are derived from a third-party study pack (below);
+that markdown is committed under content/ so a clone can rebuild the decks, but the MIT grant here
+is asserted over this repository's own work and not over the pack's. Neither AMC nor AP exam material
+is included at all. Note also that LICENSE carries the Expo template's copyright line
+("650 Industries, Inc.") unchanged — it is the licence text this project was started from, not a
+statement that Expo owns the content.
 
 Question-bank provenance
 ------------------------
+Composition as of 2026-10-22. Every count below is what `npm run bank:stats` computes from the
+generated data (src/data/subject-decks/*.ts, src/data/amc10-flashcards.ts, src/data/flashcard-i18n*.ts,
+scripts/flashcard-verification.json). That script is also the single source of truth the README's
+tables are checked against, so these figures can be re-derived with one command instead of trusted.
+
+  family    decks  cards  overlay      where the text comes from
+  concept       5    564  564 of 564   a third-party study pack, restructured here
+  drill         5    640  640 of 640   600 from that same pack + 40 written here
+  scenario      5    262  262 of 262   written here
+  TOTAL        15   1466  1466 of 1466
+
+902 of the 1466 carry four options (640 drill + 262 scenario); the 564 concept cards are
+question/answer cards with no option set.
+
+Per deck:
+
+  concept   arithmetic 110 (core 87 / advance 23 / boundary 0)
+            algebra    121 (core 86 / advance 34 / boundary 1)
+            geometry   148 (core 107 / advance 40 / boundary 1)
+            counting   106 (core 58 / advance 48 / boundary 0)
+            strategy    79 (core 63 / advance 8 / boundary 8)
+
+  drill     csa    126   L1 55  L2 50  L3 16  L4 5
+            csp    130   L1 90  L2 20  L3 16  L4 4
+            precalc 128  L1 61  L2 42  L3 21  L4 4
+            calcbc  128  L1 68  L2 43  L3 12  L4 5
+            stats   128  L1 91  L2 23  L3 10  L4 4
+
+  scenario  csa-scenario     54   L1 2   L2 23  L3 25  L4 4
+            csp-scenario     50   L1 6   L2 26  L3 14  L4 4
+            precalc-scenario 56   L1 2   L2 28  L3 22  L4 4
+            calcbc-scenario  52   L1 1   L2 19  L3 28  L4 4
+            stats-scenario   50   L1 3   L2 15  L3 28  L4 4
+
 1. AMC 10 concept cards (564) — a rewrite of the knowledge-map section of a third-party study pack
-   ("AP-AMC 学习资料"), restructured into question/answer cards for this app. They are study cards, not
-   exam questions, and no MAA material is reproduced.
-2. AP drill items (600, plus 16 written later) — taken from the same pack, whose own documentation
-   states that the files it labels 原创 are AI-generated. They are not College Board questions.
-3. Scenario decks (250 items) — written for this repository.
-4. English overlay (every card) — translations written for this repository.
+   ("AP-AMC 学习资料") into question/answer cards. They are study cards, not exam questions, and no MAA
+   material is reproduced. Several entries were corrected here (missing conditions, equality cases,
+   wording), so the committed markdown is no longer a verbatim copy of the pack's; the card count has
+   not changed since the sources were imported.
+2. AP drill items (640) — 600 of them are the pack's ten `*原创选择题*.md` banks (60 items per file,
+   two files per subject) with their answer keys; the pack's own documentation states that the files
+   it labels 原创 are AI-generated. The remaining 40 were written in this repository — csa 6, csp 10,
+   precalc 8, calcbc 8, stats 8 — every one of them to give a bank the hard (level-4) items its
+   hard-practice filter was drawing almost nothing from, in two rounds for the banks whose first batch
+   still left the top tier at two items. Later rounds of work here rewrote distractors, option lengths
+   and stems but added no cards. None of these is a College Board question.
+3. Scenario decks (262) — written for this repository: stimulus plus two to four reasoning steps per
+   item, in five `content/subject-banks/*/scenario.md` files that never existed in the pack. A few of
+   them are outright replacements rather than additions, all in the CSP deck: item 32 (the order of a
+   data-processing pipeline) became a compiler-versus-interpreter item, item 49 (data versus
+   procedural abstraction) became a syntax-versus-logic-error item, and an earlier second-batch item
+   was rewritten as item 43, a backup whose symmetric key is stored in the same bucket as the
+   ciphertext. The deck count stayed at 50 across all three.
+4. English overlay (all 1466 cards: 564 concept, 640 drill, 262 scenario) — written for this
+   repository by AI translation passes over the Chinese cards, reviewed here rather than by a
+   professional translator; see "The English overlay" below for exactly how far the alignment is
+   verified and where it is not.
 5. Verification ledger, difficulty levels, gates and documentation — written for this repository.
 
 What is not in this repository: the study pack itself. Its PDFs, scoring guidelines, score
-distributions and study guides stay outside the repository; only the markdown derived from it is
-committed, under content/.
+distributions and study guides stay outside the repository. What is committed under content/ is the
+markdown the decks are built from — the pack-derived concept deck and drill banks as points 1 and 2
+describe, plus the repository's own scenario files, difficulty.json and rotation-plan.json — and
+nothing else from the pack.
 
 Third-party exam material
 -------------------------
 AMC 10/12 problems are copyright MAA. AP questions are copyright College Board. Neither is included
 here, and the MIT licence cannot cover them. If you keep your own copies for personal practice, put
-them in `content/local/`: that directory and the file generated from it are gitignored, loaded only at
-runtime on your machine, and never published. See docs/local-bank.md.
+them in `content/local/`: that directory and the file generated from it (`public/local-deck.json`) are
+gitignored, loaded only at runtime on your machine, and never published. Local items are the one part
+of the bank this repository did not write and cannot vouch for — they are labelled 本地题库
+(local bank), always marked unverified, and may carry an optional `[难度 1-4]` marker graded against
+the same rubric as the built-in items. See docs/local-bank.md.
 
 AI-generated content
 --------------------
-The app labels provenance on every card and repeats it on the practice screen. Items are marked as
-"verified" only when their answer went through an independent recomputation pass; local items are
-marked unverified because this repository has not checked them.
+Everything in the built-in bank is AI-generated: the pack's 原创 items by its own documentation, and
+everything written here — concept-card rewrites, the 40 added drill items, all 262 scenario items and
+all 1466 English entries — by an AI agent working in this repository. The app labels provenance on
+every card and repeats it on the practice screen. Treat the bank as review material, not as exam
+paper.
+
+"Verified" means: the answer was put through an independent recomputation pass — on 2026-09-19,
+sixteen sharded AI passes with hand recomputation of every flagged item, plus human-driven spot
+checks — and the card's current text still hashes to the version that was checked
+(scripts/flashcard-verification.json: 1466 registered, 1466 verified as of 2026-10-22). It does not
+mean a human expert read the card, and editing a card's text silently returns it to unverified until
+somebody reworks it. Local items are marked unverified because this repository has not checked them.
+
+The English overlay
+-------------------
+The overlay is synchronised with the Chinese by scripts, and the guarantee is narrower than "the
+English says the same thing":
+
+- Structural equality is gated. `check-flashcards` requires four option letters, the same keyed
+  answer letter as the Chinese, a `Correct option` that matches the option it names character for
+  character, no leftover Chinese characters, no orphan ids, and a `src` hash of the Chinese front+back
+  that the English was translated from. Editing the Chinese without re-running
+  `node scripts/sync-overlays.mjs --write` fails the gate. Scenario items must be covered in full; a
+  missing entry on a concept or drill card is reported as a fraction rather than failing.
+- Option *order* across the two languages is only partly machine-checkable. `sync-overlays.mjs
+  --check` compares English option lines to Chinese ones by a language-neutral fingerprint (numbers,
+  and since 2026-10-21 also identifiers such as dotted paths, camel/Pascal names, `name(` forms,
+  ALL_CAPS, `int[]` and a closed list of primitive and JDK types). Over the 902 option cards it
+  decides 660 — 304 outright, where the four fingerprints are distinct and the two multisets match,
+  and another 356 whose fingerprint sequences already agree position by position, which is not a
+  proof but is the order being right. 20 cards have fingerprints on both sides that do not line up and
+  are listed by id for a person to read. The remaining 222 have neither a digit nor an identifier
+  among one side's four options: the fingerprint carries no information there, so the machine can
+  neither prove nor flag the order and only a human comparing the two languages can settle it.
+- The gate validates each language against itself. A swap between two options that share an empty
+  fingerprint, with `Answer:` and `Correct option` moved along, is invisible to every check in this
+  repository — that is the residual 222 above, not a claim that they are wrong.
+- Five cards (`precalc-scenario-033/034/040/041/042`) cannot be ordered by the fingerprint at all and
+  are ordered by the explicit permutation in scripts/overlay-order-overrides.json.
+
+So: the Chinese and English are kept in step structurally by tooling, and the option order is decided
+for 660 of the 902 option cards (proven for 304, already-agreeing for 356). Nothing here proves the
+*meaning* of a translation, and for the other 242 cards nothing proves the order either; the overlays
+remain AI translations that have been read in part, not certified.
+
+Difficulty annotations
+----------------------
+Levels 1–4 on the 902 option-bearing cards are a rubric judgement about how much work an item asks
+for, not measured difficulty: nobody has answered these items, there is no response data behind a
+level, and the figures above are the label distribution, not a difficulty result. The rubric, worked
+examples at every level, the known failure modes and the re-grade procedure are in
+docs/difficulty-rubric.md, with the per-item judgement in content/subject-banks/difficulty.json. The
+564 concept cards are outside this scale and use their own core / advance / boundary tags, which are
+a coverage classification rather than a difficulty measurement. A local item's `[难度 n]` marker is
+the user's own judgement, copied from the same rubric by the user, and never checked here.

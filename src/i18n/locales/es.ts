@@ -161,7 +161,7 @@ export const es: UiStrings = {
   'flashcards.sourceLocalExam': 'Banco local (sin publicar)',
   'flashcards.unverified': 'respuesta sin verificar',
   'flashcards.verified': 'respuesta verificada de forma independiente',
-  'flashcards.provenanceNote': 'Estas tarjetas vienen de material de estudio generado por IA, no de exámenes oficiales; las respuestas no se verificaron una por una.',
+  'flashcards.provenanceNote': 'Estas tarjetas vienen de material de estudio generado por IA, no de exámenes oficiales; cada respuesta se recalculó de forma independiente y quedó fijada por hash en el registro — recálculo y muestreo, no una revisión experta línea por línea. Las tarjetas importadas localmente no se verifican en este repositorio.',
 
   // Textos de accesibilidad de los chips de filtro: cada fila se lee como un grupo y el nombre del chip lleva fila + opción + estado
   'flashcards.chipA11y': '{group}: {label} ({state})',

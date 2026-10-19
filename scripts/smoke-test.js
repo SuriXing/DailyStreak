@@ -652,6 +652,24 @@ async function clickTab(page, zh, en) {
   assertLabel(text, '可多选', 'multi-select', '难度行标注了可多选');
   assertI18n(text, '答案已独立核验', 'answer independently checked', '卡片标注来源与核验状态');
   assertI18n(text, '题库由 AI 生成', 'AI-generated study material', '筛选区下方有题库来源提示');
+  // 来源说明不能和同一屏上的徽章、也不能和台账（scripts/flashcard-verification.json 的 1466/1466
+  // 与 method 里的"逐卡独立复算 + 抽检"）相互否定：那句小字曾经写着"答案未经逐题独立核验 /
+  // the answers were never checked one by one"，等于在"答案已独立核验"徽章下面说它不是核验过的。
+  // 现在它要说清核验方式（复算 + 抽检、哈希锁定）并单独点明本地导入的题未核验，所以这里既断言
+  // 正面措辞在，也断言旧的矛盾措辞不在。等文案渲染出来再判——首屏这行小字属于懒挂载的练习屏。
+  const noteConsistent = await waitUntil(
+    page,
+    async (p) => {
+      const body = await p.locator('body').innerText();
+      if (!hasI18n(body, '台账哈希锁定', 'hash-locked in the ledger')) return false;
+      return !/未经逐题|never checked one by one|no se verificaron una por una/.test(body);
+    },
+    { label: '来源说明渲染出来，且不再出现「未经逐题核验 / never checked one by one」' },
+  );
+  assert(
+    noteConsistent,
+    '来源说明与台账一致：写明逐题复算 + 哈希锁定与复算/抽检口径，且没有「未经逐题核验 / never checked」这类矛盾措辞',
+  );
   assert(/\nA\.\s/.test(text) && /\nB\.\s/.test(text), '默认渲染选择题选项（A/B）');
 
   // 4b. 难度分级可多选：点一个档是"加入选择"，再点一个档是"或"（不是替换它），「全部」清空选择。

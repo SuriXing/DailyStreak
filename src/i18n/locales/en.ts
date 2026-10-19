@@ -161,7 +161,7 @@ export const en: UiStrings = {
   'flashcards.sourceLocalExam': 'Local bank (not published)',
   'flashcards.unverified': 'answer unchecked',
   'flashcards.verified': 'answer independently checked',
-  'flashcards.provenanceNote': 'These cards come from AI-generated study material, not official exams; the answers were never checked one by one, so treat them as review prompts.',
+  'flashcards.provenanceNote': 'These cards come from AI-generated study material, not official exams; every answer was independently recomputed and hash-locked in the ledger — recomputation plus spot checks, not a line-by-line expert review. Cards imported locally are not checked by this repository.',
 
   // Accessibility copy for the filter chips: each row reads as a group, and a chip's name carries row + option + state
   'flashcards.chipA11y': '{group}: {label} ({state})',

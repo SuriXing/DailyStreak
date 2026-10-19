@@ -161,7 +161,7 @@ export const zh: UiStrings = {
   'flashcards.sourceLocalExam': '本地题库（未公开）',
   'flashcards.unverified': '答案未核验',
   'flashcards.verified': '答案已独立核验',
-  'flashcards.provenanceNote': '题库由 AI 生成的复习资料整理而来，不是官方真题；答案未经逐题独立核验，只作复习提示。',
+  'flashcards.provenanceNote': '题库由 AI 生成或整理的复习资料，不是官方真题；每题答案都做过独立复算，并由台账哈希锁定——核验方式是复算加抽检，不是人类专家逐题审阅。本地导入的题未经本仓库核验。',
 
   // 筛选 chip 的无障碍文案：每一行读成一个 group，chip 的可读名 = 哪一行 + 哪个选项 + 选中没有
   'flashcards.chipA11y': '{group}：{label}（{state}）',

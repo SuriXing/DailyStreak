@@ -6,21 +6,15 @@ export const zh: UiStrings = {
   'common.errorGeneric': '出错了，请重试',
 
   'errors.timeout': '网络超时，请检查网络后重试',
-  'errors.loadFailed': '加载失败',
-  'errors.checkInFailed': '打卡失败，请检查网络',
-  'errors.undoFailed': '撤销失败',
   'errors.supabaseNotConfigured': 'Supabase 未配置',
 
   'tabs.checkin': '今日',
   'tabs.study': '自由练',
-  'tabs.flashcards': '闪卡',
   'tabs.profile': '我的',
 
   'sidebar.tagline': '每日学习打卡',
   'sidebar.expand': '展开侧边栏',
   'sidebar.collapse': '折叠侧边栏',
-
-  'a11y.switchCourse': '切换到{name}',
 
   'home.streakDays': '天连胜',
   'home.celebrate': '🎉 今日打卡成功！',
@@ -40,26 +34,8 @@ export const zh: UiStrings = {
   'home.totalCheckins': '累计打卡',
   'home.currentStreak': '当前连胜',
 
-  'study.todayPractice': '今日练习',
-  'study.doneToday': '今日已完成 🎉',
-  'study.remaining': { other: '还差 {count} 题' },
-  'study.plan': '计划 {total} 题：复习 {reviews} 道 + 新学 {news} 道',
-  'study.noReviews': '（暂无到期复习）',
-  'study.masteryLine': '课程掌握度 {percent}% · 每日目标 {goal} 题',
-  'study.practiceAgain': '再练一组',
-  'study.start': '开始练习',
-  'study.todayTopic': '今日知识点',
-
-  'quiz.progress': '第 {current}/{total} 题',
   'quiz.correct': '🎉 答对了！',
   'quiz.answerIs': '💡 正确答案是 {letter}',
-  'quiz.next': '下一题',
-  'quiz.summary': '查看小结',
-
-  'done.title': '完成！答对 {correct}/{total} 题',
-  'done.accuracy': '正确率 {rate}% · 掌握度 {before}% → {after}%',
-  'done.reviewTomorrow': '完成 {total} 题 · 明天会优先安排复习错题',
-  'done.finish': '完成',
 
   'profile.mastery': '课程掌握度',
   'profile.dailyGoal': '每日目标',
@@ -126,14 +102,6 @@ export const zh: UiStrings = {
   'auth.google': '继续使用 Google',
   'auth.apple': '继续使用 Apple',
 
-  'study.noSession': '今天没有可练习的内容，明天再来吧',
-
-  'study.redo': '重新做一遍',
-  'study.redoWarning': '重新做会清除今天的答题记录',
-  'study.redoConfirm': '确认清除并重做',
-  'study.redoCancel': '取消',
-
-  'flashcards.title': 'AMC 10 闪卡',
   'flashcards.allDecks': '全部卡组',
   'flashcards.all': '全部',
   'flashcards.core': '核心',

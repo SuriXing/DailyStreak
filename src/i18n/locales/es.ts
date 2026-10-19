@@ -6,21 +6,15 @@ export const es: UiStrings = {
   'common.errorGeneric': 'Algo salió mal. Inténtalo de nuevo.',
 
   'errors.timeout': 'Tiempo de red agotado. Revisa tu conexión e inténtalo de nuevo.',
-  'errors.loadFailed': 'No se pudo cargar',
-  'errors.checkInFailed': 'No se pudo registrar. Revisa tu conexión.',
-  'errors.undoFailed': 'No se pudo deshacer',
   'errors.supabaseNotConfigured': 'Supabase no está configurado',
 
   'tabs.checkin': 'Hoy',
   'tabs.study': 'Práctica',
-  'tabs.flashcards': 'Tarjetas',
   'tabs.profile': 'Perfil',
 
   'sidebar.tagline': 'Hábito diario',
   'sidebar.expand': 'Expandir barra lateral',
   'sidebar.collapse': 'Contraer barra lateral',
-
-  'a11y.switchCourse': 'Cambiar a {name}',
 
   'home.streakDays': 'días de racha',
   'home.celebrate': '🎉 ¡Registrado hoy!',
@@ -40,26 +34,8 @@ export const es: UiStrings = {
   'home.totalCheckins': 'Registros totales',
   'home.currentStreak': 'Racha actual',
 
-  'study.todayPractice': 'Práctica de hoy',
-  'study.doneToday': '¡Meta de hoy cumplida! 🎉',
-  'study.remaining': { one: 'Falta {count} pregunta', other: 'Faltan {count} preguntas' },
-  'study.plan': 'Plan de {total} preguntas: {reviews} de repaso + {news} nuevas',
-  'study.noReviews': '(sin repasos pendientes)',
-  'study.masteryLine': 'Dominio del curso {percent}% · meta diaria {goal} preguntas',
-  'study.practiceAgain': 'Practicar otra ronda',
-  'study.start': 'Comenzar práctica',
-  'study.todayTopic': 'Tema de hoy',
-
-  'quiz.progress': 'Pregunta {current}/{total}',
   'quiz.correct': '🎉 ¡Correcto!',
   'quiz.answerIs': '💡 Respuesta correcta: {letter}',
-  'quiz.next': 'Siguiente pregunta',
-  'quiz.summary': 'Ver resumen',
-
-  'done.title': '¡Listo! {correct}/{total} correctas',
-  'done.accuracy': 'Precisión {rate}% · dominio {before}% → {after}%',
-  'done.reviewTomorrow': '{total} preguntas completadas. Mañana se repasan primero los errores.',
-  'done.finish': 'Finalizar',
 
   'profile.mastery': 'Dominio del curso',
   'profile.dailyGoal': 'Meta diaria',
@@ -126,14 +102,6 @@ export const es: UiStrings = {
   'auth.google': 'Continuar con Google',
   'auth.apple': 'Continuar con Apple',
 
-  'study.noSession': 'No hay repaso pendiente hoy, vuelve mañana',
-
-  'study.redo': 'Repetir hoy',
-  'study.redoWarning': 'Repetir borrará los registros de hoy',
-  'study.redoConfirm': 'Borrar y repetir',
-  'study.redoCancel': 'Cancelar',
-
-  'flashcards.title': 'Tarjetas AMC 10',
   'flashcards.allDecks': 'Todos los mazos',
   'flashcards.all': 'Todas',
   'flashcards.core': 'Clave',

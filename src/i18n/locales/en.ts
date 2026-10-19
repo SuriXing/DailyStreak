@@ -6,21 +6,15 @@ export const en: UiStrings = {
   'common.errorGeneric': 'Something went wrong. Please try again.',
 
   'errors.timeout': 'Network timed out. Check your connection and try again.',
-  'errors.loadFailed': 'Failed to load',
-  'errors.checkInFailed': 'Check-in failed. Check your network.',
-  'errors.undoFailed': 'Failed to undo',
   'errors.supabaseNotConfigured': 'Supabase is not configured',
 
   'tabs.checkin': 'Today',
   'tabs.study': 'Practice',
-  'tabs.flashcards': 'Flashcards',
   'tabs.profile': 'Me',
 
   'sidebar.tagline': 'Daily study habit',
   'sidebar.expand': 'Expand sidebar',
   'sidebar.collapse': 'Collapse sidebar',
-
-  'a11y.switchCourse': 'Switch to {name}',
 
   'home.streakDays': 'day streak',
   'home.celebrate': '🎉 Checked in today!',
@@ -40,26 +34,8 @@ export const en: UiStrings = {
   'home.totalCheckins': 'Total check-ins',
   'home.currentStreak': 'Current streak',
 
-  'study.todayPractice': "Today's practice",
-  'study.doneToday': 'Goal met today 🎉',
-  'study.remaining': { one: '{count} question to go', other: '{count} questions to go' },
-  'study.plan': 'Plan {total} questions: {reviews} to review + {news} new',
-  'study.noReviews': '(no reviews due)',
-  'study.masteryLine': 'Course mastery {percent}% · daily goal {goal} questions',
-  'study.practiceAgain': 'Practice another set',
-  'study.start': 'Start practice',
-  'study.todayTopic': "Today's topic",
-
-  'quiz.progress': 'Question {current}/{total}',
   'quiz.correct': '🎉 Correct!',
   'quiz.answerIs': '💡 Correct answer: {letter}',
-  'quiz.next': 'Next question',
-  'quiz.summary': 'See summary',
-
-  'done.title': 'Done! {correct}/{total} correct',
-  'done.accuracy': 'Accuracy {rate}% · mastery {before}% → {after}%',
-  'done.reviewTomorrow': '{total} questions done. Wrong answers get priority review tomorrow.',
-  'done.finish': 'Finish',
 
   'profile.mastery': 'Course mastery',
   'profile.dailyGoal': 'Daily goal',
@@ -126,14 +102,6 @@ export const en: UiStrings = {
   'auth.google': 'Continue with Google',
   'auth.apple': 'Continue with Apple',
 
-  'study.noSession': 'No review items due today, come back tomorrow',
-
-  'study.redo': 'Redo today',
-  'study.redoWarning': "Redoing will clear today's answer records",
-  'study.redoConfirm': 'Clear and redo',
-  'study.redoCancel': 'Cancel',
-
-  'flashcards.title': 'AMC 10 Flashcards',
   'flashcards.allDecks': 'All decks',
   'flashcards.all': 'All',
   'flashcards.core': 'Core',

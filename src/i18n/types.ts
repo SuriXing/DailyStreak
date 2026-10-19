@@ -36,9 +36,6 @@ export interface UiStrings {
   'common.errorGeneric': DictValue;
 
   'errors.timeout': DictValue;
-  'errors.loadFailed': DictValue;
-  'errors.checkInFailed': DictValue;
-  'errors.undoFailed': DictValue;
   'errors.supabaseNotConfigured': DictValue;
 
   'tabs.checkin': DictValue;
@@ -48,8 +45,6 @@ export interface UiStrings {
   'sidebar.tagline': DictValue;
   'sidebar.expand': DictValue;
   'sidebar.collapse': DictValue;
-
-  'a11y.switchCourse': DictValue;
 
   'home.streakDays': DictValue;
   'home.celebrate': DictValue;
@@ -69,26 +64,8 @@ export interface UiStrings {
   'home.totalCheckins': DictValue;
   'home.currentStreak': DictValue;
 
-  'study.todayPractice': DictValue;
-  'study.doneToday': DictValue;
-  'study.remaining': DictValue;
-  'study.plan': DictValue;
-  'study.noReviews': DictValue;
-  'study.masteryLine': DictValue;
-  'study.practiceAgain': DictValue;
-  'study.start': DictValue;
-  'study.todayTopic': DictValue;
-
-  'quiz.progress': DictValue;
   'quiz.correct': DictValue;
   'quiz.answerIs': DictValue;
-  'quiz.next': DictValue;
-  'quiz.summary': DictValue;
-
-  'done.title': DictValue;
-  'done.accuracy': DictValue;
-  'done.reviewTomorrow': DictValue;
-  'done.finish': DictValue;
 
   'profile.mastery': DictValue;
   'profile.dailyGoal': DictValue;
@@ -147,14 +124,7 @@ export interface UiStrings {
   'sidebar.toggleTheme': DictValue;
   'auth.google': DictValue;
   'auth.apple': DictValue;
-  'study.noSession': DictValue;
-  'study.redo': DictValue;
-  'study.redoWarning': DictValue;
-  'study.redoConfirm': DictValue;
-  'study.redoCancel': DictValue;
 
-  'tabs.flashcards': DictValue;
-  'flashcards.title': DictValue;
   'flashcards.allDecks': DictValue;
   'flashcards.all': DictValue;
   'flashcards.core': DictValue;

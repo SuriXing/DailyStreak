@@ -1,5 +1,7 @@
 # DailyStreak
 
+![DailyStreak](docs/screenshots/dailystreak.png)
+
 A daily study check-in app that turns AP Computer Science review into a habit: one tap to check in, one lesson per day, and streaks that keep you coming back.
 
 Built with Expo, it runs on **iOS** and the **web** from a single TypeScript codebase, with Supabase handling accounts and cloud-synced check-in history.

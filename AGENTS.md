@@ -4,28 +4,9 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 ## Commit Message Style
 
-Commit messages follow the owner's personal narrative style — the same one used across the ProblemSolver and MentorTable repos. Every message opens with **`Today I ...`** and is written in first person.
+Subject lines are short, imperative and self-explanatory ("Add a difficulty multi-select to the practice filter"). Conventional-commit prefixes (`feat:` / `fix:` / `chore:`) are optional; no emoji in the subject. Length varies naturally with the change — a small fix gets one compact sentence, a larger change gets the paragraphs it needs; never pad small commits to match big ones and never trim large ones down to a line. Body optional: for substantial changes add context, reason and trade-offs after a blank line, and flag anything that went wrong.
 
-- **Subject line:** begins with `Today I ...`, says what was done in one flowing sentence, and reads as a complete sentence (a trailing period is fine).
-- **Length varies naturally with the change.** A small fix can be a compact single sentence; a larger change deserves the detail it needs. Do not pad small commits to match big ones, and do not trim big commits down to one line — histories where every message is the same length read as machine-generated.
-- **Body:** optional. For substantial changes, after a blank line, add paragraphs with the context, the reason, and the trade-offs; where something went wrong or is worth flagging, close with an `Honest note:`.
-- **No conventional-commit prefixes** (`feat:` / `fix:` / `chore:`), no emoji in the subject.
-
-Examples:
-
-```
-Today I fixed the check-in page spinning forever, because the session user hook was resolving through a network call that hung on slow connections, and switched it to the local session read with a timeout on the fetch.
-```
-
-```
-Today I added the desktop sidebar shell above the 900px breakpoint.
-
-The bottom tab bar now hides on wide screens and a 220px navigation rail takes over with the brand mark, active-route highlighting, the user card, and a sign-out action, all reading from the shared theme tokens.
-
-Honest note: the first pass left the collapse button under the content column's hit area, and the browser test caught it before I did.
-```
-
-This file is tracked, so convention/documentation updates land as normal commits with the same `Today I ...` message.
+This file is tracked, so convention/documentation updates land as normal commits.
 
 ---
 
@@ -70,9 +51,9 @@ Levels 1–4 are a rubric judgement about expected work, not measured difficulty
 
 1. **Read before editing.** Use `read` for files and `grep`/`glob` to find things. `dist/` is a build artifact — never grep it.
 2. **One commit, one change.** Small and coherent beats a big tidy-up.
-3. **Never pad.** No real change, no commit; an empty day is more honest than a manufactured one. A history with exactly N commits per day reads as machine-generated — the same reason the commit-style section above warns about uniform lengths.
-4. **Commit before rewriting history.** `git reset --hard` has already eaten uncommitted fixes once. Date remaps should change dates only: `filter-branch --env-filter` keyed on SHA, backup branch first, then `--force-with-lease`.
-5. **Keep dates monotonic.** Check with `git log --pretty='%ad' --date=format:'%m-%d %H:%M'` before and after.
+3. **Never pad.** No real change, no commit; an empty day is more honest than a manufactured one.
+4. **Commit before risky operations.** `git reset --hard` has already eaten uncommitted fixes once.
+5. **Commit dates are wall-clock.** Don't set `GIT_AUTHOR_DATE` or `GIT_COMMITTER_DATE`; landing scripts commit with the real clock.
 6. **Report what you did not do.** Unverified parts, known weak spots, and test accounts left behind all belong in the final message.
 
 Pre-commit checklist:

@@ -159,7 +159,18 @@ Any entry you skip silently falls back to the Chinese base at runtime. Run `npm 
 npx expo export -p web   # outputs to dist/
 ```
 
-Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages).
+The web build is a static bundle, so `dist/` can be served by any static host (Vercel, Netlify, Cloudflare Pages).
+
+The live site is on Vercel and deploys itself: the `dailystreak` project is connected to this repository, so every push to `main` builds and publishes production. Nothing has to be uploaded by hand — running `vercel deploy ./dist` alongside the git integration only creates a second deployment that no domain points at.
+
+To ask whether production is actually serving what is in `main`:
+
+```bash
+npm run deploy:verify              # one check; exits non-zero when production is behind
+npm run deploy:verify -- --wait    # after a push: wait up to 300 s for the build to catch up
+```
+
+It asks the Vercel API which commit the newest `READY` production deployment was built from, rather than fetching the site's own domain — that domain is the layer that misleads, because a deploy that never ran, a project-level `ssoProtection` page and a DNS problem all look identical in a browser. It therefore also fails when `ssoProtection` is not `null`: production then serves Vercel's login page instead of the app.
 
 ## Flashcard Question Bank
 

@@ -70,7 +70,8 @@
     "uxe:capture": "python3 .uxe/scripts/capture.py --project-root .",
     "uxe:visual": "python3 .uxe/scripts/visual.py --project-root .",
     "uxe:audit": "python3 .uxe/scripts/audit.py --project-root .",
-    "smoke": "node scripts/smoke-test.js"
+    "smoke": "node scripts/smoke-test.js",
+    "deploy:verify": "node scripts/verify-deploy.mjs"
   },
   "private": true,
   "license": "MIT"

@@ -163,14 +163,17 @@ The web build is a static bundle, so `dist/` can be served by any static host (V
 
 The live site is on Vercel and deploys itself: the `dailystreak` project is connected to this repository, so every push to `main` builds and publishes production. Nothing has to be uploaded by hand — running `vercel deploy ./dist` alongside the git integration only creates a second deployment that no domain points at.
 
-To ask whether production is actually serving what is in `main`:
+To ask what production is actually doing:
 
 ```bash
-npm run deploy:verify              # one check; exits non-zero when production is behind
-npm run deploy:verify -- --wait    # after a push: wait up to 300 s for the build to catch up
+npm run deploy:verify                    # delivery + content; content needs to reach the live bytes
+npm run deploy:verify -- --delivery-only # delivery only; says so, and proves no more than that
+npm run deploy:verify -- --wait          # after a push: wait up to 300 s for the build to catch up
 ```
 
-It asks the Vercel API which commit the newest `READY` production deployment was built from, and which deployment each public domain (`dailystreak-app.vercel.app`, `dist-six-vert-70.vercel.app`) actually points at — rather than fetching the site itself, because the site is the layer that misleads: a deploy that never ran, a project-level `ssoProtection` page and a DNS problem all look identical in a browser. It fails when `ssoProtection` is not `null` (production then serves Vercel's login page instead of the app) and when a domain still points at an older deployment, which is how a fresh, green build can leave visitors on yesterday's code.
+The check keeps two things apart that are easy to blur. **Delivery** is what the Vercel API records: which commit the newest `READY` production deployment was built from, which deployment each public domain (`dailystreak-app.vercel.app`, `dist-six-vert-70.vercel.app`) actually points at, and whether `ssoProtection` is off — if it is not, production serves Vercel's login page instead of the app. **Content** is what a visitor's browser downloads: the script fetches the live `index.html` and the `entry-*.js` it references and compares both byte for byte with a local build of the same commit. Only the second one can support the sentence "production is running this code"; the first supports "Vercel built this commit and the domains point at it", which is a different claim, and `--delivery-only` exists to say that out loud instead of letting a green run imply more.
+
+One thing worth knowing before trusting either: the Metro bundle *filename* looks like a content hash and is not usable as one. For commit `c3cdafa` the Vercel build log named `entry-ee0a0540…`, the same name a local build produced; for `aa7e073`, which only touched documentation and this script, the Vercel build log named `entry-916c6498…` — the name from three commits earlier — while the local build still produced `entry-ee0a0540…`. Same source, different names, so equal names prove nothing and unequal names do not prove a difference. That is why the content check compares bytes.
 
 ## Flashcard Question Bank
 

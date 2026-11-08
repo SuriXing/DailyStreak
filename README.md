@@ -170,7 +170,7 @@ npm run deploy:verify              # one check; exits non-zero when production i
 npm run deploy:verify -- --wait    # after a push: wait up to 300 s for the build to catch up
 ```
 
-It asks the Vercel API which commit the newest `READY` production deployment was built from, rather than fetching the site's own domain — that domain is the layer that misleads, because a deploy that never ran, a project-level `ssoProtection` page and a DNS problem all look identical in a browser. It therefore also fails when `ssoProtection` is not `null`: production then serves Vercel's login page instead of the app.
+It asks the Vercel API which commit the newest `READY` production deployment was built from, and which deployment each public domain (`dailystreak-app.vercel.app`, `dist-six-vert-70.vercel.app`) actually points at — rather than fetching the site itself, because the site is the layer that misleads: a deploy that never ran, a project-level `ssoProtection` page and a DNS problem all look identical in a browser. It fails when `ssoProtection` is not `null` (production then serves Vercel's login page instead of the app) and when a domain still points at an older deployment, which is how a fresh, green build can leave visitors on yesterday's code.
 
 ## Flashcard Question Bank
 

@@ -42,6 +42,16 @@ const API = 'https://api.vercel.com';
 // dailystreak 项目。可以用 VERCEL_PROJECT_ID 覆盖，免得换项目时要改脚本。
 const PROJECT_ID = process.env.VERCEL_PROJECT_ID || 'prj_fURFEaDvcwl9xE2ERBh8kKEPEIya';
 const POLL_SECONDS = 10;
+// 真正对外的那两个地址。域名到底指着哪次部署，只有别名记录说得准——部署自己的
+// alias 字段是"挂载中"的即时快照，READY 之后几十秒内它可能只列出自动别名，
+// 于是"域名是不是指着这次部署"会被误判成"没挂域名"。用别名记录问，一次到位。
+// 可用 VERCEL_PRODUCTION_DOMAINS 覆盖（负向测试就靠它指向别的项目的域名）。
+const PRODUCTION_DOMAINS = (
+  process.env.VERCEL_PRODUCTION_DOMAINS || 'dailystreak-app.vercel.app,dist-six-vert-70.vercel.app'
+)
+  .split(',')
+  .map((d) => d.trim())
+  .filter(Boolean);
 
 const argWait = process.argv.find((a) => a === '--wait' || a.startsWith('--wait='));
 const WAIT_MS = argWait
@@ -112,16 +122,25 @@ async function snapshot() {
   const unpushed = Number(git(['rev-list', '--count', `${target}..HEAD`]));
 
   const { deployments } = await api(`/v6/deployments?projectId=${PROJECT_ID}&target=production&limit=10`);
-  // 列表接口不带 alias，得再问一次单条部署，否则"域名指着谁"这一项永远是空的。
-  const latest = deployments[0]
-    ? await api(`/v13/deployments/${deployments[0].uid}`).catch(() => deployments[0])
-    : null;
+  // 直接用列表里的那条：它的 uid 就是别名记录里认的那个 deploymentId。
+  // 单条部署详情（v13）返回的是 id 而不是 uid，混用两个形状会让"指着谁"永远对不上。
+  const latest = deployments[0] || null;
   const project = await api(`/v9/projects/${PROJECT_ID}`);
 
-  return { target, head, unpushed, latest, project };
+  const served = [];
+  for (const domain of PRODUCTION_DOMAINS) {
+    try {
+      const alias = await api(`/v4/aliases/${encodeURIComponent(domain)}`);
+      served.push({ domain, deploymentId: alias.deploymentId, url: alias.deployment?.url });
+    } catch (err) {
+      served.push({ domain, error: err.message });
+    }
+  }
+
+  return { target, head, unpushed, latest, project, served };
 }
 
-function report({ target, head, unpushed, latest, project }) {
+function report({ target, head, unpushed, latest, project, served }) {
   const problems = [];
   const lines = [];
 
@@ -139,10 +158,21 @@ function report({ target, head, unpushed, latest, project }) {
     `生产部署：${short(sha)} ${latest.readyState} · ${when(latest.createdAt)} · ${latest.url}`,
   );
   if (Array.isArray(latest.alias) && latest.alias.length) {
-    lines.push(`  别名：${latest.alias.join(', ')}`);
-  } else {
-    lines.push('  别名：无——部署好了但没有任何域名指过来');
-    problems.push('最新生产部署没挂别名，说明域名指向的是旧的部署。');
+    lines.push(`  自动别名：${latest.alias.join(', ')}`);
+  }
+
+  // 对外域名是不是真指着这次部署。这一项和"线上是哪个 commit"是两个问题：
+  // 部署可以又新又绿，域名却还挂在上一版上，访客看到的仍是旧代码。
+  for (const { domain, deploymentId, url, error } of served) {
+    if (error) {
+      lines.push(`域名 ${domain}：查不到别名记录（${error}）`);
+      problems.push(`问不出 ${domain} 现在指着哪次部署，这一条只能人工看一眼。`);
+    } else if (deploymentId === latest.uid) {
+      lines.push(`域名 ${domain}：指着这次部署 ✓`);
+    } else {
+      lines.push(`域名 ${domain}：指着 ${deploymentId}（${url || '?'}），不是这次`);
+      problems.push(`${domain} 还指着另一次部署 ${deploymentId}，访客看到的不是最新构建。`);
+    }
   }
 
   // ssoProtection：不为 null 时生产地址返回 Vercel 登录页，应用等于没上线。
